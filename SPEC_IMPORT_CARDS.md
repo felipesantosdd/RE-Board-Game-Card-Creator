@@ -1,204 +1,221 @@
-# Especificação para criação de JSON de cards (importação no RE Card Creator)
+# Especificação – Ícones, exportação e importação (RE Card Creator)
 
-Este documento descreve o formato JSON e o significado de todos os campos, ícones e layouts para que uma IA possa **extrair dados de uma imagem de cards** (ex.: RE3:TBG), remover/recortar os cards da imagem e gerar um **arquivo JSON importável** no sistema RE Card Creator.
+Este documento descreve **todos os ícones** (pastas e IDs), o **formato de exportação** e o **formato de importação** de cards, para que você possa adicionar/alterar ícones sem mexer no código e para que outras IAs possam gerar JSON importável a partir de imagens de cards.
 
-**Imagem de referência:** a imagem usada inicialmente contém seis cards RE3:TBG dispostos horizontalmente (HANDGUN, KNIFE, KNIFE (KNIFE ONLY), SAMURAI EDGE, FIRST-AID SPRAY, HANDGUN BULLETS). Cada card deve virar um objeto no array JSON, com todos os elementos visuais mapeados para os campos corretos abaixo.
+**Referência:** Imagem com cards RE3:TBG (HANDGUN, KNIFE, SAMURAI EDGE, FIRST-AID SPRAY, HANDGUN BULLETS, etc.). Cada card vira um objeto no array JSON.
 
 ---
 
-## 1. Formato do JSON
+## 1. Pastas de ícones (todas dinâmicas)
 
-O arquivo deve ser um **array de objetos**. Cada objeto representa um card. O sistema importa via "Importar JSON" e espera exatamente estes campos (outros são ignorados).
+O sistema lista ícones automaticamente via **`GET /api/icons?path=<pasta>`**. Não é preciso alterar código ao adicionar ou renomear arquivos: basta colocar `.png` na pasta e recarregar a página.
 
-### Campos obrigatórios em cada card
+**Base:** `public/models/icons/`
+
+| Pasta       | Uso no card |
+|------------|-------------|
+| **A**      | Ícone principal (banner esquerdo “EQUIP”). |
+| **B**      | Segundo ícone (layout equip2 – badge superior direito). |
+| **C**      | Skills (layout equip1 e equip2 – ícones de habilidade). |
+| **Effects/01** | Bloco 2 de efeito (layout equip3) – ícone + número em cima. |
+| **Effects/02** | Bloco 3 de efeito (layout equip3). |
+| **Effects/03** | Bloco 4 de efeito (layout equip3). |
+| **Effects/04** | Skills do layout equip3 (seção “Skills (pasta 04)” – vários ícones na div de skills). |
+
+### Como o ID é gerado (automático)
+
+O **id** de cada ícone vem do **nome do arquivo** (sem extensão), normalizado:
+
+- Minúsculas  
+- Espaços → `-`  
+- Só letras, números e `-` (acentos e outros caracteres removidos)
+
+Exemplos:
+
+- `01.png` → `"01"`
+- `Image 4.png` → `"image-4"`
+- `Sem Título-1.png` → `"sem-titulo-1"`
+
+**Na exportação/importação:** use sempre esse **id** (não o caminho do arquivo), exceto no ícone principal, onde o sistema usa o **caminho completo** em `icon`.
+
+---
+
+## 2. Uso de cada pasta por campo
+
+### Ícone principal (sempre)
+
+- **Campo:** `icon`
+- **Tipo:** URL completa (string), ex.: `"/models/icons/A/01.png"`
+- **Pasta:** A  
+- **Na prática:** pode ser o caminho direto do arquivo (ex.: `"/models/icons/A/02.png"`) ou qualquer URL que aponte para um ícone da pasta A. O sistema também aceita apenas o id da pasta A; na importação, se vier só id, o app pode montar o caminho.
+
+### Segundo ícone (só layout equip2)
+
+- **Campo:** `icon2Id` (e opcionalmente `icon2` como URL)
+- **Pasta:** B  
+- **Valor:** id do ícone (ex.: `"01"`, `"02"`). O sistema monta a URL a partir do id usando a lista da pasta B.
+
+### Skills (layout equip1 e equip2)
+
+- **Campo:** `selectedSkills`
+- **Pasta:** C  
+- **Valor:** array de ids, ex.: `[]` ou `["01"]`. Vários ícones podem ser selecionados.
+
+### Skills (layout equip3 – “Skills pasta 04”)
+
+- **Campo:** `selectedSkills` (mesmo campo)
+- **Pasta:** Effects/04  
+- **Valor:** array de ids da pasta Effects/04 (ex.: `["image-4", "image-5"]`). Aparecem na div de skills no final do card.
+
+### Blocos de efeito 2, 3 e 4 (só layout equip3)
+
+Cada bloco tem um **ícone** (id) e um **número** (texto em cima do ícone).
+
+| Bloco | Campo ícone   | Campo número   | Pasta de ícones |
+|-------|---------------|----------------|------------------|
+| 2     | `effect2Icon` | `effect2Number`| **Effects/01**   |
+| 3     | `effect3Icon` | `effect3Number`| **Effects/02**   |
+| 4     | `effect4Icon` | `effect4Number`| **Effects/03**   |
+
+O **bloco 1** é só texto (ex.: "LOS"); campo `linhaDeTiro`.
+
+**Resumo:**  
+- effect2 → Effects/01  
+- effect3 → Effects/02  
+- effect4 → Effects/03  
+- selectedSkills (equip3) → Effects/04  
+
+---
+
+## 3. Formato de exportação (o que o app exporta)
+
+Ao clicar em **Exportar JSON**, o sistema gera um array de objetos com exatamente estes campos por card:
 
 ```json
 [
   {
     "title": "TÍTULO DO CARD",
-    "description": "Texto da descrição ou efeito do card.",
+    "description": "Texto da descrição ou efeito.",
     "layoutId": "equip1",
     "icon": "/models/icons/A/01.png",
-    "icon2Id": null,
-    "selectedSkills": [],
+    "icon2Id": "01",
+    "selectedSkills": ["01"],
+    "skillId": "01",
     "equip3Number": "",
     "linhaDeTiro": "",
-    "effect2Icon": "",
-    "effect2Number": "",
-    "effect3Icon": "",
-    "effect3Number": "",
-    "effect4Icon": "",
-    "effect4Number": ""
+    "effect2Icon": "01",
+    "effect2Number": "1",
+    "effect3Icon": "02",
+    "effect3Number": "1",
+    "effect4Icon": "01",
+    "effect4Number": "2"
   }
 ]
 ```
 
-### Descrição de cada campo
+| Campo            | Tipo   | Descrição |
+|------------------|--------|-----------|
+| `title`          | string | Nome do card. |
+| `description`     | string | Efeito/regra/descrição. |
+| `layoutId`       | string | `"equip1"` \| `"equip2"` \| `"equip3"` |
+| `icon`           | string | URL do ícone principal (pasta A). |
+| `icon2Id`        | string | ID do segundo ícone (pasta B); vazio se não houver. |
+| `selectedSkills` | string[] | IDs de skills: pasta C (equip1/equip2) ou pasta Effects/04 (equip3). |
+| `skillId`         | string \| null | Primeiro id de `selectedSkills` (legado). |
+| `equip3Number`    | string | Número/símbolo do badge (equip3), ex. `"15"`, `"∞"`. |
+| `linhaDeTiro`     | string | Texto do 1º bloco de efeito (equip3). |
+| `effect2Icon`     | string | ID do ícone do bloco 2 (pasta **Effects/01**). |
+| `effect2Number`   | string | Número em cima do ícone do bloco 2. |
+| `effect3Icon`     | string | ID do ícone do bloco 3 (pasta **Effects/02**). |
+| `effect3Number`   | string | Número em cima do ícone do bloco 3. |
+| `effect4Icon`     | string | ID do ícone do bloco 4 (pasta **Effects/03**). |
+| `effect4Number`   | string | Número em cima do ícone do bloco 4. |
 
-| Campo | Tipo | Uso |
-|-------|------|-----|
-| `title` | string | Nome do card (ex.: "HANDGUN", "KNIFE"). Pode ser exibido em CAIXA ALTA. |
-| `description` | string | Texto longo abaixo da imagem (efeito, regra, etc.). Usado em cards de item/consumível. |
-| `layoutId` | string | **"equip1"**, **"equip2"** ou **"equip3"**. Define o layout visual do card (ver seção 2). |
-| `icon` | string | URL do ícone principal (canto esquerdo do card). Deve ser um caminho da **pasta A** (ver seção 3). |
-| `icon2Id` | string \| null | Só para **layout equip2**. ID do segundo ícone (pasta B), ex.: `"01"`, `"02"`. Para equip1/equip3 use `null` ou omita. |
-| `selectedSkills` | string[] | Array de IDs de skills (pasta C). Ex.: `["01"]` ou `[]`. |
-| `equip3Number` | string | Só para **layout equip3**. Número que aparece no canto superior direito (ex.: "15", "∞"). Use string vazia `""` se não houver. |
-| `linhaDeTiro` | string | Só para **layout equip3**. Texto do primeiro bloco de efeito (ex.: "LOS" ou valor de linha de tiro). Use `""` se não houver. |
-| `effect2Icon` | string | Só para **layout equip3**. ID do ícone do 2º bloco (pasta **Effects/04**). Valores: `"image-4"`, `"image-5"` ou `""`. |
-| `effect2Number` | string | Número exibido **em cima** do ícone do 2º bloco (ex.: "1"). |
-| `effect3Icon` | string | Só para **layout equip3**. ID do ícone do 3º bloco (pasta **Effects/04**). Valores: `"image-4"`, `"image-5"` ou `""`. |
-| `effect3Number` | string | Número em cima do ícone do 3º bloco. |
-| `effect4Icon` | string | Só para **layout equip3**. ID do ícone do 4º bloco (pasta **Effects/04**). Valores: `"image-4"`, `"image-5"` ou `""`. |
-| `effect4Number` | string | Número em cima do ícone do 4º bloco. |
-
----
-
-## 2. Layouts (layoutId)
-
-Escolha **um** por card conforme o tipo visual do card na imagem.
-
-### equip1 – Equipamento 1
-- **Quando usar:** Card com **um único ícone** no canto esquerdo (banner EQUIP) e **sem** segundo ícone no canto superior direito.
-- **Exemplo típico:** Equipamentos simples, alguns itens.
-- **Preencha:** `icon` (pasta A), `icon2Id` null/vazio, `equip3Number` e todos os `effect*` vazios.
-
-### equip2 – Equipamento 2
-- **Quando usar:** Card com **dois ícones (imagens)**: um no banner esquerdo (EQUIP) e **outro ícone (imagem) no canto superior direito**. O segundo elemento é um **ícone gráfico** (pasta B), não um número sozinho.
-- **Exemplo típico:** Cards em que o canto superior direito mostra uma **figura/ícone**, não o texto "15" ou "∞".
-- **Preencha:** `icon` (pasta A), `icon2Id` (pasta B, ex.: `"01"`). Não use equip3Number nem effect* neste layout.
-
-### equip3 – Arma (layout com número no badge + 4 blocos de efeito)
-- **Quando usar:** Card com **número ou símbolo no canto superior direito** (ex.: "15", "∞" em um círculo) e **quatro blocos** na parte inferior: primeiro pode ser texto (ex.: "LOS"); os outros três são ícones com número em cima (ex.: 1, 1, 2). É o layout dos cards de arma RE3:TBG (HANDGUN, KNIFE, SAMURAI EDGE, etc.).
-- **Exemplo típico:** HANDGUN (15), KNIFE (∞), SAMURAI EDGE (15), KNIFE (KNIFE ONLY) (∞).
-- **Preencha:**
-  - `equip3Number`: **número/símbolo do badge no canto superior direito** (ex.: `"15"`, `"∞"`). Este é o valor que aparece dentro do círculo cinza.
-  - `linhaDeTiro`: texto do **primeiro bloco** inferior (ex.: "LOS" para Line Of Sight) ou valor de linha de tiro. Se não houver, use `""`.
-  - `effect2Icon` + `effect2Number`, `effect3Icon` + `effect3Number`, `effect4Icon` + `effect4Number`: para os **três blocos seguintes**, cada um com um ícone (pasta Effects/01, 02 ou 03) e o número exibido em cima (ex.: "1", "2"). Use `""` onde não houver ícone ou número.
-
-**Resumo rápido:**
-- Só ícone à esquerda + título + imagem + descrição (sem número no círculo direito, sem fileira de ícones com números) → **equip1**
-- Ícone à esquerda + **segundo ícone (imagem)** no canto direito (não é o número "15" ou "∞") → **equip2**
-- **Número no círculo** do canto direito (15, ∞) + 4 blocos embaixo (texto + ícones com números) → **equip3**
+Todos os campos são exportados em todos os layouts; use `""` ou `[]` onde não se aplica.
 
 ---
 
-## 3. Ícones – pastas e IDs
+## 4. Formato de importação (o que o app aceita)
 
-### Ícone principal do card (banner esquerdo – “EQUIP”)
-- **Pasta:** `A`
-- **IDs válidos:** `"01"`, `"02"`, `"03"`, `"04"`, `"05"`
-- **Campo:** `icon` → use o **caminho completo**, ex.: `"/models/icons/A/01.png"`.
-- **Na imagem:** Pistola, faca, cruz de primeiro socorro, munição etc. Mapeie cada desenho para um dos 01–05 conforme o catálogo do jogo (A é “tipo de item principal”).
+O **Importar JSON** espera um **array de objetos**. Cada objeto pode ter os campos abaixo. Campos ausentes ou `null` são tratados como valor padrão (string vazia ou array vazio).
 
-### Segundo ícone (apenas layout equip2 – badge superior direito)
-- **Pasta:** `B`
-- **IDs válidos:** `"01"`, `"02"`, `"03"`, `"04"`, `"05"`
-- **Campo:** `icon2Id` (apenas o ID, ex.: `"01"`). O sistema monta o caminho internamente.
-- **Na imagem:** Ícone dentro do círculo cinza no canto superior direito (quando existir).
+### Campos aceitos
 
-### Skills (ícones de habilidade)
-- **Pasta:** `C`
-- **IDs válidos:** `["01"]` (pode haver mais no futuro).
-- **Campo:** `selectedSkills` → array de IDs, ex.: `["01"]` ou `[]`.
-- **Na imagem:** Conjunto de ícones circulares (olho cortado, alvo, explosão, engrenagem, setas etc.). Cada um que estiver “ativo” no card deve ser mapeado para um ID da pasta C.
+| Campo            | Tipo     | Padrão   | Descrição |
+|------------------|----------|----------|-----------|
+| `title`          | string   | `""`     | Nome do card. |
+| `description`     | string   | `""`     | Descrição/efeito. |
+| `layoutId`       | string   | `"equip1"` | `equip1` \| `equip2` \| `equip3`. |
+| `icon`           | string   | `""`     | URL do ícone principal (pasta A). |
+| `icon2Id`        | string \| null | `null` | ID do segundo ícone (pasta B). |
+| `icon2`          | string \| null | —     | Opcional; URL do segundo ícone. Se vier `icon2Id`, o app pode resolver pela pasta B. |
+| `selectedSkills`  | string[] | `[]`     | IDs de skills (C ou Effects/04 conforme layout). |
+| `equip3Number`   | string   | `""`     | Número do badge (equip3). |
+| `linhaDeTiro`    | string   | `""`     | Texto do 1º bloco (equip3). |
+| `effect2Icon`    | string   | `""`     | ID do ícone do bloco 2 (**Effects/01**). |
+| `effect2Number`  | string   | `""`     | Número do bloco 2. |
+| `effect3Icon`    | string   | `""`     | ID do ícone do bloco 3 (**Effects/02**). |
+| `effect3Number`  | string   | `""`     | Número do bloco 3. |
+| `effect4Icon`    | string   | `""`     | ID do ícone do bloco 4 (**Effects/03**). |
+| `effect4Number`  | string   | `""`     | Número do bloco 4. |
 
-### Layout equip3 – quatro blocos de efeito (mesmas posições effect1–effect4)
-Os **ícones de efeito** do layout 3 vêm todos da **pasta Effects/04**. As posições na tela são as mesmas dos campos effect1, effect2, effect3, effect4.
+O sistema **não** exige `id` no JSON de importação; ele gera id ao salvar no estado local.
 
-| Bloco | Conteúdo | Campo ícone | Campo número |
-|-------|----------|-------------|--------------|
-| 1     | Texto (ex.: "LOS") | — | `linhaDeTiro` |
-| 2     | Ícone de Effects/04 + número em cima | `effect2Icon` | `effect2Number` |
-| 3     | Ícone de Effects/04 + número em cima | `effect3Icon` | `effect3Number` |
-| 4     | Ícone de Effects/04 + número em cima | `effect4Icon` | `effect4Number` |
-
-**IDs válidos para effect2Icon, effect3Icon, effect4Icon** (todos da pasta **Effects/04**):
-- `"image-4"` (Image 4.png)
-- `"image-5"` (Image 5.png)
-
-- **Na imagem:** Fileira de ícones na parte inferior do card. Associe cada posição ao bloco 1–4. Bloco 1 = texto (`linhaDeTiro`). Blocos 2, 3, 4 = ícone (Effects/04) + número em cima. Use `""` onde não houver ícone ou número.
-
----
-
-## 4. Regras para não errar
-
-1. **Sempre** preencher `title` e `description` (description pode ser `""` se o card não tiver texto de efeito).
-2. **Sempre** definir `layoutId` como `"equip1"`, `"equip2"` ou `"equip3"` (exatamente esses valores).
-3. **Sempre** definir `icon` com caminho completo para pasta A, ex.: `"/models/icons/A/01.png"`.
-4. Para **equip1**: `icon2Id` null ou `""`; `equip3Number` e todos os `effect*` e `linhaDeTiro` vazios.
-5. Para **equip2**: preencher `icon2Id` com ID da pasta B; o restante como em equip1 se não houver bloco de efeitos.
-6. Para **equip3**: preencher `equip3Number`, `linhaDeTiro` e os pares `effect2Icon`/`effect2Number` … `effect4Icon`/`effect4Number` conforme a imagem. Usar `""` onde não houver ícone ou número.
-7. **selectedSkills**: usar array, nunca null. Ex.: `[]` ou `["01"]`.
-8. Números e texto que aparecem “em cima” de ícones devem ir nos campos `effect*Number` e `linhaDeTiro`; o ícone correspondente no campo `effect*Icon` com o ID exato da tabela acima.
-
----
-
-## 5. Exemplo completo (1 card equip2 + 1 card equip3)
+### Exemplo mínimo (importação)
 
 ```json
 [
   {
     "title": "HANDGUN",
     "description": "",
-    "layoutId": "equip2",
-    "icon": "/models/icons/A/02.png",
-    "icon2Id": "01",
-    "selectedSkills": [],
-    "equip3Number": "",
-    "linhaDeTiro": "",
-    "effect2Icon": "",
-    "effect2Number": "",
-    "effect3Icon": "",
-    "effect3Number": "",
-    "effect4Icon": "",
-    "effect4Number": ""
-  },
-  {
-    "title": "KNIFE (KNIFE ONLY)",
-    "description": "",
     "layoutId": "equip3",
     "icon": "/models/icons/A/02.png",
     "icon2Id": null,
-    "selectedSkills": [],
-    "equip3Number": "∞",
+    "selectedSkills": ["image-4", "image-5"],
+    "equip3Number": "15",
     "linhaDeTiro": "LOS",
-    "effect2Icon": "image-4",
+    "effect2Icon": "01",
     "effect2Number": "1",
-    "effect3Icon": "image-4",
+    "effect3Icon": "02",
     "effect3Number": "1",
-    "effect4Icon": "image-5",
+    "effect4Icon": "01",
     "effect4Number": "2"
   }
 ]
 ```
 
-*(Ícones de efeito vêm todos da pasta Effects/04; IDs: `"image-4"`, `"image-5"`. Ajuste conforme a imagem.)*
+IDs (`effect2Icon`, `effect3Icon`, `effect4Icon`, `selectedSkills`) devem ser os **ids** retornados pela API para a pasta correspondente (nome do arquivo normalizado, ver seção 1).
 
 ---
 
-## 6. Imagem de referência
+## 5. Layouts (layoutId)
 
-A imagem usada como referência para extração é a que contém os seis cards RE3:TBG (HANDGUN, KNIFE, KNIFE (KNIFE ONLY), SAMURAI EDGE, FIRST-AID SPRAY, HANDGUN BULLETS). A IA deve:
-
-1. Remover/extrair cada card da imagem (recortar ou identificar regiões).
-2. Para cada card: identificar título, descrição (se houver), layout (equip1/equip2/equip3), ícone principal, segundo ícone (se houver), número do badge (se houver), skills e os quatro blocos de efeito (ícone + número) quando for equip3.
-3. Mapear cada elemento visual para o campo e ao ID/valor corretos conforme este documento.
-4. Gerar um único JSON com um array de objetos no formato acima.
-5. O arquivo gerado deve ser importável via "Importar JSON" no RE Card Creator (extensão `.json`).
+- **equip1** – Um ícone (A) à esquerda; sem segundo ícone; skills da pasta C.  
+- **equip2** – Ícone A + segundo ícone (B) no canto superior direito; skills da pasta C.  
+- **equip3** – Número no badge (`equip3Number`), 4 blocos embaixo (linhaDeTiro + 3 ícones com número em Effects/01, 02, 03), e skills da pasta **Effects/04** na div de skills.
 
 ---
 
-## 7. Checklist para a IA (evitar erros)
+## 6. Regras para não quebrar
 
-- [ ] Gerar um **array** JSON (ex.: `[{ ... }, { ... }]`).
-- [ ] Cada card = **um objeto** com os campos da seção 1 (podem ser strings vazias quando não se aplicam).
-- [ ] **layoutId** exatamente: `"equip1"`, `"equip2"` ou `"equip3"` (minúsculas, sem espaço).
-- [ ] Cards com **número no círculo** (15, ∞) no canto direito → usar **equip3** e preencher **equip3Number** com esse número/símbolo.
-- [ ] **icon** sempre com caminho completo: `"/models/icons/A/XX.png"` (XX = 01 a 05).
-- [ ] **icon2Id** só para equip2; para equip1 e equip3 usar `null` ou `""`.
-- [ ] **selectedSkills** sempre array: `[]` ou `["01"]`, nunca `null`.
-- [ ] Para equip3: preencher **linhaDeTiro** (1º bloco) e **effect2Icon/Number**, **effect3Icon/Number**, **effect4Icon/Number** (2º, 3º, 4º blocos). Ícones de efeito = pasta **Effects/04**; IDs: `"image-4"`, `"image-5"`.
-- [ ] Salvar o arquivo como **.json** (ex.: `re-card-creator-cards.json`) para importar no sistema.
+1. **selectedSkills** sempre array: `[]` ou `["id1", "id2"]`, nunca `null`.  
+2. **effect2Icon / effect3Icon / effect4Icon** usam ids das pastas **Effects/01**, **Effects/02**, **Effects/03** respectivamente.  
+3. **selectedSkills** no equip3 = ids da pasta **Effects/04**. No equip1/equip2 = ids da pasta **C**.  
+4. **icon** = URL completa do ícone principal (pasta A), ex.: `"/models/icons/A/01.png"`.  
+5. **icon2Id** = id na pasta B; **icon2** pode ser omitido (o app resolve pelo id).  
+6. Ao adicionar/renomear arquivos nas pastas, os novos ids passam a valer após recarregar a página; export/import usam sempre o **id** (slug do nome do arquivo).
 
-Com isso, a IA tem todas as informações para criar o JSON de importação sem errar nos ícones e layouts.
+---
+
+## 7. Checklist para quem gera o JSON (ex.: outra IA)
+
+- [ ] Array de objetos: `[{ ... }, { ... }]`.
+- [ ] Cada card com todos os campos da seção 4 (podem ser `""` ou `[]` quando não se aplicam).
+- [ ] `layoutId` exatamente `"equip1"`, `"equip2"` ou `"equip3"`.
+- [ ] `icon` com URL completa para pasta A.
+- [ ] `effect2Icon` / `effect3Icon` / `effect4Icon` = ids das pastas **Effects/01**, **Effects/02**, **Effects/03**.
+- [ ] `selectedSkills` = ids da pasta **C** (equip1/equip2) ou **Effects/04** (equip3).
+- [ ] Números em cima dos ícones de efeito em `effect2Number`, `effect3Number`, `effect4Number`.
+- [ ] Arquivo salvo como `.json` para importar no RE Card Creator.
+
+Com isso, todos os ícones e skills ficam explicados, e o formato de exportar/receber cards com todos os ícones e skills fica definido e consistente.

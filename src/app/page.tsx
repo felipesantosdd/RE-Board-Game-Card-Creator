@@ -1,6 +1,6 @@
 "use client";
 
-import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
+import { ChangeEvent, useEffect, useRef, useState } from "react";
 import { toPng } from "html-to-image";
 import { Bebas_Neue, EB_Garamond } from "next/font/google";
 import JSZip from "jszip";
@@ -132,13 +132,13 @@ const layoutOptions: LayoutOption[] = [
     image: "/models/cards/03.png",
     positions: {
       icon: { top: "292px", left: "72px" },
-      icon2: { top: "125px", left: "545px" },
+      icon2: { top: "120px", left: "545px" },
       title: {
         top: "70px",
         left: "215px",
         width: "280px",
         height: "120px",
-        fontSize: "clamp(3rem, 4vw, 4rem)",
+        fontSize: "clamp(2.8rem, 3vw, 3.8rem)",
       },
       description: { top: "550px", left: "60px" },
       overlay: {
@@ -349,11 +349,11 @@ const createInitialFormState = (): FormState => ({
   equip3Number: "",
   linhaDeTiro: "",
   effect2Icon: "",
-  effect2Number: "",
+  effect2Number: "1",
   effect3Icon: "",
   effect3Number: "",
   effect4Icon: "",
-  effect4Number: "",
+  effect4Number: "1",
 });
 
 type CardDesign = {
@@ -486,7 +486,9 @@ const CardPreview = ({
             {card.layoutId === "equip3" ? null : (
               <>
                 <img
-                  src={card.icon || iconOptionsA[0]?.src || DEFAULT_ICON_FALLBACK}
+                  src={
+                    card.icon || iconOptionsA[0]?.src || DEFAULT_ICON_FALLBACK
+                  }
                   alt="Ícone do card"
                   className="h-32 w-32 object-contain"
                 />
@@ -718,18 +720,33 @@ export default function Home() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
   const [storageWarning, setStorageWarning] = useState<string | null>(null);
-  const [effectModalOpen, setEffectModalOpen] = useState<string | null>(null);
   const [iconOptionsA, setIconOptionsA] = useState<IconOption[]>([]);
   const [iconOptionsB, setIconOptionsB] = useState<IconOption[]>([]);
   const [skillIconOptions, setSkillIconOptions] = useState<IconOption[]>([]);
-  const [effect2IconOptions, setEffect2IconOptions] = useState<IconOption[]>([]);
-  const [effect3IconOptions, setEffect3IconOptions] = useState<IconOption[]>([]);
-  const [effect4IconOptions, setEffect4IconOptions] = useState<IconOption[]>([]);
-  const [effectIconOptions04, setEffectIconOptions04] = useState<IconOption[]>([]);
+  const [effect2IconOptions, setEffect2IconOptions] = useState<IconOption[]>(
+    []
+  );
+  const [effect3IconOptions, setEffect3IconOptions] = useState<IconOption[]>(
+    []
+  );
+  const [effect4IconOptions, setEffect4IconOptions] = useState<IconOption[]>(
+    []
+  );
+  const [effectIconOptions04, setEffectIconOptions04] = useState<IconOption[]>(
+    []
+  );
   const importFileRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
-    const paths = ["A", "B", "C", "Effects/01", "Effects/02", "Effects/03", "Effects/04"] as const;
+    const paths = [
+      "A",
+      "B",
+      "C",
+      "Effects/01",
+      "Effects/02",
+      "Effects/03",
+      "Effects/04",
+    ] as const;
     const setters = [
       setIconOptionsA,
       setIconOptionsB,
@@ -740,31 +757,17 @@ export default function Home() {
       setEffectIconOptions04,
     ];
     Promise.all(
-      paths.map((p) => fetch(`/api/icons?path=${encodeURIComponent(p)}`).then((r) => r.json()))
-    ).then((results) => {
-      results.forEach((data, i) => {
-        if (Array.isArray(data)) setters[i](data);
-      });
-    }).catch(() => {});
+      paths.map((p) =>
+        fetch(`/api/icons?path=${encodeURIComponent(p)}`).then((r) => r.json())
+      )
+    )
+      .then((results) => {
+        results.forEach((data, i) => {
+          if (Array.isArray(data)) setters[i](data);
+        });
+      })
+      .catch(() => {});
   }, []);
-
-  const effectIconOptions = useMemo(() => {
-    const linhaDeTiro: IconOption = {
-      id: "01",
-      label: "Linha de tiro",
-      description: "",
-      src: "/models/icons/Effects/01.png",
-    };
-    const b2 = effect2IconOptions[0];
-    const b3 = effect3IconOptions[0];
-    const b4 = effect4IconOptions[0];
-    return [
-      linhaDeTiro,
-      b2 ? { ...b2, id: "02" } : null,
-      b3 ? { ...b3, id: "03" } : null,
-      b4 ? { ...b4, id: "04" } : null,
-    ].filter(Boolean) as IconOption[];
-  }, [effect2IconOptions, effect3IconOptions, effect4IconOptions]);
 
   useEffect(() => {
     if (form.icon === "" && iconOptionsA.length > 0) {
@@ -1201,61 +1204,63 @@ export default function Home() {
           {storageWarning && (
             <p className="text-xs text-amber-300">{storageWarning}</p>
           )}
-          <div className="flex flex-wrap gap-3">
+          <div className="overflow-x-auto overflow-y-hidden pb-2">
             {cards.length === 0 ? (
               <div className="flex h-52 w-full items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-xs uppercase tracking-[0.3em] text-slate-400">
                 Nenhum card salvo
               </div>
             ) : (
-              cards.map((savedCard) => {
-                const overlayPreview = overlayCache[savedCard.id];
-                return (
-                  <div key={savedCard.id} className="relative group">
-                    <button
-                      type="button"
-                      onClick={() => void handleLoadCard(savedCard)}
-                      className="group relative z-0 flex w-[150px] flex-col items-center overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-2 text-center text-sm text-white transition hover:border-white hover:scale-105 hover:z-10"
-                      style={{ height: "250px" }}
-                    >
-                      <div className="relative h-32 w-full overflow-hidden rounded-2xl bg-slate-900/50">
-                        {overlayPreview ? (
-                          <img
-                            src={overlayPreview}
-                            alt="Overlay"
-                            className="absolute inset-0 h-full w-full object-cover"
-                            style={{ zIndex: 0 }}
-                          />
-                        ) : (
-                          <div className="flex h-full w-full items-center justify-center text-xs uppercase tracking-[0.3em] text-slate-400">
-                            Sem arte
-                          </div>
-                        )}
-                      </div>
-                      <p
-                        className="mt-2 font-semibold text-white"
-                        style={{
-                          height: "40px",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                        }}
+              <div className="flex flex-nowrap gap-3">
+                {cards.map((savedCard) => {
+                  const overlayPreview = overlayCache[savedCard.id];
+                  return (
+                    <div key={savedCard.id} className="relative group shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => void handleLoadCard(savedCard)}
+                        className="group relative z-0 flex w-[150px] flex-col items-center overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-2 text-center text-sm text-white transition hover:border-white hover:scale-105 hover:z-10"
+                        style={{ height: "250px" }}
                       >
-                        {savedCard.title || "Sem título"}
-                      </p>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        handleRemoveCard(savedCard.id);
-                      }}
-                      className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full border border-white/30 bg-red-600/90 text-xs font-bold text-white opacity-0 transition hover:opacity-100 group-hover:opacity-100"
-                      style={{ zIndex: 30 }}
-                    >
-                      ×
-                    </button>
-                  </div>
-                );
-              })
+                        <div className="relative h-32 w-full overflow-hidden rounded-2xl bg-slate-900/50">
+                          {overlayPreview ? (
+                            <img
+                              src={overlayPreview}
+                              alt="Overlay"
+                              className="absolute inset-0 h-full w-full object-cover"
+                              style={{ zIndex: 0 }}
+                            />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center text-xs uppercase tracking-[0.3em] text-slate-400">
+                              Sem arte
+                            </div>
+                          )}
+                        </div>
+                        <p
+                          className="mt-2 font-semibold text-white"
+                          style={{
+                            height: "40px",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                          }}
+                        >
+                          {savedCard.title || "Sem título"}
+                        </p>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          handleRemoveCard(savedCard.id);
+                        }}
+                        className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full border border-white/30 bg-red-600/90 text-xs font-bold text-white opacity-0 transition hover:opacity-100 group-hover:opacity-100"
+                        style={{ zIndex: 30 }}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
             )}
           </div>
           <button
@@ -1319,7 +1324,9 @@ export default function Home() {
                       ...prev,
                       layout: selected.id,
                       image: selected.image,
-                      icon: isEquip3 ? "" : prev.icon || (iconOptionsA[0]?.src ?? ""),
+                      icon: isEquip3
+                        ? ""
+                        : prev.icon || (iconOptionsA[0]?.src ?? ""),
                       icon2: selected.positions.icon2 ? prev.icon2 : "",
                       icon2Id: selected.positions.icon2 ? prev.icon2Id : "",
                     }));
@@ -1498,24 +1505,159 @@ export default function Home() {
                     }
                   />
                 </label>
-                <div className="flex w-full justify-between">
-                  {effectIconOptions.map((item) => (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => setEffectModalOpen(item.id)}
-                      className="flex h-12 w-12 shrink-0 cursor-pointer items-center justify-center rounded-lg transition hover:opacity-90"
-                      style={{ backgroundColor: "#D9CCBE" }}
-                      title={item.label}
-                    >
-                      <img
-                        src={item.src}
-                        alt={item.label}
-                        className="h-8 w-8 object-contain"
+
+                <div className="space-y-4 border-t border-white/10 pt-4">
+                  <div className="space-y-2">
+                    <span className="text-sm font-medium text-slate-300">
+                      1. Linha de tiro
+                    </span>
+                    <input
+                      type="text"
+                      value={form.linhaDeTiro ?? ""}
+                      onChange={(e) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          linhaDeTiro: e.target.value.toUpperCase(),
+                        }))
+                      }
+                      className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none transition focus:border-slate-400"
+                      placeholder="ex: LOS"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <span className="text-sm font-medium text-slate-300">
+                      2. Bloco 2 (Effects/01)
+                    </span>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={form.effect2Number ?? ""}
+                        onChange={(e) =>
+                          setForm((prev) => ({
+                            ...prev,
+                            effect2Number: e.target.value.replace(/\D/g, ""),
+                          }))
+                        }
+                        className="w-14 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-center text-sm text-white"
+                        placeholder="Nº"
                       />
-                    </button>
-                  ))}
+                      {effect2IconOptions.map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() =>
+                            setForm((prev) => ({
+                              ...prev,
+                              effect2Icon: item.id,
+                            }))
+                          }
+                          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border transition ${
+                            form.effect2Icon === item.id
+                              ? "border-amber-400 bg-[#EDE4D7]"
+                              : "border-white/20 bg-[#D9CCBE]"
+                          }`}
+                        >
+                          <img
+                            src={item.src}
+                            alt={item.label}
+                            className="h-6 w-6 object-contain"
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <span className="text-sm font-medium text-slate-300">
+                      3. Bloco 3 (Effects/02)
+                    </span>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={form.effect3Number ?? ""}
+                        onChange={(e) =>
+                          setForm((prev) => ({
+                            ...prev,
+                            effect3Number: e.target.value.replace(/\D/g, ""),
+                          }))
+                        }
+                        className="w-14 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-center text-sm text-white"
+                        placeholder="Nº"
+                      />
+                      {effect3IconOptions.map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() =>
+                            setForm((prev) => ({
+                              ...prev,
+                              effect3Icon: item.id,
+                            }))
+                          }
+                          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border transition ${
+                            form.effect3Icon === item.id
+                              ? "border-amber-400 bg-[#EDE4D7]"
+                              : "border-white/20 bg-[#D9CCBE]"
+                          }`}
+                        >
+                          <img
+                            src={item.src}
+                            alt={item.label}
+                            className="h-6 w-6 object-contain"
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <span className="text-sm font-medium text-slate-300">
+                      4. Bloco 4 (Effects/03)
+                    </span>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={form.effect4Number ?? ""}
+                        onChange={(e) =>
+                          setForm((prev) => ({
+                            ...prev,
+                            effect4Number: e.target.value.replace(/\D/g, ""),
+                          }))
+                        }
+                        className="w-14 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-center text-sm text-white"
+                        placeholder="Nº"
+                      />
+                      {effect4IconOptions.map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() =>
+                            setForm((prev) => ({
+                              ...prev,
+                              effect4Icon: item.id,
+                            }))
+                          }
+                          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border transition ${
+                            form.effect4Icon === item.id
+                              ? "border-amber-400 bg-[#EDE4D7]"
+                              : "border-white/20 bg-[#D9CCBE]"
+                          }`}
+                        >
+                          <img
+                            src={item.src}
+                            alt={item.label}
+                            className="h-6 w-6 object-contain"
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
+
                 <div className="space-y-3 border-t border-white/10 pt-4">
                   <h3 className="text-xl font-semibold">Skills</h3>
 
@@ -1657,145 +1799,6 @@ export default function Home() {
           ))}
         </div>
       </main>
-
-      {effectModalOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-          onClick={() => setEffectModalOpen(null)}
-          role="dialog"
-          aria-modal="true"
-          aria-label={
-            effectModalOpen === "01" ? "Linha de tiro" : "Modal de teste"
-          }
-        >
-          <div
-            className="rounded-2xl border border-white/20 bg-slate-900 p-6 shadow-xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {effectModalOpen === "01" ? (
-              <>
-                <h3 className="mb-4 text-xl font-semibold text-white">
-                  Linha de tiro
-                </h3>
-                <label className="mb-4 block text-sm text-slate-300">
-                  <span className="mb-2 block">Campo (número ou letra)</span>
-                  <input
-                    type="text"
-                    value={form.linhaDeTiro ?? ""}
-                    onChange={(e) =>
-                      setForm((prev) => ({
-                        ...prev,
-                        linhaDeTiro: e.target.value.toUpperCase(),
-                      }))
-                    }
-                    className="w-full rounded-xl border border-white/20 bg-white/5 px-4 py-3 text-white outline-none transition focus:border-slate-400"
-                    placeholder="Digite número ou letra"
-                  />
-                </label>
-                <button
-                  type="button"
-                  onClick={() => setEffectModalOpen(null)}
-                  className="rounded-xl bg-white/10 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/20"
-                >
-                  Fechar
-                </button>
-              </>
-            ) : ["02", "03", "04"].includes(effectModalOpen) ? (
-              (() => {
-                const slot =
-                  effectModalOpen === "02"
-                    ? 2
-                    : effectModalOpen === "03"
-                    ? 3
-                    : 4;
-                const iconKey = `effect${slot}Icon` as keyof FormState;
-                const numberKey = `effect${slot}Number` as keyof FormState;
-                const iconValue = form[iconKey] as string;
-                const numberValue = form[numberKey] as string;
-                const optionsList =
-                  slot === 2
-                    ? effect2IconOptions
-                    : slot === 3
-                    ? effect3IconOptions
-                    : effect4IconOptions;
-                return (
-                  <>
-                    <h3 className="mb-4 text-xl font-semibold text-white">
-                      Ícone {slot} (espaço {slot + 1})
-                    </h3>
-                    <p className="mb-2 text-sm text-slate-400">
-                      Escolha 1 ícone e digite o número (ficará em cima do
-                      ícone, centralizado na cor #E3DBD2).
-                    </p>
-                    <div className="mb-4 flex flex-wrap items-center justify-center gap-2">
-                      {optionsList.map((item) => (
-                        <button
-                          key={item.id}
-                          type="button"
-                          onClick={() =>
-                            setForm((prev) => ({
-                              ...prev,
-                              [iconKey]: item.id,
-                            }))
-                          }
-                          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg transition hover:opacity-90"
-                          style={{
-                            backgroundColor: "#D9CCBE",
-                            border:
-                              iconValue === item.id
-                                ? "2px solid #f97316"
-                                : "2px solid transparent",
-                          }}
-                        >
-                          <img
-                            src={item.src}
-                            alt={item.label}
-                            className="h-8 w-8 object-contain"
-                          />
-                        </button>
-                      ))}
-                    </div>
-                    <label className="mb-4 block text-sm text-slate-300">
-                      <span className="mb-2 block">
-                        Número (em cima do ícone)
-                      </span>
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        value={numberValue ?? ""}
-                        onChange={(e) =>
-                          setForm((prev) => ({
-                            ...prev,
-                            [numberKey]: e.target.value.replace(/\D/g, ""),
-                          }))
-                        }
-                        className="w-full rounded-xl border border-white/20 bg-white/5 px-4 py-3 text-white outline-none transition focus:border-slate-400"
-                        placeholder="Ex: 2"
-                      />
-                    </label>
-                  </>
-                );
-              })()
-            ) : (
-              <>
-                <h3 className="mb-4 text-xl font-semibold text-white">
-                  Modal de teste
-                </h3>
-                <p className="mb-4 text-slate-300">
-                  Ícone effect selecionado: {effectModalOpen}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setEffectModalOpen(null)}
-                  className="rounded-xl bg-white/10 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/20"
-                >
-                  Fechar
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
