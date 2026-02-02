@@ -1,6 +1,6 @@
 "use client";
 
-import { ChangeEvent, useEffect, useRef, useState } from "react";
+import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import { toPng } from "html-to-image";
 import { Bebas_Neue, EB_Garamond } from "next/font/google";
 import JSZip from "jszip";
@@ -12,32 +12,8 @@ type IconOption = {
   src: string;
 };
 
-/** Ícone 1: apenas pasta A */
-const ICON_A_IDS = ["01", "02", "03", "04", "05"] as const;
-const iconOptionsA: IconOption[] = ICON_A_IDS.map((id) => ({
-  id,
-  label: `Ícone ${id}`,
-  description: "",
-  src: `/models/icons/A/${id}.png`,
-}));
-
-/** Ícone 2: apenas pasta B */
-const ICON_B_IDS = ["01", "02", "03", "04", "05"] as const;
-const iconOptionsB: IconOption[] = ICON_B_IDS.map((id) => ({
-  id,
-  label: `Ícone ${id}`,
-  description: "",
-  src: `/models/icons/B/${id}.png`,
-}));
-
-/** Skills: apenas pasta C */
-const SKILL_IDS = ["01"] as const;
-const skillIconOptions: IconOption[] = SKILL_IDS.map((id) => ({
-  id,
-  label: `Skill ${id}`,
-  description: "",
-  src: `/models/icons/C/${id}.png`,
-}));
+/** Listas de ícones vêm da API /api/icons?path= (A, B, C, Effects/01, etc.) */
+const DEFAULT_ICON_FALLBACK = "/models/icons/A/01.png";
 
 const bebasNeue = Bebas_Neue({
   subsets: ["latin"],
@@ -74,6 +50,15 @@ type LayoutPositions = {
     width: string;
     height: string;
   };
+  /** Layout 3: 4 ícones de effects (posição ajustável) */
+  effect1?: { top: string; left: string };
+  effect2?: { top: string; left: string };
+  effect3?: { top: string; left: string };
+  effect4?: { top: string; left: string };
+  /** Posição do número sobre cada ícone (relativo ao bloco do ícone). Ajuste top/left aqui. */
+  effect2NumberPosition?: { top: string; left: string };
+  effect3NumberPosition?: { top: string; left: string };
+  effect4NumberPosition?: { top: string; left: string };
 };
 
 type LayoutOption = {
@@ -124,7 +109,7 @@ const layoutOptions: LayoutOption[] = [
         left: "215px",
         width: "280px",
         height: "120px",
-        fontSize: "clamp(2.1rem, 3vw, 3rem)",
+        fontSize: "clamp(3rem, 4vw, 4rem)",
       },
       description: { top: "550px", left: "60px" },
       overlay: {
@@ -153,7 +138,7 @@ const layoutOptions: LayoutOption[] = [
         left: "215px",
         width: "280px",
         height: "120px",
-        fontSize: "clamp(2.1rem, 3vw, 3rem)",
+        fontSize: "clamp(3rem, 4vw, 4rem)",
       },
       description: { top: "550px", left: "60px" },
       overlay: {
@@ -168,6 +153,14 @@ const layoutOptions: LayoutOption[] = [
         width: "560px",
         height: "120px",
       },
+      effect1: { top: "675px", left: "59px" },
+      effect2: { top: "670px", left: "208px" },
+      effect3: { top: "670px", left: "357px" },
+      effect4: { top: "670px", left: "506px" },
+      /* Posição do número sobre cada ícone (ajuste top/left conforme necessário) */
+      effect2NumberPosition: { top: "0", left: "50%" },
+      effect3NumberPosition: { top: "0", left: "50%" },
+      effect4NumberPosition: { top: "0", left: "50%" },
     },
   },
 ];
@@ -182,6 +175,16 @@ const mergeLayoutPositions = (
   description: candidate.description ?? fallback.description,
   overlay: candidate.overlay ?? fallback.overlay,
   skills: candidate.skills ?? fallback.skills,
+  effect1: candidate.effect1 ?? fallback.effect1,
+  effect2: candidate.effect2 ?? fallback.effect2,
+  effect3: candidate.effect3 ?? fallback.effect3,
+  effect4: candidate.effect4 ?? fallback.effect4,
+  effect2NumberPosition:
+    candidate.effect2NumberPosition ?? fallback.effect2NumberPosition,
+  effect3NumberPosition:
+    candidate.effect3NumberPosition ?? fallback.effect3NumberPosition,
+  effect4NumberPosition:
+    candidate.effect4NumberPosition ?? fallback.effect4NumberPosition,
 });
 
 const DEFAULT_LAYOUT = layoutOptions[0];
@@ -324,6 +327,13 @@ type FormState = {
   accent: string;
   selectedSkills: string[];
   equip3Number: string;
+  linhaDeTiro: string;
+  effect2Icon: string;
+  effect2Number: string;
+  effect3Icon: string;
+  effect3Number: string;
+  effect4Icon: string;
+  effect4Number: string;
 };
 
 const createInitialFormState = (): FormState => ({
@@ -331,12 +341,19 @@ const createInitialFormState = (): FormState => ({
   description: "",
   layout: DEFAULT_LAYOUT.id,
   image: DEFAULT_LAYOUT.image,
-  icon: iconOptionsA[0].src,
+  icon: "",
   icon2: "",
   icon2Id: "",
   accent: DEFAULT_ACCENT,
   selectedSkills: [],
   equip3Number: "",
+  linhaDeTiro: "",
+  effect2Icon: "",
+  effect2Number: "",
+  effect3Icon: "",
+  effect3Number: "",
+  effect4Icon: "",
+  effect4Number: "",
 });
 
 type CardDesign = {
@@ -353,15 +370,38 @@ type CardDesign = {
   layoutPositions: LayoutPositions;
   selectedSkills: string[];
   equip3Number: string;
+  linhaDeTiro: string;
+  effect2Icon: string;
+  effect2Number: string;
+  effect3Icon: string;
+  effect3Number: string;
+  effect4Icon: string;
+  effect4Number: string;
 };
 
 type CardPreviewProps = {
   card: Omit<CardDesign, "id">;
   overlayImage?: string | null;
   htmlId: string;
+  iconOptionsA?: IconOption[];
+  skillIconOptions?: IconOption[];
+  effect2IconOptions?: IconOption[];
+  effect3IconOptions?: IconOption[];
+  effect4IconOptions?: IconOption[];
+  effectIconOptions04?: IconOption[];
 };
 
-const CardPreview = ({ card, overlayImage, htmlId }: CardPreviewProps) => {
+const CardPreview = ({
+  card,
+  overlayImage,
+  htmlId,
+  iconOptionsA = [],
+  skillIconOptions = [],
+  effect2IconOptions = [],
+  effect3IconOptions = [],
+  effect4IconOptions = [],
+  effectIconOptions04 = [],
+}: CardPreviewProps) => {
   const heroImage = card.image || CARD_TEMPLATE_IMAGE;
   const layoutPositions = card.layoutPositions || DEFAULT_LAYOUT.positions;
   const cardStyle = {
@@ -392,6 +432,15 @@ const CardPreview = ({ card, overlayImage, htmlId }: CardPreviewProps) => {
             left: layoutPositions.overlay.left,
             width: layoutPositions.overlay.width,
             height: layoutPositions.overlay.height,
+            justifyContent: "center",
+            alignItems: "center",
+            display: "flex",
+            flexDirection: "column",
+            flexWrap: "wrap",
+            flexGrow: 1,
+            flexShrink: 1,
+            flexBasis: "auto",
+            flex: 1,
           }}
         />
       )}
@@ -400,23 +449,24 @@ const CardPreview = ({ card, overlayImage, htmlId }: CardPreviewProps) => {
           className="pointer-events-none flex flex-wrap items-center justify-center gap-2"
           style={{
             position: "absolute",
-            top: layoutPositions.skills.top,
+            top: "815px",
             left: layoutPositions.skills.left,
             width: layoutPositions.skills.width,
-            height: layoutPositions.skills.height,
+            height: "150px",
           }}
         >
           {card.selectedSkills.map((skillId) => {
-            const skill = skillIconOptions.find(
-              (option) => option.id === skillId
-            );
+            const skill =
+              card.layoutId === "equip3"
+                ? effectIconOptions04.find((o) => o.id === skillId)
+                : skillIconOptions.find((o) => o.id === skillId);
             if (!skill) return null;
             return (
               <img
                 key={skillId}
                 src={skill.src}
                 alt={skill.label}
-                className="h-30 w-30 object-contain"
+                className="h-26 w-30 object-contain"
               />
             );
           })}
@@ -436,7 +486,7 @@ const CardPreview = ({ card, overlayImage, htmlId }: CardPreviewProps) => {
             {card.layoutId === "equip3" ? null : (
               <>
                 <img
-                  src={card.icon || iconOptionsA[0].src}
+                  src={card.icon || iconOptionsA[0]?.src || DEFAULT_ICON_FALLBACK}
                   alt="Ícone do card"
                   className="h-32 w-32 object-contain"
                 />
@@ -499,6 +549,119 @@ const CardPreview = ({ card, overlayImage, htmlId }: CardPreviewProps) => {
                 </span>
               </div>
             )}
+          {card.layoutId === "equip3" &&
+            layoutPositions.effect1 &&
+            layoutPositions.effect2 &&
+            layoutPositions.effect3 &&
+            layoutPositions.effect4 &&
+            [
+              layoutPositions.effect1,
+              layoutPositions.effect2,
+              layoutPositions.effect3,
+              layoutPositions.effect4,
+            ].map((pos, index) => {
+              const effectData =
+                index === 0
+                  ? null
+                  : index === 1
+                  ? { icon: card.effect2Icon, number: card.effect2Number }
+                  : index === 2
+                  ? { icon: card.effect3Icon, number: card.effect3Number }
+                  : { icon: card.effect4Icon, number: card.effect4Number };
+              const optionsForSlot =
+                index === 1
+                  ? effect2IconOptions
+                  : index === 2
+                  ? effect3IconOptions
+                  : effect4IconOptions;
+              const effectOption =
+                effectData?.icon &&
+                optionsForSlot.find((o) => o.id === effectData.icon);
+              return (
+                <div
+                  key={`effect-${index + 1}`}
+                  className="relative flex items-center justify-center text-center"
+                  style={{
+                    position: "absolute",
+                    top: pos.top,
+                    left: pos.left,
+                    width: "130px",
+                    height: "115px",
+                    textAlign: "justify",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexDirection: "column",
+                    flexWrap: "wrap",
+                    flexGrow: 1,
+                    flexShrink: 1,
+                    flexBasis: "auto",
+                    flex: 1,
+                  }}
+                >
+                  {index === 0 && card.linhaDeTiro && (
+                    <span
+                      className="leading-tight text-center text-black drop-shadow-lg"
+                      style={{
+                        textAlign: "center",
+                        justifyContent: "center",
+                        alignItems: "center",
+                        display: "flex",
+                        flexDirection: "column",
+                        flexWrap: "wrap",
+                        flexGrow: 1,
+                        flexShrink: 1,
+                        flexBasis: "auto",
+                        flex: 1,
+                        fontSize: "6rem",
+                        fontFamily: bebasNeue.style.fontFamily,
+                      }}
+                    >
+                      {card.linhaDeTiro}
+                    </span>
+                  )}
+                  {index >= 1 && effectOption && (
+                    <>
+                      {effectData?.number &&
+                        (() => {
+                          const numberPos =
+                            index === 1
+                              ? layoutPositions.effect2NumberPosition
+                              : index === 2
+                              ? layoutPositions.effect3NumberPosition
+                              : layoutPositions.effect4NumberPosition;
+                          const pos = numberPos ?? { top: "0", left: "50%" };
+                          const isCenterX = pos.left === "50%";
+                          return (
+                            <div
+                              className="absolute z-10 flex items-center justify-center text-center font-semibold drop-shadow-lg"
+                              style={{
+                                top: pos.top,
+                                left: pos.left,
+                                transform: isCenterX
+                                  ? "translateX(-50%)"
+                                  : undefined,
+                                width: "120px",
+                                height: "120px",
+                                color: "#E3DBD2",
+                                fontSize: layoutPositions.title.fontSize,
+                                fontFamily: bebasNeue.style.fontFamily,
+                              }}
+                            >
+                              {effectData.number}
+                            </div>
+                          );
+                        })()}
+                      <img
+                        src={effectOption.src}
+                        alt={effectOption.label}
+                        className="h-full w-full object-contain"
+                      />
+                    </>
+                  )}
+                </div>
+              );
+            })}
         </div>
         <h3
           className="leading-tight text-black text-center drop-shadow-lg"
@@ -555,7 +718,59 @@ export default function Home() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
   const [storageWarning, setStorageWarning] = useState<string | null>(null);
+  const [effectModalOpen, setEffectModalOpen] = useState<string | null>(null);
+  const [iconOptionsA, setIconOptionsA] = useState<IconOption[]>([]);
+  const [iconOptionsB, setIconOptionsB] = useState<IconOption[]>([]);
+  const [skillIconOptions, setSkillIconOptions] = useState<IconOption[]>([]);
+  const [effect2IconOptions, setEffect2IconOptions] = useState<IconOption[]>([]);
+  const [effect3IconOptions, setEffect3IconOptions] = useState<IconOption[]>([]);
+  const [effect4IconOptions, setEffect4IconOptions] = useState<IconOption[]>([]);
+  const [effectIconOptions04, setEffectIconOptions04] = useState<IconOption[]>([]);
   const importFileRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    const paths = ["A", "B", "C", "Effects/01", "Effects/02", "Effects/03", "Effects/04"] as const;
+    const setters = [
+      setIconOptionsA,
+      setIconOptionsB,
+      setSkillIconOptions,
+      setEffect2IconOptions,
+      setEffect3IconOptions,
+      setEffect4IconOptions,
+      setEffectIconOptions04,
+    ];
+    Promise.all(
+      paths.map((p) => fetch(`/api/icons?path=${encodeURIComponent(p)}`).then((r) => r.json()))
+    ).then((results) => {
+      results.forEach((data, i) => {
+        if (Array.isArray(data)) setters[i](data);
+      });
+    }).catch(() => {});
+  }, []);
+
+  const effectIconOptions = useMemo(() => {
+    const linhaDeTiro: IconOption = {
+      id: "01",
+      label: "Linha de tiro",
+      description: "",
+      src: "/models/icons/Effects/01.png",
+    };
+    const b2 = effect2IconOptions[0];
+    const b3 = effect3IconOptions[0];
+    const b4 = effect4IconOptions[0];
+    return [
+      linhaDeTiro,
+      b2 ? { ...b2, id: "02" } : null,
+      b3 ? { ...b3, id: "03" } : null,
+      b4 ? { ...b4, id: "04" } : null,
+    ].filter(Boolean) as IconOption[];
+  }, [effect2IconOptions, effect3IconOptions, effect4IconOptions]);
+
+  useEffect(() => {
+    if (form.icon === "" && iconOptionsA.length > 0) {
+      setForm((prev) => ({ ...prev, icon: iconOptionsA[0].src }));
+    }
+  }, [iconOptionsA.length]);
 
   const handleArtUpload = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -583,6 +798,13 @@ export default function Home() {
       accent: card.accent,
       selectedSkills: card.selectedSkills ?? [],
       equip3Number: card.equip3Number ?? "",
+      linhaDeTiro: card.linhaDeTiro ?? "",
+      effect2Icon: card.effect2Icon ?? "",
+      effect2Number: card.effect2Number ?? "",
+      effect3Icon: card.effect3Icon ?? "",
+      effect3Number: card.effect3Number ?? "",
+      effect4Icon: card.effect4Icon ?? "",
+      effect4Number: card.effect4Number ?? "",
     });
     const cachedOverlay = await getOverlayImage(card.id);
     setOverlayImage(cachedOverlay);
@@ -616,6 +838,13 @@ export default function Home() {
           layoutPositions: positions,
           selectedSkills: card.selectedSkills ?? [],
           equip3Number: card.equip3Number ?? "",
+          linhaDeTiro: card.linhaDeTiro ?? "",
+          effect2Icon: card.effect2Icon ?? "",
+          effect2Number: card.effect2Number ?? "",
+          effect3Icon: card.effect3Icon ?? "",
+          effect3Number: card.effect3Number ?? "",
+          effect4Icon: card.effect4Icon ?? "",
+          effect4Number: card.effect4Number ?? "",
         };
       });
       setCards(sanitized);
@@ -676,6 +905,13 @@ export default function Home() {
     layoutId: form.layout,
     selectedSkills: form.selectedSkills,
     equip3Number: form.equip3Number,
+    linhaDeTiro: form.linhaDeTiro,
+    effect2Icon: form.effect2Icon,
+    effect2Number: form.effect2Number,
+    effect3Icon: form.effect3Icon,
+    effect3Number: form.effect3Number,
+    effect4Icon: form.effect4Icon,
+    effect4Number: form.effect4Number,
     layoutPositions: currentLayoutConfig.positions,
   };
 
@@ -755,6 +991,13 @@ export default function Home() {
         icon2Id,
         selectedSkills,
         equip3Number,
+        linhaDeTiro,
+        effect2Icon,
+        effect2Number,
+        effect3Icon,
+        effect3Number,
+        effect4Icon,
+        effect4Number,
       }: CardDesign) => ({
         title,
         description,
@@ -764,6 +1007,13 @@ export default function Home() {
         selectedSkills,
         skillId: selectedSkills[0] ?? null,
         equip3Number,
+        linhaDeTiro,
+        effect2Icon,
+        effect2Number,
+        effect3Icon,
+        effect3Number,
+        effect4Icon,
+        effect4Number,
       })
     );
 
@@ -834,6 +1084,13 @@ export default function Home() {
           icon2?: string | null;
           selectedSkills?: string[];
           equip3Number?: string | null;
+          linhaDeTiro?: string | null;
+          effect2Icon?: string | null;
+          effect2Number?: string | null;
+          effect3Icon?: string | null;
+          effect3Number?: string | null;
+          effect4Icon?: string | null;
+          effect4Number?: string | null;
         }>;
         const importedCards = parsed.map((item) => {
           const layout = getLayoutConfig(item.layoutId);
@@ -853,6 +1110,13 @@ export default function Home() {
             layoutId: layout.id,
             selectedSkills: item.selectedSkills ?? [],
             equip3Number: item.equip3Number ?? "",
+            linhaDeTiro: item.linhaDeTiro ?? "",
+            effect2Icon: item.effect2Icon ?? "",
+            effect2Number: item.effect2Number ?? "",
+            effect3Icon: item.effect3Icon ?? "",
+            effect3Number: item.effect3Number ?? "",
+            effect4Icon: item.effect4Icon ?? "",
+            effect4Number: item.effect4Number ?? "",
             layoutPositions: layout.positions,
           };
         });
@@ -1018,7 +1282,7 @@ export default function Home() {
                 <input
                   type="text"
                   placeholder="Lançamento imperdível"
-                  value={form.title}
+                  value={form.title ?? ""}
                   className="rounded-2xl border border-white/10 bg-transparent px-4 py-3 text-base text-white outline-none transition focus:border-slate-300 uppercase"
                   onChange={(event) =>
                     setForm((prev) => ({
@@ -1033,7 +1297,7 @@ export default function Home() {
                 <textarea
                   rows={3}
                   placeholder="Conte um pouco mais sobre a campanha..."
-                  value={form.description}
+                  value={form.description ?? ""}
                   className="rounded-2xl border border-white/10 bg-transparent px-4 py-3 text-sm leading-relaxed text-white outline-none transition focus:border-slate-300"
                   onChange={(event) =>
                     setForm((prev) => ({
@@ -1046,7 +1310,7 @@ export default function Home() {
               <label className="flex flex-col gap-2 text-sm text-slate-300">
                 Layout
                 <select
-                  value={form.layout}
+                  value={form.layout ?? ""}
                   className="rounded-2xl border border-white/10 bg-transparent px-4 py-3 text-base text-white outline-none transition focus:border-slate-300"
                   onChange={(event) => {
                     const selected = getLayoutConfig(event.target.value);
@@ -1055,7 +1319,7 @@ export default function Home() {
                       ...prev,
                       layout: selected.id,
                       image: selected.image,
-                      icon: isEquip3 ? "" : prev.icon || iconOptionsA[0].src,
+                      icon: isEquip3 ? "" : prev.icon || (iconOptionsA[0]?.src ?? ""),
                       icon2: selected.positions.icon2 ? prev.icon2 : "",
                       icon2Id: selected.positions.icon2 ? prev.icon2Id : "",
                     }));
@@ -1075,7 +1339,7 @@ export default function Home() {
                   className="rounded-2xl border border-white/10 bg-gradient-to-r from-slate-700 to-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:border-white/60"
                   onClick={() => fileInputRef.current?.click()}
                 >
-                  Enviar arte do card
+                  Enviar arte
                 </button>
                 <input
                   type="file"
@@ -1090,7 +1354,7 @@ export default function Home() {
             {form.layout !== "equip3" && (
               <>
                 <div className="space-y-3">
-                  <h3 className="text-xl font-semibold">Ícone 1 (pasta A)</h3>
+                  <h3 className="text-xl font-semibold">Ícone 1</h3>
                   <div className="flex gap-3">
                     {iconOptionsA.map((item) => (
                       <button
@@ -1116,7 +1380,7 @@ export default function Home() {
                 </div>
                 {showExtraIcons && (
                   <div className="space-y-3">
-                    <h3 className="text-xl font-semibold">Ícone 2 (pasta B)</h3>
+                    <h3 className="text-xl font-semibold">Dados</h3>
                     <div className="flex gap-3">
                       {iconOptionsB.map((item) => (
                         <button
@@ -1150,7 +1414,7 @@ export default function Home() {
 
             {form.layout !== "equip3" && (
               <div className="space-y-3">
-                <h3 className="text-xl font-semibold">Skills (pasta C)</h3>
+                <h3 className="text-xl font-semibold">Skills</h3>
                 <div className="flex gap-3">
                   {skillIconOptions.map((skill) => {
                     const selected = form.selectedSkills.includes(skill.id);
@@ -1216,23 +1480,111 @@ export default function Home() {
               </div>
             )}
             {form.layout === "equip3" && (
-              <label className="flex flex-col gap-2 text-sm text-slate-300">
-                Número adicional
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  value={form.equip3Number}
-                  maxLength={3}
-                  className="rounded-2xl border border-white/10 bg-transparent px-4 py-3 text-sm text-white outline-none transition focus:border-slate-300"
-                  placeholder="ex: 09"
-                  onChange={(event) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      equip3Number: event.target.value,
-                    }))
-                  }
-                />
-              </label>
+              <>
+                <label className="flex flex-col gap-2 text-sm text-slate-300">
+                  Número de Munição
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={form.equip3Number ?? ""}
+                    maxLength={3}
+                    className="rounded-2xl border border-white/10 bg-transparent px-4 py-3 text-sm text-white outline-none transition focus:border-slate-300"
+                    placeholder="ex: 09"
+                    onChange={(event) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        equip3Number: event.target.value,
+                      }))
+                    }
+                  />
+                </label>
+                <div className="flex w-full justify-between">
+                  {effectIconOptions.map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => setEffectModalOpen(item.id)}
+                      className="flex h-12 w-12 shrink-0 cursor-pointer items-center justify-center rounded-lg transition hover:opacity-90"
+                      style={{ backgroundColor: "#D9CCBE" }}
+                      title={item.label}
+                    >
+                      <img
+                        src={item.src}
+                        alt={item.label}
+                        className="h-8 w-8 object-contain"
+                      />
+                    </button>
+                  ))}
+                </div>
+                <div className="space-y-3 border-t border-white/10 pt-4">
+                  <h3 className="text-xl font-semibold">Skills</h3>
+
+                  <div className="flex flex-wrap gap-2 justify-center items-center">
+                    {effectIconOptions04.map((item) => {
+                      const selected = form.selectedSkills.includes(item.id);
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() =>
+                            setForm((prev) => {
+                              const exists = prev.selectedSkills.includes(
+                                item.id
+                              );
+                              const next = exists
+                                ? prev.selectedSkills.filter(
+                                    (id) => id !== item.id
+                                  )
+                                : [...prev.selectedSkills, item.id];
+                              return { ...prev, selectedSkills: next };
+                            })
+                          }
+                          className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full border transition hover:opacity-90 ${
+                            selected
+                              ? "border-amber-400 bg-[#EDE4D7]"
+                              : "border-white/20"
+                          }`}
+                          style={
+                            selected
+                              ? undefined
+                              : { backgroundColor: "#D9CCBE" }
+                          }
+                          title={item.label}
+                        >
+                          <img
+                            src={item.src}
+                            alt={item.label}
+                            className="h-8 w-8 object-contain"
+                          />
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className="flex flex-wrap items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 p-2 text-xs uppercase tracking-[0.3em] text-slate-300">
+                    {form.selectedSkills.length === 0
+                      ? ""
+                      : form.selectedSkills.map((skillId) => {
+                          const skill = effectIconOptions04.find(
+                            (o) => o.id === skillId
+                          );
+                          if (!skill) return null;
+                          return (
+                            <span
+                              key={`selected-skill-04-${skillId}`}
+                              className="flex items-center gap-1 rounded-full border border-white/30 bg-white/10 px-2 py-1 text-[0.6rem] text-slate-100"
+                            >
+                              <img
+                                src={skill.src}
+                                alt={skill.label}
+                                className="h-4 w-4 object-contain"
+                              />
+                              {skill.label}
+                            </span>
+                          );
+                        })}
+                  </div>
+                </div>
+              </>
             )}
 
             <div className="grid gap-4 sm:grid-cols-2">
@@ -1269,6 +1621,12 @@ export default function Home() {
                 card={previewCard}
                 overlayImage={overlayImage}
                 htmlId="preview-card"
+                iconOptionsA={iconOptionsA}
+                skillIconOptions={skillIconOptions}
+                effect2IconOptions={effect2IconOptions}
+                effect3IconOptions={effect3IconOptions}
+                effect4IconOptions={effect4IconOptions}
+                effectIconOptions04={effectIconOptions04}
               />
             </div>
           </div>
@@ -1289,10 +1647,155 @@ export default function Home() {
               card={card}
               overlayImage={overlayCache[card.id] ?? null}
               htmlId={`zip-card-${card.id}`}
+              iconOptionsA={iconOptionsA}
+              skillIconOptions={skillIconOptions}
+              effect2IconOptions={effect2IconOptions}
+              effect3IconOptions={effect3IconOptions}
+              effect4IconOptions={effect4IconOptions}
+              effectIconOptions04={effectIconOptions04}
             />
           ))}
         </div>
       </main>
+
+      {effectModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          onClick={() => setEffectModalOpen(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-label={
+            effectModalOpen === "01" ? "Linha de tiro" : "Modal de teste"
+          }
+        >
+          <div
+            className="rounded-2xl border border-white/20 bg-slate-900 p-6 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {effectModalOpen === "01" ? (
+              <>
+                <h3 className="mb-4 text-xl font-semibold text-white">
+                  Linha de tiro
+                </h3>
+                <label className="mb-4 block text-sm text-slate-300">
+                  <span className="mb-2 block">Campo (número ou letra)</span>
+                  <input
+                    type="text"
+                    value={form.linhaDeTiro ?? ""}
+                    onChange={(e) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        linhaDeTiro: e.target.value.toUpperCase(),
+                      }))
+                    }
+                    className="w-full rounded-xl border border-white/20 bg-white/5 px-4 py-3 text-white outline-none transition focus:border-slate-400"
+                    placeholder="Digite número ou letra"
+                  />
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setEffectModalOpen(null)}
+                  className="rounded-xl bg-white/10 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/20"
+                >
+                  Fechar
+                </button>
+              </>
+            ) : ["02", "03", "04"].includes(effectModalOpen) ? (
+              (() => {
+                const slot =
+                  effectModalOpen === "02"
+                    ? 2
+                    : effectModalOpen === "03"
+                    ? 3
+                    : 4;
+                const iconKey = `effect${slot}Icon` as keyof FormState;
+                const numberKey = `effect${slot}Number` as keyof FormState;
+                const iconValue = form[iconKey] as string;
+                const numberValue = form[numberKey] as string;
+                const optionsList =
+                  slot === 2
+                    ? effect2IconOptions
+                    : slot === 3
+                    ? effect3IconOptions
+                    : effect4IconOptions;
+                return (
+                  <>
+                    <h3 className="mb-4 text-xl font-semibold text-white">
+                      Ícone {slot} (espaço {slot + 1})
+                    </h3>
+                    <p className="mb-2 text-sm text-slate-400">
+                      Escolha 1 ícone e digite o número (ficará em cima do
+                      ícone, centralizado na cor #E3DBD2).
+                    </p>
+                    <div className="mb-4 flex flex-wrap items-center justify-center gap-2">
+                      {optionsList.map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() =>
+                            setForm((prev) => ({
+                              ...prev,
+                              [iconKey]: item.id,
+                            }))
+                          }
+                          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg transition hover:opacity-90"
+                          style={{
+                            backgroundColor: "#D9CCBE",
+                            border:
+                              iconValue === item.id
+                                ? "2px solid #f97316"
+                                : "2px solid transparent",
+                          }}
+                        >
+                          <img
+                            src={item.src}
+                            alt={item.label}
+                            className="h-8 w-8 object-contain"
+                          />
+                        </button>
+                      ))}
+                    </div>
+                    <label className="mb-4 block text-sm text-slate-300">
+                      <span className="mb-2 block">
+                        Número (em cima do ícone)
+                      </span>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={numberValue ?? ""}
+                        onChange={(e) =>
+                          setForm((prev) => ({
+                            ...prev,
+                            [numberKey]: e.target.value.replace(/\D/g, ""),
+                          }))
+                        }
+                        className="w-full rounded-xl border border-white/20 bg-white/5 px-4 py-3 text-white outline-none transition focus:border-slate-400"
+                        placeholder="Ex: 2"
+                      />
+                    </label>
+                  </>
+                );
+              })()
+            ) : (
+              <>
+                <h3 className="mb-4 text-xl font-semibold text-white">
+                  Modal de teste
+                </h3>
+                <p className="mb-4 text-slate-300">
+                  Ícone effect selecionado: {effectModalOpen}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setEffectModalOpen(null)}
+                  className="rounded-xl bg-white/10 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/20"
+                >
+                  Fechar
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
