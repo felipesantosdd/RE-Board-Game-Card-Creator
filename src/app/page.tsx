@@ -199,13 +199,13 @@ const layoutOptions: LayoutOption[] = [
       icon: { top: "292px", left: "72px" },
       icon2: { top: "120px", left: "545px" },
       title: {
-        top: "70px",
-        left: "215px",
-        width: "280px",
+        top: "57px",
+        left: "50px",
+        width: "594px",
         height: "120px",
         fontSize: "clamp(2.8rem, 3vw, 3.8rem)",
       },
-      description: { top: "550px", left: "60px" },
+      description: { top: "220px", left: "60px" },
       overlay: {
         top: "215px",
         left: "215px",
@@ -405,6 +405,11 @@ type FormState = {
   effect3Number: string;
   effect4Icon: string;
   effect4Number: string;
+  /** Layout 4 (equip4): ícone e texto de tensão, 2 linhas */
+  tension1Icon: string;
+  tension1Text: string;
+  tension2Icon: string;
+  tension2Text: string;
 };
 
 const createInitialFormState = (): FormState => ({
@@ -426,6 +431,10 @@ const createInitialFormState = (): FormState => ({
   effect3Number: "",
   effect4Icon: "",
   effect4Number: "1",
+  tension1Icon: "",
+  tension1Text: "",
+  tension2Icon: "",
+  tension2Text: "",
 });
 
 type CardDesign = {
@@ -450,6 +459,10 @@ type CardDesign = {
   effect3Number: string;
   effect4Icon: string;
   effect4Number: string;
+  tension1Icon: string;
+  tension1Text: string;
+  tension2Icon: string;
+  tension2Text: string;
 };
 
 type CardPreviewProps = {
@@ -462,6 +475,7 @@ type CardPreviewProps = {
   effect3IconOptions?: IconOption[];
   effect4IconOptions?: IconOption[];
   effectIconOptions04?: IconOption[];
+  tensionIconOptions?: IconOption[];
 };
 
 const CardPreview = ({
@@ -474,6 +488,7 @@ const CardPreview = ({
   effect3IconOptions = [],
   effect4IconOptions = [],
   effectIconOptions04 = [],
+  tensionIconOptions = [],
 }: CardPreviewProps) => {
   const heroImage = card.image || CARD_TEMPLATE_IMAGE;
   const layoutPositions = card.layoutPositions || DEFAULT_LAYOUT.positions;
@@ -495,7 +510,7 @@ const CardPreview = ({
       className="relative overflow-hidden rounded-3xl border-2 border-white/30 transition"
       style={cardStyle}
     >
-      {overlayImage && (
+      {card.layoutId !== "equip4" && overlayImage && (
         <img
           src={overlayImage}
           alt="Arte personalizada do card"
@@ -517,7 +532,7 @@ const CardPreview = ({
           }}
         />
       )}
-      {card.selectedSkills?.length > 0 && (
+      {card.layoutId !== "equip4" && card.selectedSkills?.length > 0 && (
         <div
           className="flex flex-wrap items-center justify-center gap-2"
           style={{
@@ -529,10 +544,9 @@ const CardPreview = ({
           }}
         >
           {card.selectedSkills.map((skillId) => {
-            const skill =
-              isEquipWithEffectsLayout(card.layoutId)
-                ? effectIconOptions04.find((o) => o.id === skillId)
-                : skillIconOptions.find((o) => o.id === skillId);
+            const skill = isEquipWithEffectsLayout(card.layoutId)
+              ? effectIconOptions04.find((o) => o.id === skillId)
+              : skillIconOptions.find((o) => o.id === skillId);
             if (!skill) return null;
             const numberInFront = card.skillNumbers?.[skillId]?.trim();
             const skillTooltip = numberInFront
@@ -575,126 +589,66 @@ const CardPreview = ({
         </div>
       )}
       <div className="flex h-full flex-col gap-0 text-white">
-        <div className="flex items-center gap-4">
-          <div
-            className="relative flex h-24 w-24 flex-col items-center justify-center"
-            style={{
-              position: "absolute",
-              top: layoutPositions.icon.top,
-              left: layoutPositions.icon.left,
-              boxShadow: ICON_DROP_SHADOW,
-            }}
-          >
-            {isEquipWithEffectsLayout(card.layoutId) ? null : (
-              <>
-                <img
-                  src={
-                    card.icon || iconOptionsA[0]?.src || DEFAULT_ICON_FALLBACK
-                  }
-                  alt="Ícone do card"
-                  className="h-32 w-32 object-contain"
-                />
-                {card.icon2 && layoutPositions.icon2 && (
-                  <img
-                    src={card.icon2}
-                    alt="Segundo ícone"
-                    className="absolute h-32 w-32 object-contain"
-                    style={{
-                      top: layoutPositions.icon2.top,
-                      left: layoutPositions.icon2.left,
-                      transform: "translate(-20px, -15px)",
-                    }}
-                  />
-                )}
-              </>
-            )}
-
-            <p
-              className="mt-8 ml-5 text-black uppercase text-center font-extrabold "
+        {card.layoutId !== "equip4" && (
+          <div className="flex items-center gap-4">
+            <div
+              className="relative flex h-24 w-24 flex-col items-center justify-center"
               style={{
-                fontSize: "clamp(7.5em, 2vw, 3rem)",
-                letterSpacing: "0.1em",
-                writingMode: "vertical-rl",
-                transform: "rotate(180deg)",
+                position: "absolute",
+                top: layoutPositions.icon.top,
+                left: layoutPositions.icon.left,
+                boxShadow: ICON_DROP_SHADOW,
               }}
             >
-              {CARD_TYPE_LABEL}
-            </p>
-          </div>
-          {isEquipWithEffectsLayout(card.layoutId) &&
-            card.equip3Number &&
-            layoutPositions.icon2 && (
-              <div
-                className="flex items-center justify-center"
+              {isEquipWithEffectsLayout(card.layoutId) ? null : (
+                <>
+                  <img
+                    src={
+                      card.icon || iconOptionsA[0]?.src || DEFAULT_ICON_FALLBACK
+                    }
+                    alt="Ícone do card"
+                    className="h-32 w-32 object-contain"
+                  />
+                  {card.icon2 && layoutPositions.icon2 && (
+                    <img
+                      src={card.icon2}
+                      alt="Segundo ícone"
+                      className="absolute h-32 w-32 object-contain"
+                      style={{
+                        top: layoutPositions.icon2.top,
+                        left: layoutPositions.icon2.left,
+                        transform: "translate(-20px, -15px)",
+                      }}
+                    />
+                  )}
+                </>
+              )}
+
+              <p
+                className="mt-8 ml-5 text-black uppercase text-center font-extrabold "
                 style={{
-                  position: "absolute",
-                  width: "70px",
-                  top: layoutPositions.icon2.top,
-                  left: layoutPositions.icon2.left,
-                  textAlign: "center",
-                  justifyContent: "center",
-                  alignItems: "center",
-                  flexDirection: "column",
-                  flexWrap: "wrap",
-                  flexGrow: 1,
-                  flexShrink: 1,
-                  flexBasis: "auto",
-                  flex: 1,
+                  fontSize: "clamp(7.5em, 2vw, 3rem)",
+                  letterSpacing: "0.1em",
+                  writingMode: "vertical-rl",
+                  transform: "rotate(180deg)",
                 }}
               >
-                <span
-                  className="flex text-center items-center justify-center  text-black uppercase"
-                  style={{
-                    fontSize: layoutPositions.title.fontSize,
-                    fontFamily: bebasNeue.style.fontFamily,
-                  }}
-                >
-                  {card.equip3Number}
-                </span>
-              </div>
-            )}
-          {isEquipWithEffectsLayout(card.layoutId) &&
-            layoutPositions.effect1 &&
-            layoutPositions.effect2 &&
-            layoutPositions.effect3 &&
-            layoutPositions.effect4 &&
-            [
-              layoutPositions.effect1,
-              layoutPositions.effect2,
-              layoutPositions.effect3,
-              layoutPositions.effect4,
-            ].map((pos, index) => {
-              const effectData =
-                index === 0
-                  ? null
-                  : index === 1
-                  ? { icon: card.effect2Icon, number: card.effect2Number }
-                  : index === 2
-                  ? { icon: card.effect3Icon, number: card.effect3Number }
-                  : { icon: card.effect4Icon, number: card.effect4Number };
-              const optionsForSlot =
-                index === 1
-                  ? effect2IconOptions
-                  : index === 2
-                  ? effect3IconOptions
-                  : effect4IconOptions;
-              const effectOption =
-                effectData?.icon &&
-                optionsForSlot.find((o) => o.id === effectData.icon);
-              return (
+                {CARD_TYPE_LABEL}
+              </p>
+            </div>
+            {isEquipWithEffectsLayout(card.layoutId) &&
+              card.equip3Number &&
+              layoutPositions.icon2 && (
                 <div
-                  key={`effect-${index + 1}`}
-                  className="relative flex items-center justify-center text-center"
+                  className="flex items-center justify-center"
                   style={{
                     position: "absolute",
-                    top: pos.top,
-                    left: pos.left,
-                    width: "130px",
-                    height: "115px",
-                    textAlign: "justify",
-                    display: "flex",
-                    alignItems: "center",
+                    width: "70px",
+                    top: layoutPositions.icon2.top,
+                    left: layoutPositions.icon2.left,
+                    textAlign: "center",
                     justifyContent: "center",
+                    alignItems: "center",
                     flexDirection: "column",
                     flexWrap: "wrap",
                     flexGrow: 1,
@@ -703,72 +657,196 @@ const CardPreview = ({
                     flex: 1,
                   }}
                 >
-                  {index === 0 && card.linhaDeTiro && (
-                    <span
-                      className="leading-tight text-center text-black drop-shadow-lg"
-                      style={{
-                        textAlign: "center",
-                        justifyContent: "center",
-                        alignItems: "center",
-                        display: "flex",
-                        flexDirection: "column",
-                        flexWrap: "wrap",
-                        flexGrow: 1,
-                        flexShrink: 1,
-                        flexBasis: "auto",
-                        flex: 1,
-                        fontSize: "6rem",
-                        fontFamily: bebasNeue.style.fontFamily,
-                      }}
-                    >
-                      {card.linhaDeTiro}
-                    </span>
-                  )}
-                  {index >= 1 && effectOption && (
-                    <>
-                      {effectData?.number &&
-                        (() => {
-                          const numberPos =
-                            index === 1
-                              ? layoutPositions.effect2NumberPosition
-                              : index === 2
-                              ? layoutPositions.effect3NumberPosition
-                              : layoutPositions.effect4NumberPosition;
-                          const pos = numberPos ?? { top: "0", left: "50%" };
-                          const isCenterX = pos.left === "50%";
-                          const isEffect2WithComma =
-                            index === 1 && effectData.number.includes(",");
-                          const parts = isEffect2WithComma
-                            ? effectData.number
-                                .split(",")
-                                .map((s) => s.trim())
-                                .filter(Boolean)
-                            : null;
-                          const baseNumStyle = {
-                            position: "absolute" as const,
-                            zIndex: 10,
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            textAlign: "center" as const,
-                            fontFamily: bebasNeue.style.fontFamily,
-                            fontWeight: 600,
-                            color: "#E3DBD2",
-                            fontSize: "0.5em",
-                            width: "60px",
-                            height: "60px",
-                            lineHeight: 1,
-                          };
-                          if (
-                            isEffect2WithComma &&
-                            parts &&
-                            parts.length >= 2
-                          ) {
-                            const numFontSize = layoutPositions.title.fontSize;
-                            const tip0 = TOOLTIP_DICE[parts[0]];
-                            const tip1 = TOOLTIP_DICE[parts[1]];
-                            return (
-                              <>
+                  <span
+                    className="flex text-center items-center justify-center  text-black uppercase"
+                    style={{
+                      fontSize: layoutPositions.title.fontSize,
+                      fontFamily: bebasNeue.style.fontFamily,
+                    }}
+                  >
+                    {card.equip3Number}
+                  </span>
+                </div>
+              )}
+            {isEquipWithEffectsLayout(card.layoutId) &&
+              layoutPositions.effect1 &&
+              layoutPositions.effect2 &&
+              layoutPositions.effect3 &&
+              layoutPositions.effect4 &&
+              [
+                layoutPositions.effect1,
+                layoutPositions.effect2,
+                layoutPositions.effect3,
+                layoutPositions.effect4,
+              ].map((pos, index) => {
+                const effectData =
+                  index === 0
+                    ? null
+                    : index === 1
+                    ? { icon: card.effect2Icon, number: card.effect2Number }
+                    : index === 2
+                    ? { icon: card.effect3Icon, number: card.effect3Number }
+                    : { icon: card.effect4Icon, number: card.effect4Number };
+                const optionsForSlot =
+                  index === 1
+                    ? effect2IconOptions
+                    : index === 2
+                    ? effect3IconOptions
+                    : effect4IconOptions;
+                const effectOption =
+                  effectData?.icon &&
+                  optionsForSlot.find((o) => o.id === effectData.icon);
+                return (
+                  <div
+                    key={`effect-${index + 1}`}
+                    className="relative flex items-center justify-center text-center"
+                    style={{
+                      position: "absolute",
+                      top: pos.top,
+                      left: pos.left,
+                      width: "130px",
+                      height: "115px",
+                      textAlign: "justify",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexDirection: "column",
+                      flexWrap: "wrap",
+                      flexGrow: 1,
+                      flexShrink: 1,
+                      flexBasis: "auto",
+                      flex: 1,
+                    }}
+                  >
+                    {index === 0 && card.linhaDeTiro && (
+                      <span
+                        className="leading-tight text-center text-black drop-shadow-lg"
+                        style={{
+                          textAlign: "center",
+                          justifyContent: "center",
+                          alignItems: "center",
+                          display: "flex",
+                          flexDirection: "column",
+                          flexWrap: "wrap",
+                          flexGrow: 1,
+                          flexShrink: 1,
+                          flexBasis: "auto",
+                          flex: 1,
+                          fontSize: "6rem",
+                          fontFamily: bebasNeue.style.fontFamily,
+                        }}
+                      >
+                        {card.linhaDeTiro}
+                      </span>
+                    )}
+                    {index >= 1 && effectOption && (
+                      <>
+                        {effectData?.number &&
+                          (() => {
+                            const numberPos =
+                              index === 1
+                                ? layoutPositions.effect2NumberPosition
+                                : index === 2
+                                ? layoutPositions.effect3NumberPosition
+                                : layoutPositions.effect4NumberPosition;
+                            const pos = numberPos ?? { top: "0", left: "50%" };
+                            const isCenterX = pos.left === "50%";
+                            const isEffect2WithComma =
+                              index === 1 && effectData.number.includes(",");
+                            const parts = isEffect2WithComma
+                              ? effectData.number
+                                  .split(",")
+                                  .map((s) => s.trim())
+                                  .filter(Boolean)
+                              : null;
+                            const baseNumStyle = {
+                              position: "absolute" as const,
+                              zIndex: 10,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              textAlign: "center" as const,
+                              fontFamily: bebasNeue.style.fontFamily,
+                              fontWeight: 600,
+                              color: "#E3DBD2",
+                              fontSize: "0.5em",
+                              width: "60px",
+                              height: "60px",
+                              lineHeight: 1,
+                            };
+                            if (
+                              isEffect2WithComma &&
+                              parts &&
+                              parts.length >= 2
+                            ) {
+                              const numFontSize =
+                                layoutPositions.title.fontSize;
+                              const tip0 = TOOLTIP_DICE[parts[0]];
+                              const tip1 = TOOLTIP_DICE[parts[1]];
+                              return (
+                                <>
+                                  <div
+                                    className="group absolute z-10 flex items-center justify-center text-center font-semibold drop-shadow-lg"
+                                    style={{
+                                      ...baseNumStyle,
+                                      top: "5px",
+                                      left: "39px",
+                                      transform: isCenterX
+                                        ? "translateX(-50%)"
+                                        : undefined,
+                                      fontSize: numFontSize,
+                                    }}
+                                    title={tip0 ?? undefined}
+                                  >
+                                    {tip0 && (
+                                      <span
+                                        className="pointer-events-none invisible absolute bottom-full left-1/2 z-[100] mb-1 -translate-x-1/2 whitespace-nowrap rounded bg-slate-800 px-2 py-1 text-xs text-white opacity-0 transition group-hover:visible group-hover:opacity-100"
+                                        aria-hidden
+                                      >
+                                        {tip0}
+                                      </span>
+                                    )}
+                                    <span style={{ fontSize: "0.8em" }}>
+                                      {parts[0]}
+                                    </span>
+                                  </div>
+                                  <div
+                                    className="group absolute z-10 flex items-center justify-center text-center font-semibold drop-shadow-lg"
+                                    style={{
+                                      ...baseNumStyle,
+                                      top: "50px",
+                                      left: "90px",
+                                      transform: isCenterX
+                                        ? "translateX(-50%)"
+                                        : undefined,
+                                      fontSize: numFontSize,
+                                    }}
+                                    title={tip1 ?? undefined}
+                                  >
+                                    {tip1 && (
+                                      <span
+                                        className="pointer-events-none invisible absolute bottom-full left-1/2 z-[100] mb-1 -translate-x-1/2 whitespace-nowrap rounded bg-slate-800 px-2 py-1 text-xs text-white opacity-0 transition group-hover:visible group-hover:opacity-100"
+                                        aria-hidden
+                                      >
+                                        {tip1}
+                                      </span>
+                                    )}
+                                    <span style={{ fontSize: "0.8em" }}>
+                                      {parts[1]}
+                                    </span>
+                                  </div>
+                                </>
+                              );
+                            }
+                            const isEffect3Or4Icon3 =
+                              (index === 2 || index === 3) &&
+                              effectData.icon === "03";
+                            if (isEffect3Or4Icon3) {
+                              const tooltipEffect3Or4 =
+                                index === 2
+                                  ? TOOLTIP_EFFECT3[effectData.number]
+                                  : TOOLTIP_EFFECT4[effectData.number];
+                              return (
                                 <div
                                   className="group absolute z-10 flex items-center justify-center text-center font-semibold drop-shadow-lg"
                                   style={{
@@ -778,134 +856,73 @@ const CardPreview = ({
                                     transform: isCenterX
                                       ? "translateX(-50%)"
                                       : undefined,
-                                    fontSize: numFontSize,
+                                    fontSize: layoutPositions.title.fontSize,
+                                    width: "60px",
+                                    height: "60px",
                                   }}
-                                  title={tip0 ?? undefined}
+                                  title={tooltipEffect3Or4 ?? undefined}
                                 >
-                                  {tip0 && (
+                                  {tooltipEffect3Or4 && (
                                     <span
                                       className="pointer-events-none invisible absolute bottom-full left-1/2 z-[100] mb-1 -translate-x-1/2 whitespace-nowrap rounded bg-slate-800 px-2 py-1 text-xs text-white opacity-0 transition group-hover:visible group-hover:opacity-100"
                                       aria-hidden
                                     >
-                                      {tip0}
+                                      {tooltipEffect3Or4}
                                     </span>
                                   )}
                                   <span style={{ fontSize: "0.8em" }}>
-                                    {parts[0]}
+                                    {effectData.number}
                                   </span>
                                 </div>
-                                <div
-                                  className="group absolute z-10 flex items-center justify-center text-center font-semibold drop-shadow-lg"
-                                  style={{
-                                    ...baseNumStyle,
-                                    top: "50px",
-                                    left: "90px",
-                                    transform: isCenterX
-                                      ? "translateX(-50%)"
-                                      : undefined,
-                                    fontSize: numFontSize,
-                                  }}
-                                  title={tip1 ?? undefined}
-                                >
-                                  {tip1 && (
-                                    <span
-                                      className="pointer-events-none invisible absolute bottom-full left-1/2 z-[100] mb-1 -translate-x-1/2 whitespace-nowrap rounded bg-slate-800 px-2 py-1 text-xs text-white opacity-0 transition group-hover:visible group-hover:opacity-100"
-                                      aria-hidden
-                                    >
-                                      {tip1}
-                                    </span>
-                                  )}
-                                  <span style={{ fontSize: "0.8em" }}>
-                                    {parts[1]}
-                                  </span>
-                                </div>
-                              </>
-                            );
-                          }
-                          const isEffect3Or4Icon3 =
-                            (index === 2 || index === 3) &&
-                            effectData.icon === "03";
-                          if (isEffect3Or4Icon3) {
-                            const tooltipEffect3Or4 =
-                              index === 2
+                              );
+                            }
+                            const tooltipDefault =
+                              index === 1
+                                ? TOOLTIP_DICE[effectData.number]
+                                : index === 2
                                 ? TOOLTIP_EFFECT3[effectData.number]
                                 : TOOLTIP_EFFECT4[effectData.number];
                             return (
                               <div
                                 className="group absolute z-10 flex items-center justify-center text-center font-semibold drop-shadow-lg"
                                 style={{
-                                  ...baseNumStyle,
-                                  top: "5px",
-                                  left: "39px",
+                                  top: pos.top,
+                                  left: pos.left,
                                   transform: isCenterX
                                     ? "translateX(-50%)"
                                     : undefined,
+                                  width: "120px",
+                                  height: "120px",
+                                  color: "#E3DBD2",
                                   fontSize: layoutPositions.title.fontSize,
-                                  width: "60px",
-                                  height: "60px",
+                                  fontFamily: bebasNeue.style.fontFamily,
                                 }}
-                                title={tooltipEffect3Or4 ?? undefined}
+                                title={tooltipDefault ?? undefined}
                               >
-                                {tooltipEffect3Or4 && (
+                                {tooltipDefault && (
                                   <span
                                     className="pointer-events-none invisible absolute bottom-full left-1/2 z-[100] mb-1 -translate-x-1/2 whitespace-nowrap rounded bg-slate-800 px-2 py-1 text-xs text-white opacity-0 transition group-hover:visible group-hover:opacity-100"
                                     aria-hidden
                                   >
-                                    {tooltipEffect3Or4}
+                                    {tooltipDefault}
                                   </span>
                                 )}
-                                <span style={{ fontSize: "0.8em" }}>
-                                  {effectData.number}
-                                </span>
+                                {effectData.number}
                               </div>
                             );
-                          }
-                          const tooltipDefault =
-                            index === 1
-                              ? TOOLTIP_DICE[effectData.number]
-                              : index === 2
-                              ? TOOLTIP_EFFECT3[effectData.number]
-                              : TOOLTIP_EFFECT4[effectData.number];
-                          return (
-                            <div
-                              className="group absolute z-10 flex items-center justify-center text-center font-semibold drop-shadow-lg"
-                              style={{
-                                top: pos.top,
-                                left: pos.left,
-                                transform: isCenterX
-                                  ? "translateX(-50%)"
-                                  : undefined,
-                                width: "120px",
-                                height: "120px",
-                                color: "#E3DBD2",
-                                fontSize: layoutPositions.title.fontSize,
-                                fontFamily: bebasNeue.style.fontFamily,
-                              }}
-                              title={tooltipDefault ?? undefined}
-                            >
-                              {tooltipDefault && (
-                                <span
-                                  className="pointer-events-none invisible absolute bottom-full left-1/2 z-[100] mb-1 -translate-x-1/2 whitespace-nowrap rounded bg-slate-800 px-2 py-1 text-xs text-white opacity-0 transition group-hover:visible group-hover:opacity-100"
-                                  aria-hidden
-                                >
-                                  {tooltipDefault}
-                                </span>
-                              )}
-                              {effectData.number}
-                            </div>
-                          );
-                        })()}
-                      <img
-                        src={effectOption.src}
-                        alt={effectOption.label}
-                        className="h-full w-full object-contain"
-                      />
-                    </>
-                  )}
-                </div>
-              );
-            })}
-        </div>
+                          })()}
+                        <img
+                          src={effectOption.src}
+                          alt={effectOption.label}
+                          className="h-full w-full object-contain"
+                        />
+                      </>
+                    )}
+                  </div>
+                );
+              })}
+          </div>
+        )}
         <h3
           className="leading-tight text-black text-center drop-shadow-lg"
           style={{
@@ -927,6 +944,7 @@ const CardPreview = ({
             flexShrink: 1,
             flexBasis: "auto",
             flex: 1,
+            ...(card.layoutId === "equip4" ? { backgroundColor: "red" } : {}),
           }}
         >
           {card.title || ""}
@@ -942,10 +960,64 @@ const CardPreview = ({
             width: "570px",
             height: "420px",
             whiteSpace: "pre-line",
+            ...(card.layoutId === "equip4" ? { backgroundColor: "red" } : {}),
           }}
         >
           {card.description || ""}
         </p>
+        {card.layoutId === "equip4" && (
+          <div
+            className="absolute flex flex-col gap-3 text-black"
+            style={{
+              top: "520px",
+              left: layoutPositions.description.left,
+              width: "570px",
+              fontFamily: ebGaramond.style.fontFamily,
+              fontWeight: 590,
+              fontSize: "1.25rem",
+              lineHeight: 1.2,
+            }}
+          >
+            {card.tension1Icon && (
+              <div className="flex items-center gap-3">
+                {(() => {
+                  const opt = tensionIconOptions.find(
+                    (o) => o.id === card.tension1Icon
+                  );
+                  return opt ? (
+                    <img
+                      src={opt.src}
+                      alt={opt.label}
+                      className="h-12 w-12 shrink-0 object-contain"
+                    />
+                  ) : null;
+                })()}
+                <span className="flex-1 text-left whitespace-pre-line">
+                  {card.tension1Text || ""}
+                </span>
+              </div>
+            )}
+            {card.tension2Icon && (
+              <div className="flex items-center gap-3">
+                {(() => {
+                  const opt = tensionIconOptions.find(
+                    (o) => o.id === card.tension2Icon
+                  );
+                  return opt ? (
+                    <img
+                      src={opt.src}
+                      alt={opt.label}
+                      className="h-12 w-12 shrink-0 object-contain"
+                    />
+                  ) : null;
+                })()}
+                <span className="flex-1 text-left whitespace-pre-line">
+                  {card.tension2Text || ""}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -978,6 +1050,9 @@ export default function Home() {
   const [effectIconOptions04, setEffectIconOptions04] = useState<IconOption[]>(
     []
   );
+  const [tensionIconOptions, setTensionIconOptions] = useState<IconOption[]>(
+    []
+  );
   const importFileRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -989,6 +1064,7 @@ export default function Home() {
       "Effects/02",
       "Effects/03",
       "Effects/04",
+      "Tension",
     ] as const;
     const setters = [
       setIconOptionsA,
@@ -998,6 +1074,7 @@ export default function Home() {
       setEffect3IconOptions,
       setEffect4IconOptions,
       setEffectIconOptions04,
+      setTensionIconOptions,
     ];
     Promise.all(
       paths.map((p) =>
@@ -1052,6 +1129,10 @@ export default function Home() {
       effect3Number: card.effect3Number ?? "",
       effect4Icon: card.effect4Icon ?? "",
       effect4Number: card.effect4Number ?? "",
+      tension1Icon: card.tension1Icon ?? "",
+      tension1Text: card.tension1Text ?? "",
+      tension2Icon: card.tension2Icon ?? "",
+      tension2Text: card.tension2Text ?? "",
     });
     const cachedOverlay = await getOverlayImage(card.id);
     setOverlayImage(cachedOverlay);
@@ -1093,6 +1174,10 @@ export default function Home() {
           effect3Number: card.effect3Number ?? "",
           effect4Icon: card.effect4Icon ?? "",
           effect4Number: card.effect4Number ?? "",
+          tension1Icon: card.tension1Icon ?? "",
+          tension1Text: card.tension1Text ?? "",
+          tension2Icon: card.tension2Icon ?? "",
+          tension2Text: card.tension2Text ?? "",
         };
       });
       setCards(sanitized);
@@ -1161,6 +1246,10 @@ export default function Home() {
     effect3Number: form.effect3Number,
     effect4Icon: form.effect4Icon,
     effect4Number: form.effect4Number,
+    tension1Icon: form.tension1Icon,
+    tension1Text: form.tension1Text,
+    tension2Icon: form.tension2Icon,
+    tension2Text: form.tension2Text,
     layoutPositions: currentLayoutConfig.positions,
   };
 
@@ -1261,6 +1350,10 @@ export default function Home() {
         effect3Number,
         effect4Icon,
         effect4Number,
+        tension1Icon,
+        tension1Text,
+        tension2Icon,
+        tension2Text,
       }: CardDesign) => ({
         title,
         description,
@@ -1278,6 +1371,10 @@ export default function Home() {
         effect3Number,
         effect4Icon,
         effect4Number,
+        tension1Icon,
+        tension1Text,
+        tension2Icon,
+        tension2Text,
       })
     );
 
@@ -1356,6 +1453,10 @@ export default function Home() {
           effect3Number?: string | null;
           effect4Icon?: string | null;
           effect4Number?: string | null;
+          tension1Icon?: string | null;
+          tension1Text?: string | null;
+          tension2Icon?: string | null;
+          tension2Text?: string | null;
         }>;
         const importedCards = parsed.map((item) => {
           const layout = getLayoutConfig(item.layoutId);
@@ -1383,6 +1484,10 @@ export default function Home() {
             effect3Number: item.effect3Number ?? "",
             effect4Icon: item.effect4Icon ?? "",
             effect4Number: item.effect4Number ?? "",
+            tension1Icon: item.tension1Icon ?? "",
+            tension1Text: item.tension1Text ?? "",
+            tension2Icon: item.tension2Icon ?? "",
+            tension2Text: item.tension2Text ?? "",
             layoutPositions: layout.positions,
           };
         });
@@ -1506,6 +1611,7 @@ export default function Home() {
                             effect3IconOptions={effect3IconOptions}
                             effect4IconOptions={effect4IconOptions}
                             effectIconOptions04={effectIconOptions04}
+                            tensionIconOptions={tensionIconOptions}
                           />
                         </div>
                       </button>
@@ -1616,7 +1722,7 @@ export default function Home() {
               </div>
             </div>
 
-            {!isEquipWithEffectsLayout(form.layout) && (
+            {form.layout !== "equip3" && form.layout !== "equip4" && (
               <>
                 <div className="space-y-3">
                   <h3 className="text-xl font-semibold">Ícone 1</h3>
@@ -1677,7 +1783,7 @@ export default function Home() {
               </>
             )}
 
-            {!isEquipWithEffectsLayout(form.layout) && (
+            {form.layout !== "equip3" && form.layout !== "equip4" && (
               <div className="space-y-3">
                 <h3 className="text-xl font-semibold">Skills</h3>
                 <div className="flex flex-wrap gap-4">
@@ -1771,7 +1877,7 @@ export default function Home() {
                 </div>
               </div>
             )}
-            {isEquipWithEffectsLayout(form.layout) && (
+            {form.layout === "equip3" && (
               <>
                 <label className="flex flex-col gap-2 text-sm text-slate-300">
                   Marcador de Munição
@@ -1831,7 +1937,7 @@ export default function Home() {
                         className="w-14 rounded-full border border-white/10 bg-white/5 px-2 py-1.5 text-center text-sm text-white"
                         placeholder="Nº ou 1,2"
                         title={Object.entries(TOOLTIP_DICE)
-                          .map(([k, v]) => `${v}`)
+                          .map(([, v]) => `${v}`)
                           .join(" | ")}
                       />
                       {effect2IconOptions.map((item) => (
@@ -1850,7 +1956,7 @@ export default function Home() {
                               : "border-white/20 bg-[#D9CCBE]"
                           }`}
                           title={Object.entries(TOOLTIP_DICE)
-                            .map(([k, v]) => `${v}`)
+                            .map(([, v]) => `${v}`)
                             .join(" | ")}
                         >
                           <img
@@ -2063,6 +2169,96 @@ export default function Home() {
               </>
             )}
 
+            {form.layout === "equip4" && (
+              <div className="space-y-4 border-t border-white/10 pt-4">
+                <span className="text-sm font-medium text-slate-300">
+                  Ícones de tensão
+                </span>
+                <div className="space-y-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    {tensionIconOptions.map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() =>
+                          setForm((prev) => ({
+                            ...prev,
+                            tension1Icon: prev.tension1Icon === item.id ? "" : item.id,
+                          }))
+                        }
+                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border transition ${
+                          form.tension1Icon === item.id
+                            ? "border-amber-400 bg-[#EDE4D7]"
+                            : "border-white/20 bg-[#D9CCBE]"
+                        }`}
+                        title={item.label}
+                      >
+                        <img
+                          src={item.src}
+                          alt={item.label}
+                          className="h-6 w-6 object-contain"
+                        />
+                      </button>
+                    ))}
+                    {form.tension1Icon && (
+                      <input
+                        type="text"
+                        value={form.tension1Text ?? ""}
+                        onChange={(e) =>
+                          setForm((prev) => ({
+                            ...prev,
+                            tension1Text: e.target.value,
+                          }))
+                        }
+                        className="min-w-[200px] flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none transition focus:border-slate-400"
+                        placeholder="Texto ao lado do ícone 1"
+                      />
+                    )}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {tensionIconOptions.map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() =>
+                          setForm((prev) => ({
+                            ...prev,
+                            tension2Icon: prev.tension2Icon === item.id ? "" : item.id,
+                          }))
+                        }
+                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border transition ${
+                          form.tension2Icon === item.id
+                            ? "border-amber-400 bg-[#EDE4D7]"
+                            : "border-white/20 bg-[#D9CCBE]"
+                        }`}
+                        title={item.label}
+                      >
+                        <img
+                          src={item.src}
+                          alt={item.label}
+                          className="h-6 w-6 object-contain"
+                        />
+                      </button>
+                    ))}
+                    {form.tension2Icon && (
+                      <input
+                        type="text"
+                        value={form.tension2Text ?? ""}
+                        onChange={(e) =>
+                          setForm((prev) => ({
+                            ...prev,
+                            tension2Text: e.target.value,
+                          }))
+                        }
+                        className="min-w-[200px] flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none transition focus:border-slate-400"
+                        placeholder="Texto ao lado do ícone 2"
+                      />
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="grid gap-4 sm:grid-cols-2">
               <button
                 type="button"
@@ -2103,6 +2299,7 @@ export default function Home() {
                 effect3IconOptions={effect3IconOptions}
                 effect4IconOptions={effect4IconOptions}
                 effectIconOptions04={effectIconOptions04}
+                tensionIconOptions={tensionIconOptions}
               />
             </div>
           </div>
