@@ -15,6 +15,34 @@ type IconOption = {
 /** Listas de ícones vêm da API /api/icons?path= (A, B, C, Effects/01, etc.) */
 const DEFAULT_ICON_FALLBACK = "/models/icons/A/01.png";
 
+/** Tooltips para rolagem de dados (Bloco 2) */
+const TOOLTIP_DICE: Record<string, string> = {
+  "1": "dado azul",
+  "2": "dado vermelho",
+  "3": "Dado azul e vermelho",
+};
+/** Tooltips para Bloco 3 (Effects/02) */
+const TOOLTIP_EFFECT3: Record<string, string> = {
+  "1": "Desvio",
+  "2": "Empurrão",
+  "3": "Dano e explosão",
+};
+/** Tooltips para Bloco 4 (Effects/03) */
+const TOOLTIP_EFFECT4: Record<string, string> = {
+  "1": "Dano",
+  "2": "Explosão",
+  "3": "Dano e explosão",
+};
+/** Tooltips para skills (número no ícone) */
+const TOOLTIP_SKILL_NUMBER: Record<string, string> = {
+  "1": "Disparo rápido",
+  "2": "Acerto especial",
+  "3": "Arma precisa",
+  "4": "Dano",
+  "5": "Explosão",
+  "6": "Uso Único",
+};
+
 const bebasNeue = Bebas_Neue({
   subsets: ["latin"],
   weight: ["400"],
@@ -163,7 +191,48 @@ const layoutOptions: LayoutOption[] = [
       effect4NumberPosition: { top: "0", left: "50%" },
     },
   },
+  {
+    id: "equip4",
+    label: "Arma 2",
+    image: "/models/cards/04.png",
+    positions: {
+      icon: { top: "292px", left: "72px" },
+      icon2: { top: "120px", left: "545px" },
+      title: {
+        top: "70px",
+        left: "215px",
+        width: "280px",
+        height: "120px",
+        fontSize: "clamp(2.8rem, 3vw, 3.8rem)",
+      },
+      description: { top: "550px", left: "60px" },
+      overlay: {
+        top: "215px",
+        left: "215px",
+        width: "410px",
+        height: "285px",
+      },
+      skills: {
+        top: "850px",
+        left: "70px",
+        width: "560px",
+        height: "120px",
+      },
+      effect1: { top: "675px", left: "59px" },
+      effect2: { top: "670px", left: "208px" },
+      effect3: { top: "670px", left: "357px" },
+      effect4: { top: "670px", left: "506px" },
+      effect2NumberPosition: { top: "0", left: "50%" },
+      effect3NumberPosition: { top: "0", left: "50%" },
+      effect4NumberPosition: { top: "0", left: "50%" },
+    },
+  },
 ];
+
+/** Layouts que usam efeitos (equip3/equip4): linha de tiro, blocos de efeito, skills Effects/04 */
+const EQUIP_LAYOUTS_WITH_EFFECTS = ["equip3", "equip4"];
+const isEquipWithEffectsLayout = (layoutId: string) =>
+  EQUIP_LAYOUTS_WITH_EFFECTS.includes(layoutId);
 
 const mergeLayoutPositions = (
   candidate: Partial<LayoutPositions>,
@@ -307,7 +376,7 @@ const clearOverlayStore = async () => {
 
 const capitalizeLongWords = (text: string) =>
   text.replace(
-    /\b([A-Za-z])([A-Za-z]{3,})/g,
+    /\b(\p{L})(\p{L}{3,})/gu,
     (_, first, rest) => `${first.toUpperCase()}${rest}`
   );
 
@@ -326,6 +395,8 @@ type FormState = {
   icon2Id: string;
   accent: string;
   selectedSkills: string[];
+  /** Número acima de cada skill: skillId -> número (vazio = null) */
+  skillNumbers: Record<string, string>;
   equip3Number: string;
   linhaDeTiro: string;
   effect2Icon: string;
@@ -346,8 +417,9 @@ const createInitialFormState = (): FormState => ({
   icon2Id: "",
   accent: DEFAULT_ACCENT,
   selectedSkills: [],
+  skillNumbers: {},
   equip3Number: "",
-  linhaDeTiro: "",
+  linhaDeTiro: "LOS",
   effect2Icon: "",
   effect2Number: "1",
   effect3Icon: "",
@@ -369,6 +441,7 @@ type CardDesign = {
   layoutId: string;
   layoutPositions: LayoutPositions;
   selectedSkills: string[];
+  skillNumbers: Record<string, string>;
   equip3Number: string;
   linhaDeTiro: string;
   effect2Icon: string;
@@ -446,7 +519,7 @@ const CardPreview = ({
       )}
       {card.selectedSkills?.length > 0 && (
         <div
-          className="pointer-events-none flex flex-wrap items-center justify-center gap-2"
+          className="flex flex-wrap items-center justify-center gap-2"
           style={{
             position: "absolute",
             top: "815px",
@@ -457,17 +530,46 @@ const CardPreview = ({
         >
           {card.selectedSkills.map((skillId) => {
             const skill =
-              card.layoutId === "equip3"
+              isEquipWithEffectsLayout(card.layoutId)
                 ? effectIconOptions04.find((o) => o.id === skillId)
                 : skillIconOptions.find((o) => o.id === skillId);
             if (!skill) return null;
+            const numberInFront = card.skillNumbers?.[skillId]?.trim();
+            const skillTooltip = numberInFront
+              ? TOOLTIP_SKILL_NUMBER[numberInFront]
+              : undefined;
             return (
-              <img
+              <div
                 key={skillId}
-                src={skill.src}
-                alt={skill.label}
-                className="h-26 w-30 object-contain"
-              />
+                className="group relative flex items-center justify-center"
+                title={skillTooltip}
+              >
+                {skillTooltip && (
+                  <span
+                    className="pointer-events-none invisible absolute bottom-full left-1/2 z-[100] mb-1 -translate-x-1/2 whitespace-nowrap rounded bg-slate-800 px-2 py-1 text-xs text-white opacity-0 transition group-hover:visible group-hover:opacity-100"
+                    aria-hidden
+                  >
+                    {skillTooltip}
+                  </span>
+                )}
+                <img
+                  src={skill.src}
+                  alt={skill.label}
+                  className="h-26 w-30 object-contain"
+                />
+                {numberInFront ? (
+                  <div
+                    className="absolute inset-0 z-10 flex items-center justify-center font-semibold drop-shadow-lg"
+                    style={{
+                      color: "#E3DBD2",
+                      fontSize: layoutPositions.title.fontSize,
+                      fontFamily: bebasNeue.style.fontFamily,
+                    }}
+                  >
+                    {numberInFront}
+                  </div>
+                ) : null}
+              </div>
             );
           })}
         </div>
@@ -483,7 +585,7 @@ const CardPreview = ({
               boxShadow: ICON_DROP_SHADOW,
             }}
           >
-            {card.layoutId === "equip3" ? null : (
+            {isEquipWithEffectsLayout(card.layoutId) ? null : (
               <>
                 <img
                   src={
@@ -519,7 +621,7 @@ const CardPreview = ({
               {CARD_TYPE_LABEL}
             </p>
           </div>
-          {card.layoutId === "equip3" &&
+          {isEquipWithEffectsLayout(card.layoutId) &&
             card.equip3Number &&
             layoutPositions.icon2 && (
               <div
@@ -551,7 +653,7 @@ const CardPreview = ({
                 </span>
               </div>
             )}
-          {card.layoutId === "equip3" &&
+          {isEquipWithEffectsLayout(card.layoutId) &&
             layoutPositions.effect1 &&
             layoutPositions.effect2 &&
             layoutPositions.effect3 &&
@@ -634,9 +736,139 @@ const CardPreview = ({
                               : layoutPositions.effect4NumberPosition;
                           const pos = numberPos ?? { top: "0", left: "50%" };
                           const isCenterX = pos.left === "50%";
+                          const isEffect2WithComma =
+                            index === 1 && effectData.number.includes(",");
+                          const parts = isEffect2WithComma
+                            ? effectData.number
+                                .split(",")
+                                .map((s) => s.trim())
+                                .filter(Boolean)
+                            : null;
+                          const baseNumStyle = {
+                            position: "absolute" as const,
+                            zIndex: 10,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            textAlign: "center" as const,
+                            fontFamily: bebasNeue.style.fontFamily,
+                            fontWeight: 600,
+                            color: "#E3DBD2",
+                            fontSize: "0.5em",
+                            width: "60px",
+                            height: "60px",
+                            lineHeight: 1,
+                          };
+                          if (
+                            isEffect2WithComma &&
+                            parts &&
+                            parts.length >= 2
+                          ) {
+                            const numFontSize = layoutPositions.title.fontSize;
+                            const tip0 = TOOLTIP_DICE[parts[0]];
+                            const tip1 = TOOLTIP_DICE[parts[1]];
+                            return (
+                              <>
+                                <div
+                                  className="group absolute z-10 flex items-center justify-center text-center font-semibold drop-shadow-lg"
+                                  style={{
+                                    ...baseNumStyle,
+                                    top: "5px",
+                                    left: "39px",
+                                    transform: isCenterX
+                                      ? "translateX(-50%)"
+                                      : undefined,
+                                    fontSize: numFontSize,
+                                  }}
+                                  title={tip0 ?? undefined}
+                                >
+                                  {tip0 && (
+                                    <span
+                                      className="pointer-events-none invisible absolute bottom-full left-1/2 z-[100] mb-1 -translate-x-1/2 whitespace-nowrap rounded bg-slate-800 px-2 py-1 text-xs text-white opacity-0 transition group-hover:visible group-hover:opacity-100"
+                                      aria-hidden
+                                    >
+                                      {tip0}
+                                    </span>
+                                  )}
+                                  <span style={{ fontSize: "0.8em" }}>
+                                    {parts[0]}
+                                  </span>
+                                </div>
+                                <div
+                                  className="group absolute z-10 flex items-center justify-center text-center font-semibold drop-shadow-lg"
+                                  style={{
+                                    ...baseNumStyle,
+                                    top: "50px",
+                                    left: "90px",
+                                    transform: isCenterX
+                                      ? "translateX(-50%)"
+                                      : undefined,
+                                    fontSize: numFontSize,
+                                  }}
+                                  title={tip1 ?? undefined}
+                                >
+                                  {tip1 && (
+                                    <span
+                                      className="pointer-events-none invisible absolute bottom-full left-1/2 z-[100] mb-1 -translate-x-1/2 whitespace-nowrap rounded bg-slate-800 px-2 py-1 text-xs text-white opacity-0 transition group-hover:visible group-hover:opacity-100"
+                                      aria-hidden
+                                    >
+                                      {tip1}
+                                    </span>
+                                  )}
+                                  <span style={{ fontSize: "0.8em" }}>
+                                    {parts[1]}
+                                  </span>
+                                </div>
+                              </>
+                            );
+                          }
+                          const isEffect3Or4Icon3 =
+                            (index === 2 || index === 3) &&
+                            effectData.icon === "03";
+                          if (isEffect3Or4Icon3) {
+                            const tooltipEffect3Or4 =
+                              index === 2
+                                ? TOOLTIP_EFFECT3[effectData.number]
+                                : TOOLTIP_EFFECT4[effectData.number];
+                            return (
+                              <div
+                                className="group absolute z-10 flex items-center justify-center text-center font-semibold drop-shadow-lg"
+                                style={{
+                                  ...baseNumStyle,
+                                  top: "5px",
+                                  left: "39px",
+                                  transform: isCenterX
+                                    ? "translateX(-50%)"
+                                    : undefined,
+                                  fontSize: layoutPositions.title.fontSize,
+                                  width: "60px",
+                                  height: "60px",
+                                }}
+                                title={tooltipEffect3Or4 ?? undefined}
+                              >
+                                {tooltipEffect3Or4 && (
+                                  <span
+                                    className="pointer-events-none invisible absolute bottom-full left-1/2 z-[100] mb-1 -translate-x-1/2 whitespace-nowrap rounded bg-slate-800 px-2 py-1 text-xs text-white opacity-0 transition group-hover:visible group-hover:opacity-100"
+                                    aria-hidden
+                                  >
+                                    {tooltipEffect3Or4}
+                                  </span>
+                                )}
+                                <span style={{ fontSize: "0.8em" }}>
+                                  {effectData.number}
+                                </span>
+                              </div>
+                            );
+                          }
+                          const tooltipDefault =
+                            index === 1
+                              ? TOOLTIP_DICE[effectData.number]
+                              : index === 2
+                              ? TOOLTIP_EFFECT3[effectData.number]
+                              : TOOLTIP_EFFECT4[effectData.number];
                           return (
                             <div
-                              className="absolute z-10 flex items-center justify-center text-center font-semibold drop-shadow-lg"
+                              className="group absolute z-10 flex items-center justify-center text-center font-semibold drop-shadow-lg"
                               style={{
                                 top: pos.top,
                                 left: pos.left,
@@ -649,7 +881,16 @@ const CardPreview = ({
                                 fontSize: layoutPositions.title.fontSize,
                                 fontFamily: bebasNeue.style.fontFamily,
                               }}
+                              title={tooltipDefault ?? undefined}
                             >
+                              {tooltipDefault && (
+                                <span
+                                  className="pointer-events-none invisible absolute bottom-full left-1/2 z-[100] mb-1 -translate-x-1/2 whitespace-nowrap rounded bg-slate-800 px-2 py-1 text-xs text-white opacity-0 transition group-hover:visible group-hover:opacity-100"
+                                  aria-hidden
+                                >
+                                  {tooltipDefault}
+                                </span>
+                              )}
                               {effectData.number}
                             </div>
                           );
@@ -675,7 +916,8 @@ const CardPreview = ({
             height: layoutPositions.title.height,
             fontSize: layoutPositions.title.fontSize,
             lineHeight: 0.9,
-            textAlign: "justify",
+            textAlign: "center",
+            whiteSpace: "pre-line",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -699,6 +941,7 @@ const CardPreview = ({
             lineHeight: 1,
             width: "570px",
             height: "420px",
+            whiteSpace: "pre-line",
           }}
         >
           {card.description || ""}
@@ -800,6 +1043,7 @@ export default function Home() {
       icon2Id: card.icon2Id ?? "",
       accent: card.accent,
       selectedSkills: card.selectedSkills ?? [],
+      skillNumbers: card.skillNumbers ?? {},
       equip3Number: card.equip3Number ?? "",
       linhaDeTiro: card.linhaDeTiro ?? "",
       effect2Icon: card.effect2Icon ?? "",
@@ -840,6 +1084,7 @@ export default function Home() {
           ...card,
           layoutPositions: positions,
           selectedSkills: card.selectedSkills ?? [],
+          skillNumbers: card.skillNumbers ?? {},
           equip3Number: card.equip3Number ?? "",
           linhaDeTiro: card.linhaDeTiro ?? "",
           effect2Icon: card.effect2Icon ?? "",
@@ -893,7 +1138,7 @@ export default function Home() {
 
   const currentLayoutConfig = getLayoutConfig(form.layout);
   const showExtraIcons =
-    currentLayoutConfig.id !== "equip3" &&
+    !isEquipWithEffectsLayout(currentLayoutConfig.id) &&
     Boolean(currentLayoutConfig.positions.icon2);
 
   const previewCard = {
@@ -907,6 +1152,7 @@ export default function Home() {
     accent: form.accent,
     layoutId: form.layout,
     selectedSkills: form.selectedSkills,
+    skillNumbers: form.skillNumbers ?? {},
     equip3Number: form.equip3Number,
     linhaDeTiro: form.linhaDeTiro,
     effect2Icon: form.effect2Icon,
@@ -951,10 +1197,23 @@ export default function Home() {
       return next;
     });
 
-    setEditingId(null);
-    setOverlayImage(null);
-    setForm(createInitialFormState());
-    setStatusMessage("Card salvo! Você pode baixá-lo no painel abaixo.");
+    const nextList = editingId
+      ? cards.map((c) => (c.id === cardId ? cardToSave : c))
+      : [cardToSave, ...cards];
+    const currentIndex = nextList.findIndex((c) => c.id === cardId);
+    const nextCardWithoutArt = nextList
+      .slice(currentIndex + 1)
+      .find((c) => !overlayCache[c.id]);
+
+    if (nextCardWithoutArt) {
+      await handleLoadCard(nextCardWithoutArt);
+      setStatusMessage(
+        'Card salvo! Indo para o próximo sem arte. Clique em "Novo card" para criar outro do zero.'
+      );
+    } else {
+      setEditingId(cardId);
+      setStatusMessage("Card salvo! Você pode baixá-lo no painel abaixo.");
+    }
   };
 
   const handleDownload = async (htmlId: string, filename: string) => {
@@ -993,6 +1252,7 @@ export default function Home() {
         icon,
         icon2Id,
         selectedSkills,
+        skillNumbers,
         equip3Number,
         linhaDeTiro,
         effect2Icon,
@@ -1008,6 +1268,7 @@ export default function Home() {
         icon,
         icon2Id,
         selectedSkills,
+        skillNumbers: skillNumbers ?? {},
         skillId: selectedSkills[0] ?? null,
         equip3Number,
         linhaDeTiro,
@@ -1086,6 +1347,7 @@ export default function Home() {
           icon2Id?: string | null;
           icon2?: string | null;
           selectedSkills?: string[];
+          skillNumbers?: Record<string, string>;
           equip3Number?: string | null;
           linhaDeTiro?: string | null;
           effect2Icon?: string | null;
@@ -1112,6 +1374,7 @@ export default function Home() {
             type: CARD_TYPE_LABEL,
             layoutId: layout.id,
             selectedSkills: item.selectedSkills ?? [],
+            skillNumbers: item.skillNumbers ?? {},
             equip3Number: item.equip3Number ?? "",
             linhaDeTiro: item.linhaDeTiro ?? "",
             effect2Icon: item.effect2Icon ?? "",
@@ -1212,39 +1475,39 @@ export default function Home() {
             ) : (
               <div className="flex flex-nowrap gap-3">
                 {cards.map((savedCard) => {
-                  const overlayPreview = overlayCache[savedCard.id];
+                  const scale = 150 / CARD_DIMENSIONS.width;
                   return (
                     <div key={savedCard.id} className="relative group shrink-0">
                       <button
                         type="button"
                         onClick={() => void handleLoadCard(savedCard)}
-                        className="group relative z-0 flex w-[150px] flex-col items-center overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-2 text-center text-sm text-white transition hover:border-white hover:scale-105 hover:z-10"
-                        style={{ height: "250px" }}
+                        className="group relative z-0 block w-[150px] overflow-hidden rounded-2xl border border-white/10 bg-slate-900/50 transition hover:border-white hover:scale-105 hover:z-10"
+                        style={{
+                          height: `${Math.round(
+                            CARD_DIMENSIONS.height * scale
+                          )}px`,
+                        }}
                       >
-                        <div className="relative h-32 w-full overflow-hidden rounded-2xl bg-slate-900/50">
-                          {overlayPreview ? (
-                            <img
-                              src={overlayPreview}
-                              alt="Overlay"
-                              className="absolute inset-0 h-full w-full object-cover"
-                              style={{ zIndex: 0 }}
-                            />
-                          ) : (
-                            <div className="flex h-full w-full items-center justify-center text-xs uppercase tracking-[0.3em] text-slate-400">
-                              Sem arte
-                            </div>
-                          )}
-                        </div>
-                        <p
-                          className="mt-2 font-semibold text-white"
+                        <div
+                          className="absolute left-0 top-0 origin-top-left"
                           style={{
-                            height: "40px",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
+                            width: CARD_DIMENSIONS.width,
+                            height: CARD_DIMENSIONS.height,
+                            transform: `scale(${scale})`,
                           }}
                         >
-                          {savedCard.title || "Sem título"}
-                        </p>
+                          <CardPreview
+                            card={savedCard}
+                            overlayImage={overlayCache[savedCard.id] ?? null}
+                            htmlId={`thumb-${savedCard.id}`}
+                            iconOptionsA={iconOptionsA}
+                            skillIconOptions={skillIconOptions}
+                            effect2IconOptions={effect2IconOptions}
+                            effect3IconOptions={effect3IconOptions}
+                            effect4IconOptions={effect4IconOptions}
+                            effectIconOptions04={effectIconOptions04}
+                          />
+                        </div>
                       </button>
                       <button
                         type="button"
@@ -1252,8 +1515,7 @@ export default function Home() {
                           event.stopPropagation();
                           handleRemoveCard(savedCard.id);
                         }}
-                        className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full border border-white/30 bg-red-600/90 text-xs font-bold text-white opacity-0 transition hover:opacity-100 group-hover:opacity-100"
-                        style={{ zIndex: 30 }}
+                        className="absolute right-1 top-1 z-20 flex h-5 w-5 items-center justify-center rounded-full border border-white/30 bg-red-600/90 text-xs font-bold text-white opacity-0 transition hover:opacity-100 group-hover:opacity-100"
                       >
                         ×
                       </button>
@@ -1275,20 +1537,16 @@ export default function Home() {
           <div className="space-y-6 rounded-3xl  border-white/10 bg-black/40 p-6 shadow-xl">
             <div className="flex flex-col gap-3">
               <h2 className="text-2xl font-semibold">Conteúdo do card</h2>
-              <p className="text-sm text-slate-400">
-                Preencha os campos abaixo e veja o card atualizar ao vivo à
-                direita.
-              </p>
             </div>
 
             <div className="space-y-4">
               <label className="flex flex-col gap-2 text-sm text-slate-300">
-                Título
-                <input
-                  type="text"
+                Título (Enter quebra a linha)
+                <textarea
+                  rows={2}
                   placeholder="Lançamento imperdível"
                   value={form.title ?? ""}
-                  className="rounded-2xl border border-white/10 bg-transparent px-4 py-3 text-base text-white outline-none transition focus:border-slate-300 uppercase"
+                  className="rounded-2xl border border-white/10 bg-transparent px-4 py-3 text-base text-white outline-none transition focus:border-slate-300 uppercase resize-none"
                   onChange={(event) =>
                     setForm((prev) => ({
                       ...prev,
@@ -1298,7 +1556,7 @@ export default function Home() {
                 />
               </label>
               <label className="flex flex-col gap-2 text-sm text-slate-300">
-                Descrição
+                Descrição (Enter quebra a linha)
                 <textarea
                   rows={3}
                   placeholder="Conte um pouco mais sobre a campanha..."
@@ -1319,7 +1577,7 @@ export default function Home() {
                   className="rounded-2xl border border-white/10 bg-transparent px-4 py-3 text-base text-white outline-none transition focus:border-slate-300"
                   onChange={(event) => {
                     const selected = getLayoutConfig(event.target.value);
-                    const isEquip3 = selected.id === "equip3";
+                    const isEquip3 = isEquipWithEffectsLayout(selected.id);
                     setForm((prev) => ({
                       ...prev,
                       layout: selected.id,
@@ -1358,7 +1616,7 @@ export default function Home() {
               </div>
             </div>
 
-            {form.layout !== "equip3" && (
+            {!isEquipWithEffectsLayout(form.layout) && (
               <>
                 <div className="space-y-3">
                   <h3 className="text-xl font-semibold">Ícone 1</h3>
@@ -1419,41 +1677,68 @@ export default function Home() {
               </>
             )}
 
-            {form.layout !== "equip3" && (
+            {!isEquipWithEffectsLayout(form.layout) && (
               <div className="space-y-3">
                 <h3 className="text-xl font-semibold">Skills</h3>
-                <div className="flex gap-3">
+                <div className="flex flex-wrap gap-4">
                   {skillIconOptions.map((skill) => {
                     const selected = form.selectedSkills.includes(skill.id);
                     return (
-                      <button
+                      <div
                         key={skill.id}
-                        type="button"
-                        onClick={() =>
-                          setForm((prev) => {
-                            const exists = prev.selectedSkills.includes(
-                              skill.id
-                            );
-                            const next = exists
-                              ? prev.selectedSkills.filter(
-                                  (id) => id !== skill.id
-                                )
-                              : [...prev.selectedSkills, skill.id];
-                            return { ...prev, selectedSkills: next };
-                          })
-                        }
-                        className={`flex h-12 w-12 items-center justify-center rounded-full border transition ${
-                          selected
-                            ? "border-amber-400 bg-[#EDE4D7]"
-                            : "border-white/20 bg-[#EDE4D7]/70"
-                        }`}
+                        className="flex flex-col items-center gap-1"
                       >
-                        <img
-                          src={skill.src}
-                          alt={skill.label}
-                          className="h-6 w-6 object-contain"
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setForm((prev) => {
+                              const exists = prev.selectedSkills.includes(
+                                skill.id
+                              );
+                              const next = exists
+                                ? prev.selectedSkills.filter(
+                                    (id) => id !== skill.id
+                                  )
+                                : [...prev.selectedSkills, skill.id];
+                              return { ...prev, selectedSkills: next };
+                            })
+                          }
+                          className={`flex h-12 w-12 items-center justify-center rounded-full border transition ${
+                            selected
+                              ? "border-amber-400 bg-[#EDE4D7]"
+                              : "border-white/20 bg-[#EDE4D7]/70"
+                          }`}
+                          title={
+                            TOOLTIP_SKILL_NUMBER[String(Number(skill.id))] ??
+                            skill.label
+                          }
+                        >
+                          <img
+                            src={skill.src}
+                            alt={skill.label}
+                            className="h-6 w-6 object-contain"
+                          />
+                        </button>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          value={form.skillNumbers?.[skill.id] ?? ""}
+                          onChange={(e) =>
+                            setForm((prev) => ({
+                              ...prev,
+                              skillNumbers: {
+                                ...prev.skillNumbers,
+                                [skill.id]: e.target.value.replace(/\D/g, ""),
+                              },
+                            }))
+                          }
+                          className="w-12 rounded border border-white/10 bg-white/5 px-1 py-0.5 text-center text-xs text-white"
+                          placeholder="Nº"
+                          title={Object.entries(TOOLTIP_SKILL_NUMBER)
+                            .map(([k, v]) => `${k} = ${v}`)
+                            .join(" | ")}
                         />
-                      </button>
+                      </div>
                     );
                   })}
                 </div>
@@ -1486,10 +1771,10 @@ export default function Home() {
                 </div>
               </div>
             )}
-            {form.layout === "equip3" && (
+            {isEquipWithEffectsLayout(form.layout) && (
               <>
                 <label className="flex flex-col gap-2 text-sm text-slate-300">
-                  Número de Munição
+                  Marcador de Munição
                   <input
                     type="text"
                     inputMode="numeric"
@@ -1527,7 +1812,7 @@ export default function Home() {
 
                   <div className="space-y-2">
                     <span className="text-sm font-medium text-slate-300">
-                      2. Bloco 2 (Effects/01)
+                      Dados de Ataque
                     </span>
                     <div className="flex flex-wrap items-center gap-2">
                       <input
@@ -1537,11 +1822,17 @@ export default function Home() {
                         onChange={(e) =>
                           setForm((prev) => ({
                             ...prev,
-                            effect2Number: e.target.value.replace(/\D/g, ""),
+                            effect2Number: e.target.value.replace(
+                              /[^\d,]/g,
+                              ""
+                            ),
                           }))
                         }
-                        className="w-14 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-center text-sm text-white"
-                        placeholder="Nº"
+                        className="w-14 rounded-full border border-white/10 bg-white/5 px-2 py-1.5 text-center text-sm text-white"
+                        placeholder="Nº ou 1,2"
+                        title={Object.entries(TOOLTIP_DICE)
+                          .map(([k, v]) => `${v}`)
+                          .join(" | ")}
                       />
                       {effect2IconOptions.map((item) => (
                         <button
@@ -1553,11 +1844,14 @@ export default function Home() {
                               effect2Icon: item.id,
                             }))
                           }
-                          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border transition ${
+                          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border transition ${
                             form.effect2Icon === item.id
                               ? "border-amber-400 bg-[#EDE4D7]"
                               : "border-white/20 bg-[#D9CCBE]"
                           }`}
+                          title={Object.entries(TOOLTIP_DICE)
+                            .map(([k, v]) => `${v}`)
+                            .join(" | ")}
                         >
                           <img
                             src={item.src}
@@ -1571,7 +1865,7 @@ export default function Home() {
 
                   <div className="space-y-2">
                     <span className="text-sm font-medium text-slate-300">
-                      3. Bloco 3 (Effects/02)
+                      Efeito secundário
                     </span>
                     <div className="flex flex-wrap items-center gap-2">
                       <input
@@ -1586,6 +1880,9 @@ export default function Home() {
                         }
                         className="w-14 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-center text-sm text-white"
                         placeholder="Nº"
+                        title={Object.entries(TOOLTIP_EFFECT3)
+                          .map(([k, v]) => `${k} = ${v}`)
+                          .join(" | ")}
                       />
                       {effect3IconOptions.map((item) => (
                         <button
@@ -1602,6 +1899,10 @@ export default function Home() {
                               ? "border-amber-400 bg-[#EDE4D7]"
                               : "border-white/20 bg-[#D9CCBE]"
                           }`}
+                          title={
+                            TOOLTIP_EFFECT3[String(Number(item.id))] ??
+                            item.label
+                          }
                         >
                           <img
                             src={item.src}
@@ -1615,7 +1916,7 @@ export default function Home() {
 
                   <div className="space-y-2">
                     <span className="text-sm font-medium text-slate-300">
-                      4. Bloco 4 (Effects/03)
+                      Efeito primário
                     </span>
                     <div className="flex flex-wrap items-center gap-2">
                       <input
@@ -1630,6 +1931,9 @@ export default function Home() {
                         }
                         className="w-14 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-center text-sm text-white"
                         placeholder="Nº"
+                        title={Object.entries(TOOLTIP_EFFECT4)
+                          .map(([k, v]) => `${k} = ${v}`)
+                          .join(" | ")}
                       />
                       {effect4IconOptions.map((item) => (
                         <button
@@ -1646,6 +1950,10 @@ export default function Home() {
                               ? "border-amber-400 bg-[#EDE4D7]"
                               : "border-white/20 bg-[#D9CCBE]"
                           }`}
+                          title={
+                            TOOLTIP_EFFECT4[String(Number(item.id))] ??
+                            item.label
+                          }
                         >
                           <img
                             src={item.src}
@@ -1661,44 +1969,70 @@ export default function Home() {
                 <div className="space-y-3 border-t border-white/10 pt-4">
                   <h3 className="text-xl font-semibold">Skills</h3>
 
-                  <div className="flex flex-wrap gap-2 justify-center items-center">
+                  <div className="flex flex-wrap gap-4 justify-center items-start">
                     {effectIconOptions04.map((item) => {
                       const selected = form.selectedSkills.includes(item.id);
                       return (
-                        <button
+                        <div
                           key={item.id}
-                          type="button"
-                          onClick={() =>
-                            setForm((prev) => {
-                              const exists = prev.selectedSkills.includes(
-                                item.id
-                              );
-                              const next = exists
-                                ? prev.selectedSkills.filter(
-                                    (id) => id !== item.id
-                                  )
-                                : [...prev.selectedSkills, item.id];
-                              return { ...prev, selectedSkills: next };
-                            })
-                          }
-                          className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full border transition hover:opacity-90 ${
-                            selected
-                              ? "border-amber-400 bg-[#EDE4D7]"
-                              : "border-white/20"
-                          }`}
-                          style={
-                            selected
-                              ? undefined
-                              : { backgroundColor: "#D9CCBE" }
-                          }
-                          title={item.label}
+                          className="flex flex-col items-center gap-1"
                         >
-                          <img
-                            src={item.src}
-                            alt={item.label}
-                            className="h-8 w-8 object-contain"
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setForm((prev) => {
+                                const exists = prev.selectedSkills.includes(
+                                  item.id
+                                );
+                                const next = exists
+                                  ? prev.selectedSkills.filter(
+                                      (id) => id !== item.id
+                                    )
+                                  : [...prev.selectedSkills, item.id];
+                                return { ...prev, selectedSkills: next };
+                              })
+                            }
+                            className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full border transition hover:opacity-90 ${
+                              selected
+                                ? "border-amber-400 bg-[#EDE4D7]"
+                                : "border-white/20"
+                            }`}
+                            style={
+                              selected
+                                ? undefined
+                                : { backgroundColor: "#D9CCBE" }
+                            }
+                            title={
+                              TOOLTIP_SKILL_NUMBER[String(Number(item.id))] ??
+                              item.label
+                            }
+                          >
+                            <img
+                              src={item.src}
+                              alt={item.label}
+                              className="h-8 w-8 object-contain"
+                            />
+                          </button>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            value={form.skillNumbers?.[item.id] ?? ""}
+                            onChange={(e) =>
+                              setForm((prev) => ({
+                                ...prev,
+                                skillNumbers: {
+                                  ...prev.skillNumbers,
+                                  [item.id]: e.target.value.replace(/\D/g, ""),
+                                },
+                              }))
+                            }
+                            className="w-12 rounded border border-white/10 bg-white/5 px-1 py-0.5 text-center text-xs text-white"
+                            placeholder="Nº"
+                            title={Object.entries(TOOLTIP_SKILL_NUMBER)
+                              .map(([k, v]) => `${k} = ${v}`)
+                              .join(" | ")}
                           />
-                        </button>
+                        </div>
                       );
                     })}
                   </div>
@@ -1757,7 +2091,7 @@ export default function Home() {
               </div>
             )}
           </div>
-          <div className="flex flex-col items-center gap-5 rounded-3xl border border-white/10 bg-slate-900/70 p-6 shadow-xl">
+          <div className="flex flex-col items-center gap-5 rounded-3xl border border-white/10 bg-slate-900/70 p-6 shadow-xl self-start">
             <div className="overflow-x-auto" style={{ width: "100%" }}>
               <CardPreview
                 card={previewCard}
