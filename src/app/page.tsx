@@ -1,6 +1,12 @@
 "use client";
 
-import { ChangeEvent, useEffect, useRef, useState } from "react";
+import {
+  ChangeEvent,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { toPng } from "html-to-image";
 import { Bebas_Neue, EB_Garamond } from "next/font/google";
 import JSZip from "jszip";
@@ -14,6 +20,73 @@ type IconOption = {
 
 /** Listas de ícones vêm da API /api/icons?path= (A, B, C, Effects/01, etc.) */
 const DEFAULT_ICON_FALLBACK = "/models/icons/A/01.png";
+
+/** Substituição de códigos 0001–0010 por ícones inline (como emoji). Caminho: public/models/icons/Icons/ */
+const INLINE_ICON_MAP: Record<string, string> = {
+  "0001": "/models/icons/Icons/01.png",
+  "0002": "/models/icons/Icons/02.png",
+  "0003": "/models/icons/Icons/03.png",
+  "0004": "/models/icons/Icons/04.png",
+  "0005": "/models/icons/Icons/05.png",
+  "0006": "/models/icons/Icons/06.png",
+  "0007": "/models/icons/Icons/07.png",
+  "0008": "/models/icons/Icons/08.png",
+  "0009": "/models/icons/Icons/09.png",
+  "0010": "/models/icons/Icons/10.png",
+};
+
+function renderTextWithInlineIcons(
+  text: string,
+  iconSizePx: number = 38
+): ReactNode {
+  if (!text) return text;
+  const codes = Object.keys(INLINE_ICON_MAP).sort(
+    (a, b) => b.length - a.length || b.localeCompare(a)
+  );
+  const pattern = codes.length
+    ? new RegExp(
+        `(${codes
+          .map((c) => c.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+          .join("|")})`,
+        "g"
+      )
+    : /(?!)/g;
+  const parts: ReactNode[] = [];
+  let lastIndex = 0;
+  let key = 0;
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(text.slice(lastIndex, match.index));
+    }
+    const src = INLINE_ICON_MAP[match[1]];
+    if (src) {
+      parts.push(
+        <img
+          key={`icon-${key++}`}
+          src={src}
+          alt=""
+          className="inline-block"
+          style={{
+            width: iconSizePx,
+            height: iconSizePx,
+            verticalAlign: "text-bottom",
+            marginBottom: 2,
+          }}
+        />
+      );
+    } else {
+      parts.push(match[1]);
+    }
+    lastIndex = pattern.lastIndex;
+  }
+  if (lastIndex < text.length) {
+    parts.push(text.slice(lastIndex));
+  }
+  if (parts.length === 0) return text;
+  if (parts.length === 1 && typeof parts[0] === "string") return parts[0];
+  return <>{parts}</>;
+}
 
 /** Tooltips para rolagem de dados (Bloco 2) */
 const TOOLTIP_DICE: Record<string, string> = {
@@ -193,8 +266,8 @@ const layoutOptions: LayoutOption[] = [
   },
   {
     id: "equip4",
-    label: "Arma 2",
-    image: "/models/cards/04.png",
+    label: "Tensão (verde/azul)",
+    image: "/models/cards/04-A.png",
     positions: {
       icon: { top: "292px", left: "72px" },
       icon2: { top: "120px", left: "545px" },
@@ -203,7 +276,7 @@ const layoutOptions: LayoutOption[] = [
         left: "50px",
         width: "594px",
         height: "120px",
-        fontSize: "clamp(2.8rem, 3vw, 3.8rem)",
+        fontSize: "clamp(3rem, 4vw, 4rem)",
       },
       description: { top: "220px", left: "60px" },
       overlay: {
@@ -227,12 +300,343 @@ const layoutOptions: LayoutOption[] = [
       effect4NumberPosition: { top: "0", left: "50%" },
     },
   },
+  {
+    id: "equip5",
+    label: "Tensão (verde/amarelo)",
+    image: "/models/cards/04-B.png",
+    positions: {
+      icon: { top: "292px", left: "72px" },
+      icon2: { top: "120px", left: "545px" },
+      title: {
+        top: "57px",
+        left: "50px",
+        width: "594px",
+        height: "120px",
+        fontSize: "clamp(3rem, 4vw, 4rem)",
+      },
+      description: { top: "220px", left: "60px" },
+      overlay: { top: "215px", left: "215px", width: "410px", height: "285px" },
+      skills: { top: "850px", left: "70px", width: "560px", height: "120px" },
+      effect1: { top: "675px", left: "59px" },
+      effect2: { top: "670px", left: "208px" },
+      effect3: { top: "670px", left: "357px" },
+      effect4: { top: "670px", left: "506px" },
+      effect2NumberPosition: { top: "0", left: "50%" },
+      effect3NumberPosition: { top: "0", left: "50%" },
+      effect4NumberPosition: { top: "0", left: "50%" },
+    },
+  },
+  {
+    id: "equip6",
+    label: "Tensão (Verde/Roxo)",
+    image: "/models/cards/04-C.png",
+    positions: {
+      icon: { top: "292px", left: "72px" },
+      icon2: { top: "120px", left: "545px" },
+      title: {
+        top: "57px",
+        left: "50px",
+        width: "594px",
+        height: "120px",
+        fontSize: "clamp(3rem, 4vw, 4rem)",
+      },
+      description: { top: "220px", left: "60px" },
+      overlay: { top: "215px", left: "215px", width: "410px", height: "285px" },
+      skills: { top: "850px", left: "70px", width: "560px", height: "120px" },
+      effect1: { top: "675px", left: "59px" },
+      effect2: { top: "670px", left: "208px" },
+      effect3: { top: "670px", left: "357px" },
+      effect4: { top: "670px", left: "506px" },
+      effect2NumberPosition: { top: "0", left: "50%" },
+      effect3NumberPosition: { top: "0", left: "50%" },
+      effect4NumberPosition: { top: "0", left: "50%" },
+    },
+  },
+  {
+    id: "equip7",
+    label: "Tensão (Ambar/Azul)",
+    image: "/models/cards/05-A.png",
+    positions: {
+      icon: { top: "292px", left: "72px" },
+      icon2: { top: "120px", left: "545px" },
+      title: {
+        top: "57px",
+        left: "50px",
+        width: "594px",
+        height: "120px",
+        fontSize: "clamp(3rem, 4vw, 4rem)",
+      },
+      description: { top: "220px", left: "60px" },
+      overlay: { top: "215px", left: "215px", width: "410px", height: "285px" },
+      skills: { top: "850px", left: "70px", width: "560px", height: "120px" },
+      effect1: { top: "675px", left: "59px" },
+      effect2: { top: "670px", left: "208px" },
+      effect3: { top: "670px", left: "357px" },
+      effect4: { top: "670px", left: "506px" },
+      effect2NumberPosition: { top: "0", left: "50%" },
+      effect3NumberPosition: { top: "0", left: "50%" },
+      effect4NumberPosition: { top: "0", left: "50%" },
+    },
+  },
+  {
+    id: "equip8",
+    label: "Tensão (Ambar/Azul(Raro))",
+    image: "/models/cards/05-F.png",
+    positions: {
+      icon: { top: "292px", left: "72px" },
+      icon2: { top: "120px", left: "545px" },
+      title: {
+        top: "70px",
+        left: "55px",
+        width: "454px",
+        height: "120px",
+        fontSize: "clamp(3rem, 4vw, 4rem)",
+      },
+      description: { top: "220px", left: "60px" },
+      overlay: { top: "215px", left: "215px", width: "410px", height: "285px" },
+      skills: { top: "850px", left: "70px", width: "560px", height: "120px" },
+      effect1: { top: "675px", left: "59px" },
+      effect2: { top: "670px", left: "208px" },
+      effect3: { top: "670px", left: "357px" },
+      effect4: { top: "670px", left: "506px" },
+      effect2NumberPosition: { top: "0", left: "50%" },
+      effect3NumberPosition: { top: "0", left: "50%" },
+      effect4NumberPosition: { top: "0", left: "50%" },
+    },
+  },
+  {
+    id: "equip9",
+    label: "Tensão (Ambar/Roxo(Raro))",
+    image: "/models/cards/05-B.png",
+    positions: {
+      icon: { top: "292px", left: "72px" },
+      icon2: { top: "120px", left: "545px" },
+      title: {
+        top: "65px",
+        left: "55px",
+        width: "454px",
+        height: "120px",
+        fontSize: "clamp(3rem, 4vw, 4rem)",
+      },
+      description: { top: "220px", left: "60px" },
+      overlay: { top: "215px", left: "215px", width: "410px", height: "285px" },
+      skills: { top: "850px", left: "70px", width: "560px", height: "120px" },
+      effect1: { top: "675px", left: "59px" },
+      effect2: { top: "670px", left: "208px" },
+      effect3: { top: "670px", left: "357px" },
+      effect4: { top: "670px", left: "506px" },
+      effect2NumberPosition: { top: "0", left: "50%" },
+      effect3NumberPosition: { top: "0", left: "50%" },
+      effect4NumberPosition: { top: "0", left: "50%" },
+    },
+  },
+  {
+    id: "equip10",
+    label: "Tensão (Ambar/Azul(Grave Digger))",
+    image: "/models/cards/05-C.png",
+    positions: {
+      icon: { top: "292px", left: "72px" },
+      icon2: { top: "120px", left: "545px" },
+      title: {
+        top: "60px",
+        left: "190px",
+        width: "455px",
+        height: "120px",
+        fontSize: "clamp(3rem, 4vw, 4rem)",
+      },
+      description: { top: "220px", left: "60px" },
+      overlay: { top: "215px", left: "215px", width: "410px", height: "285px" },
+      skills: { top: "850px", left: "70px", width: "560px", height: "120px" },
+      effect1: { top: "675px", left: "59px" },
+      effect2: { top: "670px", left: "208px" },
+      effect3: { top: "670px", left: "357px" },
+      effect4: { top: "670px", left: "506px" },
+      effect2NumberPosition: { top: "0", left: "50%" },
+      effect3NumberPosition: { top: "0", left: "50%" },
+      effect4NumberPosition: { top: "0", left: "50%" },
+    },
+  },
+  {
+    id: "equip11",
+    label: "Tensão (Ambar/Azul(Raro - Grave Digger))",
+    image: "/models/cards/05-D.png",
+    positions: {
+      icon: { top: "292px", left: "72px" },
+      icon2: { top: "120px", left: "545px" },
+      title: {
+        top: "60px",
+        left: "190px",
+        width: "315px",
+        height: "120px",
+        fontSize: "clamp(3rem, 4vw, 4rem)",
+      },
+      description: { top: "220px", left: "60px" },
+      overlay: { top: "215px", left: "215px", width: "410px", height: "285px" },
+      skills: { top: "850px", left: "70px", width: "560px", height: "120px" },
+      effect1: { top: "675px", left: "59px" },
+      effect2: { top: "670px", left: "208px" },
+      effect3: { top: "670px", left: "357px" },
+      effect4: { top: "670px", left: "506px" },
+      effect2NumberPosition: { top: "0", left: "50%" },
+      effect3NumberPosition: { top: "0", left: "50%" },
+      effect4NumberPosition: { top: "0", left: "50%" },
+    },
+  },
+  {
+    id: "equip12",
+    label: "Tensão (Ambar/Amarelo(Raro))",
+    image: "/models/cards/05-E.png",
+    positions: {
+      icon: { top: "292px", left: "72px" },
+      icon2: { top: "120px", left: "545px" },
+      title: {
+        top: "57px",
+        left: "60px",
+        width: "454px",
+        height: "120px",
+        fontSize: "clamp(3rem, 4vw, 4rem)",
+      },
+      description: { top: "220px", left: "60px" },
+      overlay: { top: "215px", left: "215px", width: "410px", height: "285px" },
+      skills: { top: "850px", left: "70px", width: "560px", height: "120px" },
+      effect1: { top: "675px", left: "59px" },
+      effect2: { top: "670px", left: "208px" },
+      effect3: { top: "670px", left: "357px" },
+      effect4: { top: "670px", left: "506px" },
+      effect2NumberPosition: { top: "0", left: "50%" },
+      effect3NumberPosition: { top: "0", left: "50%" },
+      effect4NumberPosition: { top: "0", left: "50%" },
+    },
+  },
+  {
+    id: "equip13",
+    label: "Tensão (Vermelho/Azul)",
+    image: "/models/cards/06-A.png",
+    positions: {
+      icon: { top: "292px", left: "72px" },
+      icon2: { top: "120px", left: "545px" },
+      title: {
+        top: "60px",
+        left: "195px",
+        width: "454px",
+        height: "120px",
+        fontSize: "clamp(3rem, 4vw, 4rem)",
+      },
+      description: { top: "220px", left: "60px" },
+      overlay: { top: "215px", left: "215px", width: "410px", height: "285px" },
+      skills: { top: "850px", left: "70px", width: "560px", height: "120px" },
+      effect1: { top: "675px", left: "59px" },
+      effect2: { top: "670px", left: "208px" },
+      effect3: { top: "670px", left: "357px" },
+      effect4: { top: "670px", left: "506px" },
+      effect2NumberPosition: { top: "0", left: "50%" },
+      effect3NumberPosition: { top: "0", left: "50%" },
+      effect4NumberPosition: { top: "0", left: "50%" },
+    },
+  },
+  {
+    id: "equip14",
+    label: "Tensão (vermelho e azul (raro))",
+    image: "/models/cards/06-B.png",
+    positions: {
+      icon: { top: "292px", left: "72px" },
+      icon2: { top: "120px", left: "545px" },
+      title: {
+        top: "67px",
+        left: "195px",
+        width: "324px",
+        height: "120px",
+        fontSize: "clamp(3rem, 4vw, 4rem)",
+      },
+      description: { top: "220px", left: "60px" },
+      overlay: { top: "215px", left: "215px", width: "410px", height: "285px" },
+      skills: { top: "850px", left: "70px", width: "560px", height: "120px" },
+      effect1: { top: "675px", left: "59px" },
+      effect2: { top: "670px", left: "208px" },
+      effect3: { top: "670px", left: "357px" },
+      effect4: { top: "670px", left: "506px" },
+      effect2NumberPosition: { top: "0", left: "50%" },
+      effect3NumberPosition: { top: "0", left: "50%" },
+      effect4NumberPosition: { top: "0", left: "50%" },
+    },
+  },
+  {
+    id: "equip15",
+    label: "Tensão (Vermelho/Roxo)",
+    image: "/models/cards/06-C.png",
+    positions: {
+      icon: { top: "292px", left: "72px" },
+      icon2: { top: "120px", left: "545px" },
+      title: {
+        top: "67px",
+        left: "195px",
+        width: "454px",
+        height: "120px",
+        fontSize: "clamp(3rem, 4vw, 4rem)",
+      },
+      description: { top: "220px", left: "60px" },
+      overlay: { top: "215px", left: "215px", width: "410px", height: "285px" },
+      skills: { top: "850px", left: "70px", width: "560px", height: "120px" },
+      effect1: { top: "675px", left: "59px" },
+      effect2: { top: "670px", left: "208px" },
+      effect3: { top: "670px", left: "357px" },
+      effect4: { top: "670px", left: "506px" },
+      effect2NumberPosition: { top: "0", left: "50%" },
+      effect3NumberPosition: { top: "0", left: "50%" },
+      effect4NumberPosition: { top: "0", left: "50%" },
+    },
+  },
+  {
+    id: "equip16",
+    label: "Tensão (vermelho e roxo (raro))",
+    image: "/models/cards/06-D.png",
+    positions: {
+      icon: { top: "292px", left: "72px" },
+      icon2: { top: "120px", left: "545px" },
+      title: {
+        top: "67px",
+        left: "194px",
+        width: "324px",
+        height: "120px",
+        fontSize: "clamp(3rem, 4vw, 4rem)",
+      },
+      description: { top: "220px", left: "60px" },
+      overlay: { top: "215px", left: "215px", width: "410px", height: "285px" },
+      skills: { top: "850px", left: "70px", width: "560px", height: "120px" },
+      effect1: { top: "675px", left: "59px" },
+      effect2: { top: "670px", left: "208px" },
+      effect3: { top: "670px", left: "357px" },
+      effect4: { top: "670px", left: "506px" },
+      effect2NumberPosition: { top: "0", left: "50%" },
+      effect3NumberPosition: { top: "0", left: "50%" },
+      effect4NumberPosition: { top: "0", left: "50%" },
+    },
+  },
 ];
 
-/** Layouts que usam efeitos (equip3/equip4): linha de tiro, blocos de efeito, skills Effects/04 */
-const EQUIP_LAYOUTS_WITH_EFFECTS = ["equip3", "equip4"];
+/** Layouts que usam efeitos (equip3): linha de tiro, blocos de efeito, skills Effects/04 */
+const EQUIP_LAYOUTS_WITH_EFFECTS = ["equip3"];
 const isEquipWithEffectsLayout = (layoutId: string) =>
   EQUIP_LAYOUTS_WITH_EFFECTS.includes(layoutId);
+
+/** Layouts de tensão (equip4–equip16): só título, descrição e ícones de tensão */
+const TENSION_LAYOUT_IDS = [
+  "equip4",
+  "equip5",
+  "equip6",
+  "equip7",
+  "equip8",
+  "equip9",
+  "equip10",
+  "equip11",
+  "equip12",
+  "equip13",
+  "equip14",
+  "equip15",
+  "equip16",
+];
+const isTensionLayout = (layoutId: string) =>
+  TENSION_LAYOUT_IDS.includes(layoutId);
 
 const mergeLayoutPositions = (
   candidate: Partial<LayoutPositions>,
@@ -510,7 +914,7 @@ const CardPreview = ({
       className="relative overflow-hidden rounded-3xl border-2 border-white/30 transition"
       style={cardStyle}
     >
-      {card.layoutId !== "equip4" && overlayImage && (
+      {!isTensionLayout(card.layoutId) && overlayImage && (
         <img
           src={overlayImage}
           alt="Arte personalizada do card"
@@ -532,7 +936,7 @@ const CardPreview = ({
           }}
         />
       )}
-      {card.layoutId !== "equip4" && card.selectedSkills?.length > 0 && (
+      {!isTensionLayout(card.layoutId) && card.selectedSkills?.length > 0 && (
         <div
           className="flex flex-wrap items-center justify-center gap-2"
           style={{
@@ -589,7 +993,7 @@ const CardPreview = ({
         </div>
       )}
       <div className="flex h-full flex-col gap-0 text-white">
-        {card.layoutId !== "equip4" && (
+        {!isTensionLayout(card.layoutId) && (
           <div className="flex items-center gap-4">
             <div
               className="relative flex h-24 w-24 flex-col items-center justify-center"
@@ -924,7 +1328,7 @@ const CardPreview = ({
           </div>
         )}
         <h3
-          className="leading-tight text-black text-center drop-shadow-lg"
+          className="leading-tight text-black text-center drop-shadow-lg "
           style={{
             position: "absolute",
             top: layoutPositions.title.top,
@@ -944,79 +1348,104 @@ const CardPreview = ({
             flexShrink: 1,
             flexBasis: "auto",
             flex: 1,
-            ...(card.layoutId === "equip4" ? { backgroundColor: "red" } : {}),
           }}
         >
           {card.title || ""}
         </h3>
-        <p
-          className="absolute text-4xl text-black drop-shadow-lg text-center"
-          style={{
-            top: layoutPositions.description.top,
-            left: layoutPositions.description.left,
-            fontFamily: ebGaramond.style.fontFamily,
-            fontWeight: 590,
-            lineHeight: 1,
-            width: "570px",
-            height: "420px",
-            whiteSpace: "pre-line",
-            ...(card.layoutId === "equip4" ? { backgroundColor: "red" } : {}),
-          }}
-        >
-          {card.description || ""}
-        </p>
-        {card.layoutId === "equip4" && (
+        {isTensionLayout(card.layoutId) ? (
           <div
-            className="absolute flex flex-col gap-3 text-black"
+            className="absolute flex flex-col gap-3 text-black text-4xl drop-shadow-lg"
             style={{
-              top: "520px",
+              top: layoutPositions.description.top,
               left: layoutPositions.description.left,
               width: "570px",
               fontFamily: ebGaramond.style.fontFamily,
               fontWeight: 590,
-              fontSize: "1.25rem",
-              lineHeight: 1.2,
+              lineHeight: 1,
             }}
           >
-            {card.tension1Icon && (
-              <div className="flex items-center gap-3">
-                {(() => {
-                  const opt = tensionIconOptions.find(
-                    (o) => o.id === card.tension1Icon
-                  );
-                  return opt ? (
+            <p
+              className="m-0 w-full text-center whitespace-pre-line"
+              style={{
+                fontFamily: ebGaramond.style.fontFamily,
+                fontWeight: 590,
+                lineHeight: 1,
+              }}
+            >
+              {(() => {
+                const desc = card.description || "";
+                const br = desc.indexOf("\n");
+                if (br === -1) return renderTextWithInlineIcons(desc);
+                const first = desc.slice(0, br);
+                const rest = desc.slice(br + 1);
+                return (
+                  <>
+                    <span style={{ fontWeight: 700 }}>
+                      {renderTextWithInlineIcons(first)}
+                    </span>
+                    {"\n"}
+                    {renderTextWithInlineIcons(rest)}
+                  </>
+                );
+              })()}
+            </p>
+            {(card.tension1Icon || card.tension2Icon) && (
+              <div className="flex flex-col gap-3">
+                {card.tension2Icon && tensionIconOptions[1] && (
+                  <div className="flex items-center gap-3">
                     <img
-                      src={opt.src}
-                      alt={opt.label}
-                      className="h-12 w-12 shrink-0 object-contain"
+                      src={tensionIconOptions[1].src}
+                      alt={tensionIconOptions[1].label}
+                      className="h-26 w-30 shrink-0 object-contain"
                     />
-                  ) : null;
-                })()}
-                <span className="flex-1 text-left whitespace-pre-line">
-                  {card.tension1Text || ""}
-                </span>
-              </div>
-            )}
-            {card.tension2Icon && (
-              <div className="flex items-center gap-3">
-                {(() => {
-                  const opt = tensionIconOptions.find(
-                    (o) => o.id === card.tension2Icon
-                  );
-                  return opt ? (
+                    <span
+                      className="flex-1 text-left whitespace-pre-line"
+                      style={{
+                        fontFamily: ebGaramond.style.fontFamily,
+                        fontWeight: 590,
+                      }}
+                    >
+                      {renderTextWithInlineIcons(card.tension2Text || "")}
+                    </span>
+                  </div>
+                )}
+                {card.tension1Icon && tensionIconOptions[0] && (
+                  <div className="flex items-center gap-3">
                     <img
-                      src={opt.src}
-                      alt={opt.label}
-                      className="h-12 w-12 shrink-0 object-contain"
+                      src={tensionIconOptions[0].src}
+                      alt={tensionIconOptions[0].label}
+                      className="h-26 w-30 shrink-0 object-contain"
                     />
-                  ) : null;
-                })()}
-                <span className="flex-1 text-left whitespace-pre-line">
-                  {card.tension2Text || ""}
-                </span>
+                    <span
+                      className="flex-1 text-left whitespace-pre-line"
+                      style={{
+                        fontFamily: ebGaramond.style.fontFamily,
+                        fontWeight: 590,
+                      }}
+                    >
+                      {renderTextWithInlineIcons(card.tension1Text || "")}
+                    </span>
+                  </div>
+                )}
               </div>
             )}
           </div>
+        ) : (
+          <p
+            className="absolute text-3xl text-black drop-shadow-lg text-center"
+            style={{
+              top: layoutPositions.description.top,
+              left: layoutPositions.description.left,
+              fontFamily: ebGaramond.style.fontFamily,
+              fontWeight: 590,
+              lineHeight: 1,
+              width: "570px",
+              height: "420px",
+              whiteSpace: "pre-line",
+            }}
+          >
+            {renderTextWithInlineIcons(card.description || "")}
+          </p>
         )}
       </div>
     </div>
@@ -1053,7 +1482,18 @@ export default function Home() {
   const [tensionIconOptions, setTensionIconOptions] = useState<IconOption[]>(
     []
   );
+  const [exportZipProgress, setExportZipProgress] = useState<number | null>(
+    null
+  );
   const importFileRef = useRef<HTMLInputElement | null>(null);
+  const descriptionTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  useEffect(() => {
+    const el = descriptionTextareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.max(el.scrollHeight, 80)}px`;
+  }, [form.description]);
 
   useEffect(() => {
     const paths = [
@@ -1392,9 +1832,12 @@ export default function Home() {
 
   const handleExportZip = async () => {
     if (cards.length === 0) return;
+    setExportZipProgress(0);
     const zip = new JSZip();
     const cardsFolder = zip.folder("cards");
-    for (const card of cards) {
+    const total = cards.length;
+    for (let i = 0; i < cards.length; i++) {
+      const card = cards[i];
       const node = document.getElementById(`zip-card-${card.id}`);
       if (!node) continue;
       try {
@@ -1404,14 +1847,19 @@ export default function Home() {
       } catch (error) {
         console.error("Falha ao gerar imagem para exportar:", error);
       }
+      setExportZipProgress(Math.round(((i + 1) / total) * 85));
     }
+    setExportZipProgress(90);
     const blob = await zip.generateAsync({ type: "blob" });
+    setExportZipProgress(95);
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
     link.download = "re-card-creator-cards.zip";
     link.click();
     URL.revokeObjectURL(url);
+    setExportZipProgress(100);
+    setTimeout(() => setExportZipProgress(null), 400);
   };
 
   const handleClearData = async () => {
@@ -1502,14 +1950,62 @@ export default function Home() {
     event.target.value = "";
   };
 
+  const circleRadius = 45;
+  const circleCircumference = 2 * Math.PI * circleRadius;
+
   return (
     <div className="min-h-screen bg-slate-950 text-white">
+      {exportZipProgress !== null && (
+        <div
+          className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm"
+          aria-modal="true"
+          aria-busy="true"
+          aria-label="Preparando download"
+          style={{ pointerEvents: "auto" }}
+        >
+          <div className="flex flex-col items-center gap-6">
+            <div className="relative h-28 w-28">
+              <svg className="h-28 w-28 -rotate-90" viewBox="0 0 100 100">
+                <circle
+                  cx="50"
+                  cy="50"
+                  r={circleRadius}
+                  fill="none"
+                  stroke="rgba(255,255,255,0.15)"
+                  strokeWidth="8"
+                />
+                <circle
+                  cx="50"
+                  cy="50"
+                  r={circleRadius}
+                  fill="none"
+                  stroke="#f59e0b"
+                  strokeWidth="8"
+                  strokeLinecap="round"
+                  strokeDasharray={circleCircumference}
+                  strokeDashoffset={
+                    circleCircumference *
+                    (1 - (exportZipProgress ?? 0) / 100)
+                  }
+                  className="transition-all duration-300 ease-out"
+                />
+              </svg>
+            </div>
+            <p className="text-lg font-medium text-white">
+              Preparando ZIP...
+            </p>
+            <p className="text-3xl font-bold tabular-nums text-amber-400">
+              {exportZipProgress}%
+            </p>
+          </div>
+        </div>
+      )}
       <main className="mx-auto flex max-w-6xl flex-col gap-10 px-6 py-10">
         <header className="space-y-2">
           <p className="text-sm uppercase tracking-[0.5em] text-slate-400">
             RE Card Creator
           </p>
-          <h1 className="text-4xl font-semibold leading-tight">
+          <h1 className="text-3xl font-semibold leading-tight">
             Crie cards com base em um canvas inspirado no Canva, inclua ícones e
             texto e baixe em PNG.
           </h1>
@@ -1538,8 +2034,9 @@ export default function Home() {
               </button>
               <button
                 type="button"
-                className="rounded-2xl border border-white/20 bg-white/5 px-3 py-1 text-xs uppercase tracking-[0.3em] text-white transition hover:border-white"
-                onClick={handleExportZip}
+                disabled={exportZipProgress !== null}
+                className="rounded-2xl border border-white/20 bg-white/5 px-3 py-1 text-xs uppercase tracking-[0.3em] text-white transition hover:border-white disabled:opacity-60 disabled:cursor-not-allowed"
+                onClick={() => void handleExportZip()}
               >
                 Exportar ZIP
               </button>
@@ -1552,7 +2049,7 @@ export default function Home() {
               </button>
               <button
                 type="button"
-                className="rounded-2xl border border-red-500/40 bg-red-600/10 px-3 py-1 text-xs uppercase tracking-[0.3em] text-red-100 transition hover:border-red-300"
+                className="rounded-2xl border  bg-red-600/10 px-3 py-1 text-xs uppercase tracking-[0.3em] text-red-100 transition hover:border-red-300"
                 onClick={() => void handleClearData()}
               >
                 Limpar DB
@@ -1664,10 +2161,12 @@ export default function Home() {
               <label className="flex flex-col gap-2 text-sm text-slate-300">
                 Descrição (Enter quebra a linha)
                 <textarea
+                  ref={descriptionTextareaRef}
                   rows={3}
                   placeholder="Conte um pouco mais sobre a campanha..."
                   value={form.description ?? ""}
-                  className="rounded-2xl border border-white/10 bg-transparent px-4 py-3 text-sm leading-relaxed text-white outline-none transition focus:border-slate-300"
+                  className="rounded-2xl border border-white/10 bg-transparent px-4 py-3 text-sm leading-relaxed text-white outline-none transition focus:border-slate-300 overflow-hidden resize-y min-h-[80px]"
+                  style={{ minHeight: 80 }}
                   onChange={(event) =>
                     setForm((prev) => ({
                       ...prev,
@@ -1680,7 +2179,7 @@ export default function Home() {
                 Layout
                 <select
                   value={form.layout ?? ""}
-                  className="rounded-2xl border border-white/10 bg-transparent px-4 py-3 text-base text-white outline-none transition focus:border-slate-300"
+                  className="rounded-2xl border border-white/10 bg-black px-4 py-3 text-base text-white outline-none transition focus:border-slate-300"
                   onChange={(event) => {
                     const selected = getLayoutConfig(event.target.value);
                     const isEquip3 = isEquipWithEffectsLayout(selected.id);
@@ -1722,7 +2221,7 @@ export default function Home() {
               </div>
             </div>
 
-            {form.layout !== "equip3" && form.layout !== "equip4" && (
+            {form.layout !== "equip3" && !isTensionLayout(form.layout) && (
               <>
                 <div className="space-y-3">
                   <h3 className="text-xl font-semibold">Ícone 1</h3>
@@ -1783,7 +2282,7 @@ export default function Home() {
               </>
             )}
 
-            {form.layout !== "equip3" && form.layout !== "equip4" && (
+            {form.layout !== "equip3" && !isTensionLayout(form.layout) && (
               <div className="space-y-3">
                 <h3 className="text-xl font-semibold">Skills</h3>
                 <div className="flex flex-wrap gap-4">
@@ -2169,92 +2668,102 @@ export default function Home() {
               </>
             )}
 
-            {form.layout === "equip4" && (
+            {isTensionLayout(form.layout) && (
               <div className="space-y-4 border-t border-white/10 pt-4">
                 <span className="text-sm font-medium text-slate-300">
-                  Ícones de tensão
+                  Ícones de tensão (clique no ícone para selecionar)
                 </span>
                 <div className="space-y-3">
-                  <div className="flex flex-wrap items-center gap-2">
-                    {tensionIconOptions.map((item) => (
+                  {tensionIconOptions[1] && (
+                    <div className="flex items-center gap-2">
                       <button
-                        key={item.id}
                         type="button"
                         onClick={() =>
                           setForm((prev) => ({
                             ...prev,
-                            tension1Icon: prev.tension1Icon === item.id ? "" : item.id,
+                            tension2Icon:
+                              prev.tension2Icon === tensionIconOptions[1].id
+                                ? ""
+                                : tensionIconOptions[1].id,
+                            ...(prev.tension2Icon === tensionIconOptions[1].id
+                              ? { tension2Text: "" }
+                              : {}),
                           }))
                         }
                         className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border transition ${
-                          form.tension1Icon === item.id
+                          form.tension2Icon === tensionIconOptions[1].id
                             ? "border-amber-400 bg-[#EDE4D7]"
                             : "border-white/20 bg-[#D9CCBE]"
                         }`}
-                        title={item.label}
+                        title={tensionIconOptions[1].label}
                       >
                         <img
-                          src={item.src}
-                          alt={item.label}
+                          src={tensionIconOptions[1].src}
+                          alt={tensionIconOptions[1].label}
                           className="h-6 w-6 object-contain"
                         />
                       </button>
-                    ))}
-                    {form.tension1Icon && (
-                      <input
-                        type="text"
-                        value={form.tension1Text ?? ""}
-                        onChange={(e) =>
-                          setForm((prev) => ({
-                            ...prev,
-                            tension1Text: e.target.value,
-                          }))
-                        }
-                        className="min-w-[200px] flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none transition focus:border-slate-400"
-                        placeholder="Texto ao lado do ícone 1"
-                      />
-                    )}
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    {tensionIconOptions.map((item) => (
+                      {form.tension2Icon === tensionIconOptions[1].id && (
+                        <input
+                          type="text"
+                          value={form.tension2Text ?? ""}
+                          onChange={(e) =>
+                            setForm((prev) => ({
+                              ...prev,
+                              tension2Text: e.target.value,
+                            }))
+                          }
+                          className="min-w-[200px] flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none transition focus:border-slate-400"
+                          placeholder="Texto ao lado do ícone (caveira)"
+                        />
+                      )}
+                    </div>
+                  )}
+                  {tensionIconOptions[0] && (
+                    <div className="flex items-center gap-2">
                       <button
-                        key={item.id}
                         type="button"
                         onClick={() =>
                           setForm((prev) => ({
                             ...prev,
-                            tension2Icon: prev.tension2Icon === item.id ? "" : item.id,
+                            tension1Icon:
+                              prev.tension1Icon === tensionIconOptions[0].id
+                                ? ""
+                                : tensionIconOptions[0].id,
+                            ...(prev.tension1Icon === tensionIconOptions[0].id
+                              ? { tension1Text: "" }
+                              : {}),
                           }))
                         }
                         className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border transition ${
-                          form.tension2Icon === item.id
+                          form.tension1Icon === tensionIconOptions[0].id
                             ? "border-amber-400 bg-[#EDE4D7]"
                             : "border-white/20 bg-[#D9CCBE]"
                         }`}
-                        title={item.label}
+                        title={tensionIconOptions[0].label}
                       >
                         <img
-                          src={item.src}
-                          alt={item.label}
+                          src={tensionIconOptions[0].src}
+                          alt={tensionIconOptions[0].label}
                           className="h-6 w-6 object-contain"
                         />
                       </button>
-                    ))}
-                    {form.tension2Icon && (
-                      <input
-                        type="text"
-                        value={form.tension2Text ?? ""}
-                        onChange={(e) =>
-                          setForm((prev) => ({
-                            ...prev,
-                            tension2Text: e.target.value,
-                          }))
-                        }
-                        className="min-w-[200px] flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none transition focus:border-slate-400"
-                        placeholder="Texto ao lado do ícone 2"
-                      />
-                    )}
-                  </div>
+                      {form.tension1Icon === tensionIconOptions[0].id && (
+                        <input
+                          type="text"
+                          value={form.tension1Text ?? ""}
+                          onChange={(e) =>
+                            setForm((prev) => ({
+                              ...prev,
+                              tension1Text: e.target.value,
+                            }))
+                          }
+                          className="min-w-[200px] flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none transition focus:border-slate-400"
+                          placeholder="Texto ao lado do ícone (mordida)"
+                        />
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             )}
