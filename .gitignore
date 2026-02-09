@@ -23,6 +23,8 @@
 # misc
 .DS_Store
 *.pem
+# Windows: "nul" é nome de dispositivo reservado; evita erro ao dar git add
+nul
 
 # debug
 npm-debug.log*
