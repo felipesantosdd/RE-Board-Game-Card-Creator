@@ -177,554 +177,24 @@ const TITLE_FONT_REDUCTION_PER_LINE = 0.18;
 /** Tamanho mínimo da fonte do título em px (após redução por quebras). */
 const TITLE_FONT_MIN_PX = 8;
 
-const layoutOptions: LayoutOption[] = [
-  {
-    id: "equip1",
-    label: "Equipamento 1",
-    image: "/models/cards/01.png",
+// Carrega layouts do arquivo JSON e substitui placeholders
+import layoutsData from "../../layouts.json";
+
+const layoutOptions: LayoutOption[] = (layoutsData as LayoutOption[]).map(
+  (layout) => ({
+    ...layout,
     positions: {
-      icon: { top: "202px", left: "45px" },
+      ...layout.positions,
       title: {
-        top: "40px",
-        left: "225px",
-        width: "410px",
-        height: "120px",
-        fontSize: UNIFIED_TITLE_FONT_SIZE,
-      },
-      description: { top: "560px", left: "60px" },
-      overlay: {
-        top: "215px",
-        left: "215px",
-        width: "410px",
-        height: "285px",
-      },
-      skills: {
-        top: "850px",
-        left: "70px",
-        width: "560px",
-        height: "120px",
+        ...layout.positions.title,
+        fontSize:
+          layout.positions.title.fontSize === "__UNIFIED_TITLE_FONT_SIZE__"
+            ? UNIFIED_TITLE_FONT_SIZE
+            : layout.positions.title.fontSize,
       },
     },
-  },
-  {
-    id: "equip2",
-    label: "Equipamento 2",
-    image: "/models/cards/02.png",
-    positions: {
-      icon: { top: "205px", left: "45px" },
-      icon2: { top: "-155px", left: "537px" },
-      title: {
-        top: "45px",
-        left: "215px",
-        width: "280px",
-        height: "120px",
-        fontSize: UNIFIED_TITLE_FONT_SIZE,
-      },
-      description: { top: "560px", left: "60px" },
-      overlay: {
-        top: "215px",
-        left: "215px",
-        width: "410px",
-        height: "285px",
-      },
-      skills: {
-        top: "850px",
-        left: "70px",
-        width: "560px",
-        height: "120px",
-      },
-    },
-  },
-  {
-    id: "equip3",
-    label: "Arma",
-    image: "/models/cards/03.png",
-    positions: {
-      icon: { top: "292px", left: "52px" },
-      icon2: { top: "95px", left: "570px" },
-      title: {
-        top: "42px",
-        left: "215px",
-        width: "280px",
-        height: "120px",
-        fontSize: UNIFIED_TITLE_FONT_SIZE,
-      },
-      description: { top: "560px", left: "60px" },
-      overlay: {
-        top: "215px",
-        left: "215px",
-        width: "410px",
-        height: "285px",
-      },
-      skills: {
-        top: "850px",
-        left: "70px",
-        width: "560px",
-        height: "120px",
-      },
-      effect1: { top: "695px", left: "35px" },
-      effect2: { top: "690px", left: "205px" },
-      effect3: { top: "690px", left: "367px" },
-      effect4: { top: "690px", left: "530px" },
-      /* Posição do número sobre cada ícone (ajuste top/left conforme necessário) */
-      effect2NumberPosition: { top: "0", left: "50%" },
-      effect3NumberPosition: { top: "0", left: "50%" },
-      effect4NumberPosition: { top: "0", left: "50%" },
-    },
-  },
-  {
-    id: "equip4",
-    label: "Tensão (verde/azul)",
-    image: "/models/cards/04-A.png",
-    positions: {
-      icon: { top: "292px", left: "72px" },
-      icon2: { top: "120px", left: "545px" },
-      title: {
-        top: "37px",
-        left: "50px",
-        width: "594px",
-        height: "120px",
-        fontSize: UNIFIED_TITLE_FONT_SIZE,
-      },
-      description: { top: "220px", left: "60px" },
-      overlay: {
-        top: "215px",
-        left: "215px",
-        width: "410px",
-        height: "285px",
-      },
-      skills: {
-        top: "850px",
-        left: "70px",
-        width: "560px",
-        height: "120px",
-      },
-      effect1: { top: "675px", left: "59px" },
-      effect2: { top: "670px", left: "208px" },
-      effect3: { top: "670px", left: "357px" },
-      effect4: { top: "670px", left: "506px" },
-      effect2NumberPosition: { top: "0", left: "50%" },
-      effect3NumberPosition: { top: "0", left: "50%" },
-      effect4NumberPosition: { top: "0", left: "50%" },
-    },
-  },
-  {
-    id: "equip5",
-    label: "Tensão (verde/amarelo)",
-    image: "/models/cards/04-B.png",
-    positions: {
-      icon: { top: "292px", left: "72px" },
-      icon2: { top: "120px", left: "545px" },
-      title: {
-        top: "37px",
-        left: "50px",
-        width: "594px",
-        height: "120px",
-        fontSize: UNIFIED_TITLE_FONT_SIZE,
-      },
-      description: { top: "220px", left: "60px" },
-      overlay: { top: "215px", left: "215px", width: "410px", height: "285px" },
-      skills: { top: "850px", left: "70px", width: "560px", height: "120px" },
-      effect1: { top: "675px", left: "59px" },
-      effect2: { top: "670px", left: "208px" },
-      effect3: { top: "670px", left: "357px" },
-      effect4: { top: "670px", left: "506px" },
-      effect2NumberPosition: { top: "0", left: "50%" },
-      effect3NumberPosition: { top: "0", left: "50%" },
-      effect4NumberPosition: { top: "0", left: "50%" },
-    },
-  },
-  {
-    id: "equip6",
-    label: "Tensão (Verde/Roxo)",
-    image: "/models/cards/04-C.png",
-    positions: {
-      icon: { top: "292px", left: "72px" },
-      icon2: { top: "120px", left: "545px" },
-      title: {
-        top: "37px",
-        left: "50px",
-        width: "594px",
-        height: "120px",
-        fontSize: UNIFIED_TITLE_FONT_SIZE,
-      },
-      description: { top: "220px", left: "60px" },
-      overlay: { top: "215px", left: "215px", width: "410px", height: "285px" },
-      skills: { top: "850px", left: "70px", width: "560px", height: "120px" },
-      effect1: { top: "675px", left: "59px" },
-      effect2: { top: "670px", left: "208px" },
-      effect3: { top: "670px", left: "357px" },
-      effect4: { top: "670px", left: "506px" },
-      effect2NumberPosition: { top: "0", left: "50%" },
-      effect3NumberPosition: { top: "0", left: "50%" },
-      effect4NumberPosition: { top: "0", left: "50%" },
-    },
-  },
-  {
-    id: "equip7",
-    label: "Tensão (Ambar/Azul)",
-    image: "/models/cards/05-A.png",
-    positions: {
-      icon: { top: "292px", left: "72px" },
-      icon2: { top: "120px", left: "545px" },
-      title: {
-        top: "37px",
-        left: "50px",
-        width: "594px",
-        height: "120px",
-        fontSize: UNIFIED_TITLE_FONT_SIZE,
-      },
-      description: { top: "220px", left: "60px" },
-      overlay: { top: "215px", left: "215px", width: "410px", height: "285px" },
-      skills: { top: "850px", left: "70px", width: "560px", height: "120px" },
-      effect1: { top: "675px", left: "59px" },
-      effect2: { top: "670px", left: "208px" },
-      effect3: { top: "670px", left: "357px" },
-      effect4: { top: "670px", left: "506px" },
-      effect2NumberPosition: { top: "0", left: "50%" },
-      effect3NumberPosition: { top: "0", left: "50%" },
-      effect4NumberPosition: { top: "0", left: "50%" },
-    },
-  },
-  {
-    id: "equip8",
-    label: "Tensão (Ambar/Azul(Raro))",
-    image: "/models/cards/05-F.png",
-    positions: {
-      icon: { top: "292px", left: "72px" },
-      icon2: { top: "120px", left: "545px" },
-      title: {
-        top: "37px",
-        left: "55px",
-        width: "454px",
-        height: "120px",
-        fontSize: UNIFIED_TITLE_FONT_SIZE,
-      },
-      description: { top: "220px", left: "60px" },
-      overlay: { top: "215px", left: "215px", width: "410px", height: "285px" },
-      skills: { top: "850px", left: "70px", width: "560px", height: "120px" },
-      effect1: { top: "675px", left: "59px" },
-      effect2: { top: "670px", left: "208px" },
-      effect3: { top: "670px", left: "357px" },
-      effect4: { top: "670px", left: "506px" },
-      effect2NumberPosition: { top: "0", left: "50%" },
-      effect3NumberPosition: { top: "0", left: "50%" },
-      effect4NumberPosition: { top: "0", left: "50%" },
-    },
-  },
-  {
-    id: "equip9",
-    label: "Tensão (Ambar/Roxo(Raro))",
-    image: "/models/cards/05-B.png",
-    positions: {
-      icon: { top: "292px", left: "72px" },
-      icon2: { top: "120px", left: "545px" },
-      title: {
-        top: "37px",
-        left: "55px",
-        width: "454px",
-        height: "120px",
-        fontSize: UNIFIED_TITLE_FONT_SIZE,
-      },
-      description: { top: "220px", left: "60px" },
-      overlay: { top: "215px", left: "215px", width: "410px", height: "285px" },
-      skills: { top: "850px", left: "70px", width: "560px", height: "120px" },
-      effect1: { top: "675px", left: "59px" },
-      effect2: { top: "670px", left: "208px" },
-      effect3: { top: "670px", left: "357px" },
-      effect4: { top: "670px", left: "506px" },
-      effect2NumberPosition: { top: "0", left: "50%" },
-      effect3NumberPosition: { top: "0", left: "50%" },
-      effect4NumberPosition: { top: "0", left: "50%" },
-    },
-  },
-  {
-    id: "equip10",
-    label: "Tensão (Ambar/Azul(Grave Digger))",
-    image: "/models/cards/05-C.png",
-    positions: {
-      icon: { top: "292px", left: "72px" },
-      icon2: { top: "120px", left: "545px" },
-      title: {
-        top: "37px",
-        left: "190px",
-        width: "455px",
-        height: "120px",
-        fontSize: UNIFIED_TITLE_FONT_SIZE,
-      },
-      description: { top: "220px", left: "60px" },
-      overlay: { top: "215px", left: "215px", width: "410px", height: "285px" },
-      skills: { top: "850px", left: "70px", width: "560px", height: "120px" },
-      effect1: { top: "675px", left: "59px" },
-      effect2: { top: "670px", left: "208px" },
-      effect3: { top: "670px", left: "357px" },
-      effect4: { top: "670px", left: "506px" },
-      effect2NumberPosition: { top: "0", left: "50%" },
-      effect3NumberPosition: { top: "0", left: "50%" },
-      effect4NumberPosition: { top: "0", left: "50%" },
-    },
-  },
-  {
-    id: "equip11",
-    label: "Tensão (Ambar/Azul(Raro - Grave Digger))",
-    image: "/models/cards/05-D.png",
-    positions: {
-      icon: { top: "292px", left: "72px" },
-      icon2: { top: "120px", left: "545px" },
-      title: {
-        top: "37px",
-        left: "190px",
-        width: "315px",
-        height: "120px",
-        fontSize: UNIFIED_TITLE_FONT_SIZE,
-      },
-      description: { top: "220px", left: "60px" },
-      overlay: { top: "215px", left: "215px", width: "410px", height: "285px" },
-      skills: { top: "850px", left: "70px", width: "560px", height: "120px" },
-      effect1: { top: "675px", left: "59px" },
-      effect2: { top: "670px", left: "208px" },
-      effect3: { top: "670px", left: "357px" },
-      effect4: { top: "670px", left: "506px" },
-      effect2NumberPosition: { top: "0", left: "50%" },
-      effect3NumberPosition: { top: "0", left: "50%" },
-      effect4NumberPosition: { top: "0", left: "50%" },
-    },
-  },
-  {
-    id: "equip12",
-    label: "Tensão (Ambar/Amarelo(Raro))",
-    image: "/models/cards/05-E.png",
-    positions: {
-      icon: { top: "292px", left: "72px" },
-      icon2: { top: "120px", left: "545px" },
-      title: {
-        top: "37px",
-        left: "60px",
-        width: "454px",
-        height: "120px",
-        fontSize: UNIFIED_TITLE_FONT_SIZE,
-      },
-      description: { top: "220px", left: "60px" },
-      overlay: { top: "215px", left: "215px", width: "410px", height: "285px" },
-      skills: { top: "850px", left: "70px", width: "560px", height: "120px" },
-      effect1: { top: "675px", left: "59px" },
-      effect2: { top: "670px", left: "208px" },
-      effect3: { top: "670px", left: "357px" },
-      effect4: { top: "670px", left: "506px" },
-      effect2NumberPosition: { top: "0", left: "50%" },
-      effect3NumberPosition: { top: "0", left: "50%" },
-      effect4NumberPosition: { top: "0", left: "50%" },
-    },
-  },
-  {
-    id: "equip13",
-    label: "Tensão (Vermelho/Azul)",
-    image: "/models/cards/06-A.png",
-    positions: {
-      icon: { top: "292px", left: "72px" },
-      icon2: { top: "120px", left: "545px" },
-      title: {
-        top: "37px",
-        left: "195px",
-        width: "454px",
-        height: "120px",
-        fontSize: UNIFIED_TITLE_FONT_SIZE,
-      },
-      description: { top: "220px", left: "60px" },
-      overlay: { top: "215px", left: "215px", width: "410px", height: "285px" },
-      skills: { top: "850px", left: "70px", width: "560px", height: "120px" },
-      effect1: { top: "675px", left: "59px" },
-      effect2: { top: "670px", left: "208px" },
-      effect3: { top: "670px", left: "357px" },
-      effect4: { top: "670px", left: "506px" },
-      effect2NumberPosition: { top: "0", left: "50%" },
-      effect3NumberPosition: { top: "0", left: "50%" },
-      effect4NumberPosition: { top: "0", left: "50%" },
-    },
-  },
-  {
-    id: "equip14",
-    label: "Tensão (vermelho e azul (raro))",
-    image: "/models/cards/06-B.png",
-    positions: {
-      icon: { top: "292px", left: "72px" },
-      icon2: { top: "120px", left: "545px" },
-      title: {
-        top: "37px",
-        left: "195px",
-        width: "324px",
-        height: "120px",
-        fontSize: UNIFIED_TITLE_FONT_SIZE,
-      },
-      description: { top: "220px", left: "60px" },
-      overlay: { top: "215px", left: "215px", width: "410px", height: "285px" },
-      skills: { top: "850px", left: "70px", width: "560px", height: "120px" },
-      effect1: { top: "675px", left: "59px" },
-      effect2: { top: "670px", left: "208px" },
-      effect3: { top: "670px", left: "357px" },
-      effect4: { top: "670px", left: "506px" },
-      effect2NumberPosition: { top: "0", left: "50%" },
-      effect3NumberPosition: { top: "0", left: "50%" },
-      effect4NumberPosition: { top: "0", left: "50%" },
-    },
-  },
-  {
-    id: "equip15",
-    label: "Tensão (Vermelho/Roxo)",
-    image: "/models/cards/06-C.png",
-    positions: {
-      icon: { top: "292px", left: "72px" },
-      icon2: { top: "120px", left: "545px" },
-      title: {
-        top: "37px",
-        left: "195px",
-        width: "454px",
-        height: "120px",
-        fontSize: UNIFIED_TITLE_FONT_SIZE,
-      },
-      description: { top: "220px", left: "60px" },
-      overlay: { top: "215px", left: "215px", width: "410px", height: "285px" },
-      skills: { top: "850px", left: "70px", width: "560px", height: "120px" },
-      effect1: { top: "675px", left: "59px" },
-      effect2: { top: "670px", left: "208px" },
-      effect3: { top: "670px", left: "357px" },
-      effect4: { top: "670px", left: "506px" },
-      effect2NumberPosition: { top: "0", left: "50%" },
-      effect3NumberPosition: { top: "0", left: "50%" },
-      effect4NumberPosition: { top: "0", left: "50%" },
-    },
-  },
-  {
-    id: "equip16",
-    label: "Tensão (vermelho e roxo (raro))",
-    image: "/models/cards/06-D.png",
-    positions: {
-      icon: { top: "292px", left: "72px" },
-      icon2: { top: "120px", left: "545px" },
-      title: {
-        top: "37px",
-        left: "194px",
-        width: "324px",
-        height: "120px",
-        fontSize: UNIFIED_TITLE_FONT_SIZE,
-      },
-      description: { top: "220px", left: "60px" },
-      overlay: { top: "215px", left: "215px", width: "410px", height: "285px" },
-      skills: { top: "850px", left: "70px", width: "560px", height: "120px" },
-      effect1: { top: "675px", left: "59px" },
-      effect2: { top: "670px", left: "208px" },
-      effect3: { top: "670px", left: "357px" },
-      effect4: { top: "670px", left: "506px" },
-      effect2NumberPosition: { top: "0", left: "50%" },
-      effect3NumberPosition: { top: "0", left: "50%" },
-      effect4NumberPosition: { top: "0", left: "50%" },
-    },
-  },
-  {
-    id: "bg",
-    label: "BG Deck-S",
-    image: "/models/cards/Back-S.png",
-    positions: {
-      icon: { top: "292px", left: "72px" },
-      icon2: { top: "120px", left: "545px" },
-      title: {
-        top: "37px",
-        left: "50px",
-        width: "594px",
-        height: "120px",
-        fontSize: UNIFIED_TITLE_FONT_SIZE,
-      },
-      description: { top: "220px", left: "60px" },
-      overlay: { top: "215px", left: "215px", width: "410px", height: "285px" },
-      skills: { top: "850px", left: "70px", width: "560px", height: "120px" },
-      effect1: { top: "675px", left: "59px" },
-      effect2: { top: "670px", left: "208px" },
-      effect3: { top: "670px", left: "357px" },
-      effect4: { top: "670px", left: "506px" },
-      effect2NumberPosition: { top: "0", left: "50%" },
-      effect3NumberPosition: { top: "0", left: "50%" },
-      effect4NumberPosition: { top: "0", left: "50%" },
-    },
-  },
-  {
-    id: "bg-deck-a",
-    label: "BG Deck-A",
-    image: "/models/cards/Deck-A.png",
-    positions: {
-      icon: { top: "292px", left: "72px" },
-      icon2: { top: "120px", left: "545px" },
-      title: {
-        top: "37px",
-        left: "50px",
-        width: "594px",
-        height: "120px",
-        fontSize: UNIFIED_TITLE_FONT_SIZE,
-      },
-      description: { top: "220px", left: "60px" },
-      overlay: { top: "215px", left: "215px", width: "410px", height: "285px" },
-      skills: { top: "850px", left: "70px", width: "560px", height: "120px" },
-      effect1: { top: "675px", left: "59px" },
-      effect2: { top: "670px", left: "208px" },
-      effect3: { top: "670px", left: "357px" },
-      effect4: { top: "670px", left: "506px" },
-      effect2NumberPosition: { top: "0", left: "50%" },
-      effect3NumberPosition: { top: "0", left: "50%" },
-      effect4NumberPosition: { top: "0", left: "50%" },
-    },
-  },
-  {
-    id: "bg-deck-b",
-    label: "BG Deck-B",
-    image: "/models/cards/Deck-B.png",
-    positions: {
-      icon: { top: "292px", left: "72px" },
-      icon2: { top: "120px", left: "545px" },
-      title: {
-        top: "37px",
-        left: "50px",
-        width: "594px",
-        height: "120px",
-        fontSize: UNIFIED_TITLE_FONT_SIZE,
-      },
-      description: { top: "220px", left: "60px" },
-      overlay: { top: "215px", left: "215px", width: "410px", height: "285px" },
-      skills: { top: "850px", left: "70px", width: "560px", height: "120px" },
-      effect1: { top: "675px", left: "59px" },
-      effect2: { top: "670px", left: "208px" },
-      effect3: { top: "670px", left: "357px" },
-      effect4: { top: "670px", left: "506px" },
-      effect2NumberPosition: { top: "0", left: "50%" },
-      effect3NumberPosition: { top: "0", left: "50%" },
-      effect4NumberPosition: { top: "0", left: "50%" },
-    },
-  },
-  {
-    id: "bg-deck-c",
-    label: "BG Deck-C",
-    image: "/models/cards/Deck-C.png",
-    positions: {
-      icon: { top: "292px", left: "72px" },
-      icon2: { top: "120px", left: "545px" },
-      title: {
-        top: "37px",
-        left: "50px",
-        width: "594px",
-        height: "120px",
-        fontSize: UNIFIED_TITLE_FONT_SIZE,
-      },
-      description: { top: "220px", left: "60px" },
-      overlay: { top: "215px", left: "215px", width: "410px", height: "285px" },
-      skills: { top: "850px", left: "70px", width: "560px", height: "120px" },
-      effect1: { top: "675px", left: "59px" },
-      effect2: { top: "670px", left: "208px" },
-      effect3: { top: "670px", left: "357px" },
-      effect4: { top: "670px", left: "506px" },
-      effect2NumberPosition: { top: "0", left: "50%" },
-      effect3NumberPosition: { top: "0", left: "50%" },
-      effect4NumberPosition: { top: "0", left: "50%" },
-    },
-  },
-];
+  }),
+);
 
 /** Layouts BG: só base + imagem do layout, sem ícones nem conteúdo (Back-S, Deck-A, Deck-B, Deck-C) */
 const BG_LAYOUT_IDS = ["bg", "bg-deck-a", "bg-deck-b", "bg-deck-c"];
@@ -778,26 +248,36 @@ const mergeLayoutPositions = (
 
 const DEFAULT_LAYOUT = layoutOptions[0];
 const CARD_TEMPLATE_IMAGE = DEFAULT_LAYOUT.image;
+
+/** Dimensões do card para impressão: 63×88mm com borda de 4mm */
+const MM_TO_PX_300DPI = 300 / 25.4; // ≈ 11.811 pixels por mm a 300 DPI
+const CARD_SIZE_MM = { width: 63, height: 88 };
+const BORDER_MM = 4; // Borda de 4mm de cada lado
 const CARD_DIMENSIONS = {
-  width: 699,
-  height: 1038,
+  width: Math.round(CARD_SIZE_MM.width * MM_TO_PX_300DPI), // 63mm = 744px
+  height: Math.round(CARD_SIZE_MM.height * MM_TO_PX_300DPI), // 88mm = 1039px
+};
+const INNER_DIMENSIONS = {
+  width: Math.round((CARD_SIZE_MM.width - BORDER_MM * 2) * MM_TO_PX_300DPI), // 55mm = 650px
+  height: Math.round((CARD_SIZE_MM.height - BORDER_MM * 2) * MM_TO_PX_300DPI), // 80mm = 945px
 };
 
 /** Borda (base.png): tamanho real 1096×1599; área interna do layout 921×1416 */
 const BASE_IMAGE = "/models/base.png";
 const BASE_REAL = { width: 1096, height: 1599 };
 const INNER_REAL = { width: 921, height: 1416 };
+
+/** OUTER_DIMENSIONS = tamanho total do card (63×88mm) incluindo borda de 4mm */
 const OUTER_DIMENSIONS = {
-  width: Math.round(
-    BASE_REAL.width * (CARD_DIMENSIONS.width / INNER_REAL.width),
-  ),
-  height: Math.round(
-    BASE_REAL.height * (CARD_DIMENSIONS.height / INNER_REAL.height),
-  ),
+  width: CARD_DIMENSIONS.width, // 744px (63mm)
+  height: CARD_DIMENSIONS.height, // 1039px (88mm)
 };
+
+/** INNER_OFFSET = offset para posicionar a área interna (arte) dentro do card total */
+/** Borda de 4mm de cada lado = (CARD_DIMENSIONS - INNER_DIMENSIONS) / 2 */
 const INNER_OFFSET = {
-  left: Math.round((OUTER_DIMENSIONS.width - CARD_DIMENSIONS.width) / 2),
-  top: Math.round((OUTER_DIMENSIONS.height - CARD_DIMENSIONS.height) / 2),
+  left: Math.round((CARD_DIMENSIONS.width - INNER_DIMENSIONS.width) / 2), // 4mm = 47px
+  top: Math.round((CARD_DIMENSIONS.height - INNER_DIMENSIONS.height) / 2), // 4mm = 47px
 };
 
 const DEFAULT_ACCENT = "#f97316";
@@ -1014,6 +494,7 @@ type CardPreviewProps = {
   effect4IconOptions?: IconOption[];
   effectIconOptions04?: IconOption[];
   tensionIconOptions?: IconOption[];
+  showDebugBackground?: boolean;
 };
 
 const BG_LAYOUT_IMAGE = "/models/cards/Back-S.png";
@@ -1029,6 +510,7 @@ const CardPreview = ({
   effect4IconOptions = [],
   effectIconOptions04 = [],
   tensionIconOptions = [],
+  showDebugBackground = true,
 }: CardPreviewProps) => {
   const titleRef = useRef<HTMLHeadingElement>(null);
   const titleMeasureRef = useRef<HTMLDivElement>(null);
@@ -1071,8 +553,8 @@ const CardPreview = ({
     position: "absolute",
     left: INNER_OFFSET.left,
     top: INNER_OFFSET.top,
-    width: CARD_DIMENSIONS.width,
-    height: CARD_DIMENSIONS.height,
+    width: INNER_DIMENSIONS.width,
+    height: INNER_DIMENSIONS.height,
     borderColor: CARD_BORDER_COLOR,
     backgroundImage: `url("${heroImage}")`,
     backgroundSize: "100% 100%",
@@ -1106,6 +588,9 @@ const CardPreview = ({
                 left: layoutPositions.overlay.left,
                 width: layoutPositions.overlay.width,
                 height: layoutPositions.overlay.height,
+                ...(showDebugBackground && {
+                  backgroundColor: "rgba(255, 0, 0, 0.3)",
+                }),
               }}
             >
               <img
@@ -1122,10 +607,13 @@ const CardPreview = ({
               className="flex flex-wrap items-center justify-center gap-2"
               style={{
                 position: "absolute",
-                top: "845px",
+                top: layoutPositions.skills.top,
                 left: layoutPositions.skills.left,
                 width: layoutPositions.skills.width,
-                height: "150px",
+                height: layoutPositions.skills.height,
+                ...(showDebugBackground && {
+                  backgroundColor: "rgba(0, 0, 255, 0.3)",
+                }),
               }}
             >
               {card.selectedSkills.map((skillId) => {
@@ -1137,6 +625,7 @@ const CardPreview = ({
                 const skillTooltip = numberInFront
                   ? TOOLTIP_SKILL_NUMBER[numberInFront]
                   : undefined;
+                const isEffectSkill = isEquipWithEffectsLayout(card.layoutId);
                 return (
                   <div
                     key={skillId}
@@ -1161,7 +650,7 @@ const CardPreview = ({
                         className="absolute inset-0 z-10 flex items-center justify-center font-semibold drop-shadow-lg"
                         style={{
                           color: "#E3DBD2",
-                          fontSize: UNIFIED_TITLE_FONT_SIZE,
+                          fontSize: "55px",
                           fontFamily: bebasNeue.style.fontFamily,
                         }}
                       >
@@ -1247,7 +736,7 @@ const CardPreview = ({
                       <span
                         className="flex text-center items-center justify-center  text-black uppercase"
                         style={{
-                          fontSize: UNIFIED_TITLE_FONT_SIZE,
+                          fontSize: "55px",
                           fontFamily: bebasNeue.style.fontFamily,
                         }}
                       >
@@ -1379,7 +868,7 @@ const CardPreview = ({
                                   parts &&
                                   parts.length >= 2
                                 ) {
-                                  const numFontSize = UNIFIED_TITLE_FONT_SIZE;
+                                  const numFontSize = "55px";
                                   const tip0 = TOOLTIP_DICE[parts[0]];
                                   const tip1 = TOOLTIP_DICE[parts[1]];
                                   return (
@@ -1405,7 +894,11 @@ const CardPreview = ({
                                             {tip0}
                                           </span>
                                         )}
-                                        <span style={{ fontSize: "0.8em" }}>
+                                        <span
+                                          style={{
+                                            fontSize: "45px",
+                                          }}
+                                        >
                                           {parts[0]}
                                         </span>
                                       </div>
@@ -1418,7 +911,7 @@ const CardPreview = ({
                                           transform: isCenterX
                                             ? "translateX(-50%)"
                                             : undefined,
-                                          fontSize: numFontSize,
+                                          fontSize: "45px",
                                         }}
                                         title={tip1 ?? undefined}
                                       >
@@ -1430,7 +923,11 @@ const CardPreview = ({
                                             {tip1}
                                           </span>
                                         )}
-                                        <span style={{ fontSize: "0.8em" }}>
+                                        <span
+                                          style={{
+                                            fontSize: "45px",
+                                          }}
+                                        >
                                           {parts[1]}
                                         </span>
                                       </div>
@@ -1455,7 +952,7 @@ const CardPreview = ({
                                         transform: isCenterX
                                           ? "translateX(-50%)"
                                           : undefined,
-                                        fontSize: UNIFIED_TITLE_FONT_SIZE,
+                                        fontSize: "45px",
                                         width: "60px",
                                         height: "60px",
                                       }}
@@ -1469,7 +966,7 @@ const CardPreview = ({
                                           {tooltipEffect3Or4}
                                         </span>
                                       )}
-                                      <span style={{ fontSize: "0.8em" }}>
+                                      <span style={{ fontSize: "45px" }}>
                                         {effectData.number}
                                       </span>
                                     </div>
@@ -1492,8 +989,7 @@ const CardPreview = ({
                                         : undefined,
                                       width: "120px",
                                       height: "120px",
-                                      color: "#E3DBD2",
-                                      fontSize: UNIFIED_TITLE_FONT_SIZE,
+                                      fontSize: "65px",
                                       fontFamily: bebasNeue.style.fontFamily,
                                     }}
                                     title={tooltipDefault ?? undefined}
@@ -1564,6 +1060,9 @@ const CardPreview = ({
                 flexShrink: 1,
                 flexBasis: "auto",
                 flex: 1,
+                ...(showDebugBackground && {
+                  backgroundColor: "rgba(255, 0, 0, 0.3)",
+                }),
               }}
             >
               {card.title || ""}
@@ -1578,6 +1077,9 @@ const CardPreview = ({
                   fontFamily: ebGaramond.style.fontFamily,
                   fontWeight: 590,
                   lineHeight: 1,
+                  ...(showDebugBackground && {
+                    backgroundColor: "rgba(255, 0, 0, 0.3)",
+                  }),
                 }}
               >
                 <p
@@ -1658,6 +1160,9 @@ const CardPreview = ({
                   width: "570px",
                   height: "420px",
                   whiteSpace: "pre-line",
+                  ...(showDebugBackground && {
+                    backgroundColor: "rgba(255, 0, 0, 0.3)",
+                  }),
                 }}
               >
                 {renderTextWithInlineIcons(card.description || "")}
@@ -2366,6 +1871,7 @@ export default function Home() {
                             effect4IconOptions={effect4IconOptions}
                             effectIconOptions04={effectIconOptions04}
                             tensionIconOptions={tensionIconOptions}
+                            showDebugBackground={false}
                           />
                         </div>
                       </button>
@@ -3124,6 +2630,7 @@ export default function Home() {
               effect3IconOptions={effect3IconOptions}
               effect4IconOptions={effect4IconOptions}
               effectIconOptions04={effectIconOptions04}
+              showDebugBackground={false}
             />
           ))}
         </div>

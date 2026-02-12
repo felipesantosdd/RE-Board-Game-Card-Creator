@@ -1,0 +1,1266 @@
+[
+  {
+    "id": "equip1",
+    "label": "Equipamento 1",
+    "image": "/models/cards/01.png",
+    "positions": {
+      "icon": {
+        "top": "195px",
+        "left": "40px"
+      },
+      "icon2": {
+        "top": "-154px",
+        "left": "499px"
+      },
+      "title": {
+        "top": "30px",
+        "left": "188px",
+        "width": "430px",
+        "height": "120px",
+        "fontSize": "__UNIFIED_TITLE_FONT_SIZE__"
+      },
+      "description": {
+        "top": "510px",
+        "left": "40px"
+      },
+      "overlay": {
+        "top": "175px",
+        "left": "183px",
+        "width": "440px",
+        "height": "285px"
+      },
+      "skills": {
+        "top": "820px",
+        "left": "45px",
+        "width": "560px",
+        "height": "100px"
+      }
+    }
+  },
+  {
+    "id": "equip2",
+    "label": "Equipamento 2",
+    "image": "/models/cards/02.png",
+    "positions": {
+      "icon": {
+        "top": "195px",
+        "left": "40px"
+      },
+      "icon2": {
+        "top": "-154px",
+        "left": "499px"
+      },
+      "title": {
+        "top": "30px",
+        "left": "188px",
+        "width": "280px",
+        "height": "120px",
+        "fontSize": "__UNIFIED_TITLE_FONT_SIZE__"
+      },
+      "description": {
+        "top": "510px",
+        "left": "40px"
+      },
+      "overlay": {
+        "top": "175px",
+        "left": "183px",
+        "width": "440px",
+        "height": "285px"
+      },
+      "skills": {
+        "top": "850px",
+        "left": "70px",
+        "width": "560px",
+        "height": "120px"
+      }
+    }
+  },
+  {
+    "id": "equip3",
+    "label": "Arma",
+    "image": "/models/cards/03.png",
+    "positions": {
+      "icon": {
+        "top": "250px",
+        "left": "40px"
+      },
+      "icon2": {
+        "top": "82px",
+        "left": "530px"
+      },
+      "title": {
+        "top": "30px",
+        "left": "188px",
+        "width": "280px",
+        "height": "120px",
+        "fontSize": "__UNIFIED_TITLE_FONT_SIZE__"
+      },
+      "description": {
+        "top": "560px",
+        "left": "40px"
+      },
+      "overlay": {
+        "top": "175px",
+        "left": "185px",
+        "width": "440px",
+        "height": "285px"
+      },
+      "skills": {
+        "top": "780px",
+        "left": "45px",
+        "width": "560px",
+        "height": "120px"
+      },
+      "effect1": {
+        "top": "630px",
+        "left": "30px"
+      },
+      "effect2": {
+        "top": "620px",
+        "left": "185px"
+      },
+      "effect3": {
+        "top": "620px",
+        "left": "337px"
+      },
+      "effect4": {
+        "top": "620px",
+        "left": "490px"
+      },
+      "effect2NumberPosition": {
+        "top": "0",
+        "left": "50%"
+      },
+      "effect3NumberPosition": {
+        "top": "0",
+        "left": "50%"
+      },
+      "effect4NumberPosition": {
+        "top": "0",
+        "left": "50%"
+      }
+    }
+  },
+  {
+    "id": "equip4",
+    "label": "Tensão (verde/azul)",
+    "image": "/models/cards/04-A.png",
+    "positions": {
+      "icon": {
+        "top": "292px",
+        "left": "72px"
+      },
+      "icon2": {
+        "top": "120px",
+        "left": "545px"
+      },
+      "title": {
+        "top": "27px",
+        "left": "17px",
+        "width": "594px",
+        "height": "120px",
+        "fontSize": "__UNIFIED_TITLE_FONT_SIZE__"
+      },
+      "description": {
+        "top": "200px",
+        "left": "40px"
+      },
+      "overlay": {
+        "top": "215px",
+        "left": "215px",
+        "width": "410px",
+        "height": "285px"
+      },
+      "skills": {
+        "top": "850px",
+        "left": "70px",
+        "width": "560px",
+        "height": "120px"
+      },
+      "effect1": {
+        "top": "675px",
+        "left": "59px"
+      },
+      "effect2": {
+        "top": "670px",
+        "left": "208px"
+      },
+      "effect3": {
+        "top": "670px",
+        "left": "357px"
+      },
+      "effect4": {
+        "top": "670px",
+        "left": "506px"
+      },
+      "effect2NumberPosition": {
+        "top": "0",
+        "left": "50%"
+      },
+      "effect3NumberPosition": {
+        "top": "0",
+        "left": "50%"
+      },
+      "effect4NumberPosition": {
+        "top": "0",
+        "left": "50%"
+      }
+    }
+  },
+  {
+    "id": "equip5",
+    "label": "Tensão (verde/amarelo)",
+    "image": "/models/cards/04-B.png",
+    "positions": {
+      "icon": {
+        "top": "292px",
+        "left": "72px"
+      },
+      "icon2": {
+        "top": "120px",
+        "left": "545px"
+      },
+      "title": {
+        "top": "27px",
+        "left": "17px",
+        "width": "594px",
+        "height": "120px",
+        "fontSize": "__UNIFIED_TITLE_FONT_SIZE__"
+      },
+      "description": {
+        "top": "200px",
+        "left": "40px"
+      },
+      "overlay": {
+        "top": "215px",
+        "left": "215px",
+        "width": "410px",
+        "height": "285px"
+      },
+      "skills": {
+        "top": "850px",
+        "left": "70px",
+        "width": "560px",
+        "height": "120px"
+      },
+      "effect1": {
+        "top": "675px",
+        "left": "59px"
+      },
+      "effect2": {
+        "top": "670px",
+        "left": "208px"
+      },
+      "effect3": {
+        "top": "670px",
+        "left": "357px"
+      },
+      "effect4": {
+        "top": "670px",
+        "left": "506px"
+      },
+      "effect2NumberPosition": {
+        "top": "0",
+        "left": "50%"
+      },
+      "effect3NumberPosition": {
+        "top": "0",
+        "left": "50%"
+      },
+      "effect4NumberPosition": {
+        "top": "0",
+        "left": "50%"
+      }
+    }
+  },
+  {
+    "id": "equip6",
+    "label": "Tensão (Verde/Roxo)",
+    "image": "/models/cards/04-C.png",
+    "positions": {
+      "icon": {
+        "top": "292px",
+        "left": "72px"
+      },
+      "icon2": {
+        "top": "120px",
+        "left": "545px"
+      },
+      "title": {
+        "top": "27px",
+        "left": "17px",
+        "width": "594px",
+        "height": "120px",
+        "fontSize": "__UNIFIED_TITLE_FONT_SIZE__"
+      },
+      "description": {
+        "top": "200px",
+        "left": "40px"
+      },
+      "overlay": {
+        "top": "215px",
+        "left": "215px",
+        "width": "410px",
+        "height": "285px"
+      },
+      "skills": {
+        "top": "850px",
+        "left": "70px",
+        "width": "560px",
+        "height": "120px"
+      },
+      "effect1": {
+        "top": "675px",
+        "left": "59px"
+      },
+      "effect2": {
+        "top": "670px",
+        "left": "208px"
+      },
+      "effect3": {
+        "top": "670px",
+        "left": "357px"
+      },
+      "effect4": {
+        "top": "670px",
+        "left": "506px"
+      },
+      "effect2NumberPosition": {
+        "top": "0",
+        "left": "50%"
+      },
+      "effect3NumberPosition": {
+        "top": "0",
+        "left": "50%"
+      },
+      "effect4NumberPosition": {
+        "top": "0",
+        "left": "50%"
+      }
+    }
+  },
+  {
+    "id": "equip7",
+    "label": "Tensão (Ambar/Azul)",
+    "image": "/models/cards/05-A.png",
+    "positions": {
+      "icon": {
+        "top": "292px",
+        "left": "72px"
+      },
+      "icon2": {
+        "top": "120px",
+        "left": "545px"
+      },
+      "title": {
+        "top": "27px",
+        "left": "17px",
+        "width": "594px",
+        "height": "120px",
+        "fontSize": "__UNIFIED_TITLE_FONT_SIZE__"
+      },
+      "description": {
+        "top": "200px",
+        "left": "40px"
+      },
+      "overlay": {
+        "top": "215px",
+        "left": "215px",
+        "width": "410px",
+        "height": "285px"
+      },
+      "skills": {
+        "top": "850px",
+        "left": "70px",
+        "width": "560px",
+        "height": "120px"
+      },
+      "effect1": {
+        "top": "675px",
+        "left": "59px"
+      },
+      "effect2": {
+        "top": "670px",
+        "left": "208px"
+      },
+      "effect3": {
+        "top": "670px",
+        "left": "357px"
+      },
+      "effect4": {
+        "top": "670px",
+        "left": "506px"
+      },
+      "effect2NumberPosition": {
+        "top": "0",
+        "left": "50%"
+      },
+      "effect3NumberPosition": {
+        "top": "0",
+        "left": "50%"
+      },
+      "effect4NumberPosition": {
+        "top": "0",
+        "left": "50%"
+      }
+    }
+  },
+  {
+    "id": "equip8",
+    "label": "Tensão (Ambar/Azul(Raro))",
+    "image": "/models/cards/05-F.png",
+    "positions": {
+      "icon": {
+        "top": "292px",
+        "left": "72px"
+      },
+      "icon2": {
+        "top": "120px",
+        "left": "545px"
+      },
+      "title": {
+        "top": "27px",
+        "left": "22px",
+        "width": "454px",
+        "height": "120px",
+        "fontSize": "__UNIFIED_TITLE_FONT_SIZE__"
+      },
+      "description": {
+        "top": "200px",
+        "left": "40px"
+      },
+      "overlay": {
+        "top": "215px",
+        "left": "215px",
+        "width": "410px",
+        "height": "285px"
+      },
+      "skills": {
+        "top": "850px",
+        "left": "70px",
+        "width": "560px",
+        "height": "120px"
+      },
+      "effect1": {
+        "top": "675px",
+        "left": "59px"
+      },
+      "effect2": {
+        "top": "670px",
+        "left": "208px"
+      },
+      "effect3": {
+        "top": "670px",
+        "left": "357px"
+      },
+      "effect4": {
+        "top": "670px",
+        "left": "506px"
+      },
+      "effect2NumberPosition": {
+        "top": "0",
+        "left": "50%"
+      },
+      "effect3NumberPosition": {
+        "top": "0",
+        "left": "50%"
+      },
+      "effect4NumberPosition": {
+        "top": "0",
+        "left": "50%"
+      }
+    }
+  },
+  {
+    "id": "equip9",
+    "label": "Tensão (Ambar/Roxo(Raro))",
+    "image": "/models/cards/05-B.png",
+    "positions": {
+      "icon": {
+        "top": "292px",
+        "left": "72px"
+      },
+      "icon2": {
+        "top": "120px",
+        "left": "545px"
+      },
+      "title": {
+        "top": "27px",
+        "left": "22px",
+        "width": "454px",
+        "height": "120px",
+        "fontSize": "__UNIFIED_TITLE_FONT_SIZE__"
+      },
+      "description": {
+        "top": "200px",
+        "left": "40px"
+      },
+      "overlay": {
+        "top": "215px",
+        "left": "215px",
+        "width": "410px",
+        "height": "285px"
+      },
+      "skills": {
+        "top": "850px",
+        "left": "70px",
+        "width": "560px",
+        "height": "120px"
+      },
+      "effect1": {
+        "top": "675px",
+        "left": "59px"
+      },
+      "effect2": {
+        "top": "670px",
+        "left": "208px"
+      },
+      "effect3": {
+        "top": "670px",
+        "left": "357px"
+      },
+      "effect4": {
+        "top": "670px",
+        "left": "506px"
+      },
+      "effect2NumberPosition": {
+        "top": "0",
+        "left": "50%"
+      },
+      "effect3NumberPosition": {
+        "top": "0",
+        "left": "50%"
+      },
+      "effect4NumberPosition": {
+        "top": "0",
+        "left": "50%"
+      }
+    }
+  },
+  {
+    "id": "equip10",
+    "label": "Tensão (Ambar/Azul(Grave Digger))",
+    "image": "/models/cards/05-C.png",
+    "positions": {
+      "icon": {
+        "top": "292px",
+        "left": "72px"
+      },
+      "icon2": {
+        "top": "120px",
+        "left": "545px"
+      },
+      "title": {
+        "top": "27px",
+        "left": "157px",
+        "width": "455px",
+        "height": "120px",
+        "fontSize": "__UNIFIED_TITLE_FONT_SIZE__"
+      },
+      "description": {
+        "top": "200px",
+        "left": "40px"
+      },
+      "overlay": {
+        "top": "215px",
+        "left": "215px",
+        "width": "410px",
+        "height": "285px"
+      },
+      "skills": {
+        "top": "850px",
+        "left": "70px",
+        "width": "560px",
+        "height": "120px"
+      },
+      "effect1": {
+        "top": "675px",
+        "left": "59px"
+      },
+      "effect2": {
+        "top": "670px",
+        "left": "208px"
+      },
+      "effect3": {
+        "top": "670px",
+        "left": "357px"
+      },
+      "effect4": {
+        "top": "670px",
+        "left": "506px"
+      },
+      "effect2NumberPosition": {
+        "top": "0",
+        "left": "50%"
+      },
+      "effect3NumberPosition": {
+        "top": "0",
+        "left": "50%"
+      },
+      "effect4NumberPosition": {
+        "top": "0",
+        "left": "50%"
+      }
+    }
+  },
+  {
+    "id": "equip11",
+    "label": "Tensão (Ambar/Azul(Raro - Grave Digger))",
+    "image": "/models/cards/05-D.png",
+    "positions": {
+      "icon": {
+        "top": "292px",
+        "left": "72px"
+      },
+      "icon2": {
+        "top": "120px",
+        "left": "545px"
+      },
+      "title": {
+        "top": "27px",
+        "left": "157px",
+        "width": "315px",
+        "height": "120px",
+        "fontSize": "__UNIFIED_TITLE_FONT_SIZE__"
+      },
+      "description": {
+        "top": "200px",
+        "left": "40px"
+      },
+      "overlay": {
+        "top": "215px",
+        "left": "215px",
+        "width": "410px",
+        "height": "285px"
+      },
+      "skills": {
+        "top": "850px",
+        "left": "70px",
+        "width": "560px",
+        "height": "120px"
+      },
+      "effect1": {
+        "top": "675px",
+        "left": "59px"
+      },
+      "effect2": {
+        "top": "670px",
+        "left": "208px"
+      },
+      "effect3": {
+        "top": "670px",
+        "left": "357px"
+      },
+      "effect4": {
+        "top": "670px",
+        "left": "506px"
+      },
+      "effect2NumberPosition": {
+        "top": "0",
+        "left": "50%"
+      },
+      "effect3NumberPosition": {
+        "top": "0",
+        "left": "50%"
+      },
+      "effect4NumberPosition": {
+        "top": "0",
+        "left": "50%"
+      }
+    }
+  },
+  {
+    "id": "equip12",
+    "label": "Tensão (Ambar/Amarelo(Raro))",
+    "image": "/models/cards/05-E.png",
+    "positions": {
+      "icon": {
+        "top": "292px",
+        "left": "72px"
+      },
+      "icon2": {
+        "top": "120px",
+        "left": "545px"
+      },
+      "title": {
+        "top": "27px",
+        "left": "27px",
+        "width": "454px",
+        "height": "120px",
+        "fontSize": "__UNIFIED_TITLE_FONT_SIZE__"
+      },
+      "description": {
+        "top": "200px",
+        "left": "40px"
+      },
+      "overlay": {
+        "top": "215px",
+        "left": "215px",
+        "width": "410px",
+        "height": "285px"
+      },
+      "skills": {
+        "top": "850px",
+        "left": "70px",
+        "width": "560px",
+        "height": "120px"
+      },
+      "effect1": {
+        "top": "675px",
+        "left": "59px"
+      },
+      "effect2": {
+        "top": "670px",
+        "left": "208px"
+      },
+      "effect3": {
+        "top": "670px",
+        "left": "357px"
+      },
+      "effect4": {
+        "top": "670px",
+        "left": "506px"
+      },
+      "effect2NumberPosition": {
+        "top": "0",
+        "left": "50%"
+      },
+      "effect3NumberPosition": {
+        "top": "0",
+        "left": "50%"
+      },
+      "effect4NumberPosition": {
+        "top": "0",
+        "left": "50%"
+      }
+    }
+  },
+  {
+    "id": "equip13",
+    "label": "Tensão (Vermelho/Azul)",
+    "image": "/models/cards/06-A.png",
+    "positions": {
+      "icon": {
+        "top": "292px",
+        "left": "72px"
+      },
+      "icon2": {
+        "top": "120px",
+        "left": "545px"
+      },
+      "title": {
+        "top": "27px",
+        "left": "162px",
+        "width": "454px",
+        "height": "120px",
+        "fontSize": "__UNIFIED_TITLE_FONT_SIZE__"
+      },
+      "description": {
+        "top": "200px",
+        "left": "40px"
+      },
+      "overlay": {
+        "top": "215px",
+        "left": "215px",
+        "width": "410px",
+        "height": "285px"
+      },
+      "skills": {
+        "top": "850px",
+        "left": "70px",
+        "width": "560px",
+        "height": "120px"
+      },
+      "effect1": {
+        "top": "675px",
+        "left": "59px"
+      },
+      "effect2": {
+        "top": "670px",
+        "left": "208px"
+      },
+      "effect3": {
+        "top": "670px",
+        "left": "357px"
+      },
+      "effect4": {
+        "top": "670px",
+        "left": "506px"
+      },
+      "effect2NumberPosition": {
+        "top": "0",
+        "left": "50%"
+      },
+      "effect3NumberPosition": {
+        "top": "0",
+        "left": "50%"
+      },
+      "effect4NumberPosition": {
+        "top": "0",
+        "left": "50%"
+      }
+    }
+  },
+  {
+    "id": "equip14",
+    "label": "Tensão (vermelho e azul (raro))",
+    "image": "/models/cards/06-B.png",
+    "positions": {
+      "icon": {
+        "top": "292px",
+        "left": "72px"
+      },
+      "icon2": {
+        "top": "120px",
+        "left": "545px"
+      },
+      "title": {
+        "top": "27px",
+        "left": "162px",
+        "width": "324px",
+        "height": "120px",
+        "fontSize": "__UNIFIED_TITLE_FONT_SIZE__"
+      },
+      "description": {
+        "top": "200px",
+        "left": "40px"
+      },
+      "overlay": {
+        "top": "215px",
+        "left": "215px",
+        "width": "410px",
+        "height": "285px"
+      },
+      "skills": {
+        "top": "850px",
+        "left": "70px",
+        "width": "560px",
+        "height": "120px"
+      },
+      "effect1": {
+        "top": "675px",
+        "left": "59px"
+      },
+      "effect2": {
+        "top": "670px",
+        "left": "208px"
+      },
+      "effect3": {
+        "top": "670px",
+        "left": "357px"
+      },
+      "effect4": {
+        "top": "670px",
+        "left": "506px"
+      },
+      "effect2NumberPosition": {
+        "top": "0",
+        "left": "50%"
+      },
+      "effect3NumberPosition": {
+        "top": "0",
+        "left": "50%"
+      },
+      "effect4NumberPosition": {
+        "top": "0",
+        "left": "50%"
+      }
+    }
+  },
+  {
+    "id": "equip15",
+    "label": "Tensão (Vermelho/Roxo)",
+    "image": "/models/cards/06-C.png",
+    "positions": {
+      "icon": {
+        "top": "292px",
+        "left": "72px"
+      },
+      "icon2": {
+        "top": "120px",
+        "left": "545px"
+      },
+      "title": {
+        "top": "27px",
+        "left": "162px",
+        "width": "454px",
+        "height": "120px",
+        "fontSize": "__UNIFIED_TITLE_FONT_SIZE__"
+      },
+      "description": {
+        "top": "200px",
+        "left": "40px"
+      },
+      "overlay": {
+        "top": "215px",
+        "left": "215px",
+        "width": "410px",
+        "height": "285px"
+      },
+      "skills": {
+        "top": "850px",
+        "left": "70px",
+        "width": "560px",
+        "height": "120px"
+      },
+      "effect1": {
+        "top": "675px",
+        "left": "59px"
+      },
+      "effect2": {
+        "top": "670px",
+        "left": "208px"
+      },
+      "effect3": {
+        "top": "670px",
+        "left": "357px"
+      },
+      "effect4": {
+        "top": "670px",
+        "left": "506px"
+      },
+      "effect2NumberPosition": {
+        "top": "0",
+        "left": "50%"
+      },
+      "effect3NumberPosition": {
+        "top": "0",
+        "left": "50%"
+      },
+      "effect4NumberPosition": {
+        "top": "0",
+        "left": "50%"
+      }
+    }
+  },
+  {
+    "id": "equip16",
+    "label": "Tensão (vermelho e roxo (raro))",
+    "image": "/models/cards/06-D.png",
+    "positions": {
+      "icon": {
+        "top": "292px",
+        "left": "72px"
+      },
+      "icon2": {
+        "top": "120px",
+        "left": "545px"
+      },
+      "title": {
+        "top": "27px",
+        "left": "161px",
+        "width": "324px",
+        "height": "120px",
+        "fontSize": "__UNIFIED_TITLE_FONT_SIZE__"
+      },
+      "description": {
+        "top": "200px",
+        "left": "40px"
+      },
+      "overlay": {
+        "top": "215px",
+        "left": "215px",
+        "width": "410px",
+        "height": "285px"
+      },
+      "skills": {
+        "top": "850px",
+        "left": "70px",
+        "width": "560px",
+        "height": "120px"
+      },
+      "effect1": {
+        "top": "675px",
+        "left": "59px"
+      },
+      "effect2": {
+        "top": "670px",
+        "left": "208px"
+      },
+      "effect3": {
+        "top": "670px",
+        "left": "357px"
+      },
+      "effect4": {
+        "top": "670px",
+        "left": "506px"
+      },
+      "effect2NumberPosition": {
+        "top": "0",
+        "left": "50%"
+      },
+      "effect3NumberPosition": {
+        "top": "0",
+        "left": "50%"
+      },
+      "effect4NumberPosition": {
+        "top": "0",
+        "left": "50%"
+      }
+    }
+  },
+  {
+    "id": "bg",
+    "label": "BG Deck-S",
+    "image": "/models/cards/Back-S.png",
+    "positions": {
+      "icon": {
+        "top": "292px",
+        "left": "72px"
+      },
+      "icon2": {
+        "top": "120px",
+        "left": "545px"
+      },
+      "title": {
+        "top": "27px",
+        "left": "17px",
+        "width": "594px",
+        "height": "120px",
+        "fontSize": "__UNIFIED_TITLE_FONT_SIZE__"
+      },
+      "description": {
+        "top": "200px",
+        "left": "40px"
+      },
+      "overlay": {
+        "top": "215px",
+        "left": "215px",
+        "width": "410px",
+        "height": "285px"
+      },
+      "skills": {
+        "top": "850px",
+        "left": "70px",
+        "width": "560px",
+        "height": "120px"
+      },
+      "effect1": {
+        "top": "675px",
+        "left": "59px"
+      },
+      "effect2": {
+        "top": "670px",
+        "left": "208px"
+      },
+      "effect3": {
+        "top": "670px",
+        "left": "357px"
+      },
+      "effect4": {
+        "top": "670px",
+        "left": "506px"
+      },
+      "effect2NumberPosition": {
+        "top": "0",
+        "left": "50%"
+      },
+      "effect3NumberPosition": {
+        "top": "0",
+        "left": "50%"
+      },
+      "effect4NumberPosition": {
+        "top": "0",
+        "left": "50%"
+      }
+    }
+  },
+  {
+    "id": "bg-deck-a",
+    "label": "BG Deck-A",
+    "image": "/models/cards/Deck-A.png",
+    "positions": {
+      "icon": {
+        "top": "292px",
+        "left": "72px"
+      },
+      "icon2": {
+        "top": "120px",
+        "left": "545px"
+      },
+      "title": {
+        "top": "27px",
+        "left": "17px",
+        "width": "594px",
+        "height": "120px",
+        "fontSize": "__UNIFIED_TITLE_FONT_SIZE__"
+      },
+      "description": {
+        "top": "200px",
+        "left": "40px"
+      },
+      "overlay": {
+        "top": "215px",
+        "left": "215px",
+        "width": "410px",
+        "height": "285px"
+      },
+      "skills": {
+        "top": "850px",
+        "left": "70px",
+        "width": "560px",
+        "height": "120px"
+      },
+      "effect1": {
+        "top": "675px",
+        "left": "59px"
+      },
+      "effect2": {
+        "top": "670px",
+        "left": "208px"
+      },
+      "effect3": {
+        "top": "670px",
+        "left": "357px"
+      },
+      "effect4": {
+        "top": "670px",
+        "left": "506px"
+      },
+      "effect2NumberPosition": {
+        "top": "0",
+        "left": "50%"
+      },
+      "effect3NumberPosition": {
+        "top": "0",
+        "left": "50%"
+      },
+      "effect4NumberPosition": {
+        "top": "0",
+        "left": "50%"
+      }
+    }
+  },
+  {
+    "id": "bg-deck-b",
+    "label": "BG Deck-B",
+    "image": "/models/cards/Deck-B.png",
+    "positions": {
+      "icon": {
+        "top": "292px",
+        "left": "72px"
+      },
+      "icon2": {
+        "top": "120px",
+        "left": "545px"
+      },
+      "title": {
+        "top": "27px",
+        "left": "17px",
+        "width": "594px",
+        "height": "120px",
+        "fontSize": "__UNIFIED_TITLE_FONT_SIZE__"
+      },
+      "description": {
+        "top": "200px",
+        "left": "40px"
+      },
+      "overlay": {
+        "top": "215px",
+        "left": "215px",
+        "width": "410px",
+        "height": "285px"
+      },
+      "skills": {
+        "top": "850px",
+        "left": "70px",
+        "width": "560px",
+        "height": "120px"
+      },
+      "effect1": {
+        "top": "675px",
+        "left": "59px"
+      },
+      "effect2": {
+        "top": "670px",
+        "left": "208px"
+      },
+      "effect3": {
+        "top": "670px",
+        "left": "357px"
+      },
+      "effect4": {
+        "top": "670px",
+        "left": "506px"
+      },
+      "effect2NumberPosition": {
+        "top": "0",
+        "left": "50%"
+      },
+      "effect3NumberPosition": {
+        "top": "0",
+        "left": "50%"
+      },
+      "effect4NumberPosition": {
+        "top": "0",
+        "left": "50%"
+      }
+    }
+  },
+  {
+    "id": "bg-deck-c",
+    "label": "BG Deck-C",
+    "image": "/models/cards/Deck-C.png",
+    "positions": {
+      "icon": {
+        "top": "292px",
+        "left": "72px"
+      },
+      "icon2": {
+        "top": "120px",
+        "left": "545px"
+      },
+      "title": {
+        "top": "27px",
+        "left": "17px",
+        "width": "594px",
+        "height": "120px",
+        "fontSize": "__UNIFIED_TITLE_FONT_SIZE__"
+      },
+      "description": {
+        "top": "200px",
+        "left": "40px"
+      },
+      "overlay": {
+        "top": "215px",
+        "left": "215px",
+        "width": "410px",
+        "height": "285px"
+      },
+      "skills": {
+        "top": "850px",
+        "left": "70px",
+        "width": "560px",
+        "height": "120px"
+      },
+      "effect1": {
+        "top": "675px",
+        "left": "59px"
+      },
+      "effect2": {
+        "top": "670px",
+        "left": "208px"
+      },
+      "effect3": {
+        "top": "670px",
+        "left": "357px"
+      },
+      "effect4": {
+        "top": "670px",
+        "left": "506px"
+      },
+      "effect2NumberPosition": {
+        "top": "0",
+        "left": "50%"
+      },
+      "effect3NumberPosition": {
+        "top": "0",
+        "left": "50%"
+      },
+      "effect4NumberPosition": {
+        "top": "0",
+        "left": "50%"
+      }
+    }
+  }
+]
