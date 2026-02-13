@@ -2,6 +2,7 @@
 
 import {
   ChangeEvent,
+  useCallback,
   useEffect,
   useLayoutEffect,
   useRef,
@@ -11,6 +12,48 @@ import {
 import { toPng } from "html-to-image";
 import { Bebas_Neue, EB_Garamond } from "next/font/google";
 import JSZip from "jszip";
+import Cropper from "react-easy-crop";
+import type { Area } from "react-easy-crop";
+
+/** Gera imagem recortada a partir de croppedAreaPixels (coordenadas na imagem original) */
+async function createCroppedImage(
+  imageSrc: string,
+  pixelCrop: Area,
+): Promise<string> {
+  const image = await createImage(imageSrc);
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Canvas 2d não disponível");
+  canvas.width = pixelCrop.width;
+  canvas.height = pixelCrop.height;
+  ctx.drawImage(
+    image,
+    pixelCrop.x,
+    pixelCrop.y,
+    pixelCrop.width,
+    pixelCrop.height,
+    0,
+    0,
+    pixelCrop.width,
+    pixelCrop.height,
+  );
+  return canvas.toDataURL("image/png");
+}
+
+function createImage(url: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.addEventListener("load", () => resolve(img));
+    img.addEventListener("error", reject);
+    img.src = url;
+  });
+}
+
+/** Extrai número de valor como "295px" ou "505px" */
+function parsePx(value: string): number {
+  const n = parseFloat(String(value).replace(/[^0-9.-]/g, ""));
+  return Number.isNaN(n) ? 1 : n;
+}
 
 type IconOption = {
   id: string;
@@ -18,6 +61,69 @@ type IconOption = {
   description: string;
   src: string;
 };
+
+/** True se alguma skill é o ícone 02.png (Enemies), que aparece só na div 2a. */
+function hasEnemie02InSkills(
+  iconOptions: IconOption[],
+  skillIds: string[] | undefined,
+): boolean {
+  return (skillIds ?? []).some((s) => {
+    const icon = iconOptions.find(
+      (o) =>
+        o.id === s ||
+        String(o.id) === String(s) ||
+        o.src === s ||
+        (s && o.src?.includes(s)),
+    );
+    if (!icon) return false;
+    const id = String(icon.id);
+    const src = icon.src ?? "";
+    return (
+      id === "02" ||
+      id === "2" ||
+      (src.includes("02.png") && !src.includes("02-A")) ||
+      (src.includes("2.png") && !src.includes("2-A"))
+    );
+  });
+}
+
+/** True se alguma skill é o ícone 06.png (Enemies), que fica fixo no início da div 2b. */
+function hasEnemie06InSkills(
+  iconOptions: IconOption[],
+  skillIds: string[] | undefined,
+): boolean {
+  return (skillIds ?? []).some((s) => {
+    const icon = iconOptions.find(
+      (o) =>
+        o.id === s ||
+        String(o.id) === String(s) ||
+        o.src === s ||
+        (s && o.src?.includes(s)),
+    );
+    if (!icon) return false;
+    const id = String(icon.id);
+    const src = icon.src ?? "";
+    return (
+      id === "06" ||
+      (src.includes("06.png") && !src.includes("06-A"))
+    );
+  });
+}
+
+/** True se o id corresponde ao ícone 06.png (Enemies), não 06-A. */
+function isId06(id: string): boolean {
+  const s = String(id).toLowerCase();
+  return s === "06" || (s.includes("06") && !s.includes("06-a"));
+}
+
+/** True se o ícone (IconOption) é o 06. */
+function isIcon06(icon: { id?: string; src?: string }): boolean {
+  return (
+    String(icon.id) === "06" ||
+    (icon.src?.includes("06.png") && !icon.src?.includes("06-A")) ||
+    false
+  );
+}
 
 /** Listas de ícones vêm da API /api/icons?path= (A, B, C, Effects/01, etc.) */
 const DEFAULT_ICON_FALLBACK = "/models/icons/A/01.png";
@@ -139,6 +245,8 @@ type LayoutPositions = {
   description: {
     top: string;
     left: string;
+    width?: string;
+    height?: string;
   };
   overlay: {
     top: string;
@@ -161,6 +269,25 @@ type LayoutPositions = {
   effect2NumberPosition?: { top: string; left: string };
   effect3NumberPosition?: { top: string; left: string };
   effect4NumberPosition?: { top: string; left: string };
+  /** Layout Enemie: posições dos campos numéricos (perigo, movimentação, vida) */
+  enemieRedNumberPosition?: {
+    top: string;
+    left: string;
+    width: string;
+    height: string;
+  };
+  enemieGreenNumberPosition?: {
+    top: string;
+    left: string;
+    width: string;
+    height: string;
+  };
+  enemieBlueNumberPosition?: {
+    top: string;
+    left: string;
+    width: string;
+    height: string;
+  };
 };
 
 type LayoutOption = {
@@ -224,6 +351,9 @@ const TENSION_LAYOUT_IDS = [
 const isTensionLayout = (layoutId: string) =>
   TENSION_LAYOUT_IDS.includes(layoutId);
 
+/** Layout Enemie: card horizontal */
+const isEnemieLayout = (layoutId: string) => layoutId === "enemie";
+
 const mergeLayoutPositions = (
   candidate: Partial<LayoutPositions>,
   fallback: LayoutPositions,
@@ -231,7 +361,12 @@ const mergeLayoutPositions = (
   icon: candidate.icon ?? fallback.icon,
   icon2: candidate.icon2 ?? fallback.icon2,
   title: candidate.title ?? fallback.title,
-  description: candidate.description ?? fallback.description,
+  description: candidate.description
+    ? {
+        ...fallback.description,
+        ...candidate.description,
+      }
+    : fallback.description,
   overlay: candidate.overlay ?? fallback.overlay,
   skills: candidate.skills ?? fallback.skills,
   effect1: candidate.effect1 ?? fallback.effect1,
@@ -244,6 +379,12 @@ const mergeLayoutPositions = (
     candidate.effect3NumberPosition ?? fallback.effect3NumberPosition,
   effect4NumberPosition:
     candidate.effect4NumberPosition ?? fallback.effect4NumberPosition,
+  enemieRedNumberPosition:
+    candidate.enemieRedNumberPosition ?? fallback.enemieRedNumberPosition,
+  enemieGreenNumberPosition:
+    candidate.enemieGreenNumberPosition ?? fallback.enemieGreenNumberPosition,
+  enemieBlueNumberPosition:
+    candidate.enemieBlueNumberPosition ?? fallback.enemieBlueNumberPosition,
 });
 
 const DEFAULT_LAYOUT = layoutOptions[0];
@@ -272,6 +413,57 @@ const OUTER_DIMENSIONS = {
   width: CARD_DIMENSIONS.width, // 744px (63mm)
   height: CARD_DIMENSIONS.height, // 1039px (88mm)
 };
+
+/** Dimensões horizontais para layout Enemie (88×63mm) */
+const ENEMIE_CARD_SIZE_MM = { width: 88, height: 63 };
+const ENEMIE_BORDER_MM = 2.5; // Borda de 2mm de cada lado para Enemie
+const ENEMIE_CARD_DIMENSIONS = {
+  width: Math.round(ENEMIE_CARD_SIZE_MM.width * MM_TO_PX_300DPI), // 88mm = 1039px
+  height: Math.round(ENEMIE_CARD_SIZE_MM.height * MM_TO_PX_300DPI), // 63mm = 744px
+};
+const ENEMIE_INNER_DIMENSIONS = {
+  width: Math.round(
+    (ENEMIE_CARD_SIZE_MM.width - ENEMIE_BORDER_MM * 2) * MM_TO_PX_300DPI,
+  ), // 84mm = 992px
+  height: Math.round(
+    (ENEMIE_CARD_SIZE_MM.height - ENEMIE_BORDER_MM * 2) * MM_TO_PX_300DPI,
+  ), // 59mm = 697px
+};
+const ENEMIE_OUTER_DIMENSIONS = {
+  width: ENEMIE_CARD_DIMENSIONS.width, // 1039px (88mm)
+  height: ENEMIE_CARD_DIMENSIONS.height, // 744px (63mm)
+};
+
+/** Altura de cada linha de skills no layout Enemie */
+const ENEMIE_SKILL_LINE_HEIGHT_PX = 70; // Altura fixa de 70px para todas as divs
+/** Altura fixa dos ícones nas divs 2a/2b (80% da linha) - evita redimensionamento ao mudar quantidade */
+const ENEMIE_SKILL_ICON_SLOT_HEIGHT_PX = Math.floor(
+  ENEMIE_SKILL_LINE_HEIGHT_PX * 0.8,
+);
+/** Largura da div 2b */
+const ENEMIE_SKILL_2B_CONTAINER_WIDTH_PX = 212;
+/** Margem lateral em 2b para que 3 ícones pareçam centralizados (começam à esquerda) */
+const ENEMIE_SKILL_2B_SIDE_MARGIN_PX = 12;
+/** Gap entre os slots em 2b (2 gaps entre 3 itens) */
+const ENEMIE_SKILL_2B_GAP_PX = 8;
+/** Largura de cada slot em 2b: (container - 2*margin - 2*gaps) / 3 */
+const ENEMIE_SKILL_2B_SLOT_WIDTH_PX = Math.floor(
+  (ENEMIE_SKILL_2B_CONTAINER_WIDTH_PX -
+    2 * ENEMIE_SKILL_2B_SIDE_MARGIN_PX -
+    ENEMIE_SKILL_2B_GAP_PX) /
+    3,
+);
+/** Fonte dos números nos skills Enemie: 60% do tamanho atual (44px) = 26px */
+const ENEMIE_SKILL_NUMBER_FONT_SIZE = 26;
+/** Cor da fonte dos números nos skills Enemie */
+const ENEMIE_SKILL_NUMBER_COLOR = "#D8C2AB";
+/** Campo 1b: cor e fonte do número (25% maior que o padrão) */
+const ENEMIE_SKILL_1B_NUMBER_COLOR = "#1F1612";
+const ENEMIE_SKILL_1B_NUMBER_FONT_SIZE = 50;
+/** Altura total da div de skills no layout Enemie */
+const ENEMIE_SKILLS_CONTAINER_HEIGHT_PX = 505;
+/** Altura de cada div de cor (dividindo o espaço total entre 3 cores) */
+const ENEMIE_COLOR_DIV_HEIGHT_PX = ENEMIE_SKILLS_CONTAINER_HEIGHT_PX / 3;
 
 /** INNER_OFFSET = offset para posicionar a área interna (arte) dentro do card total */
 /** Borda de 4mm de cada lado = (CARD_DIMENSIONS - INNER_DIMENSIONS) / 2 */
@@ -415,6 +607,10 @@ type FormState = {
   selectedSkills: string[];
   /** Número acima de cada skill: skillId -> número (vazio = null) */
   skillNumbers: Record<string, string>;
+  /** Layout Enemie: skills por cor */
+  enemieBlueSkills: string[];
+  enemieYellowSkills: string[];
+  enemiePurpleSkills: string[];
   equip3Number: string;
   linhaDeTiro: string;
   effect2Icon: string;
@@ -428,6 +624,21 @@ type FormState = {
   tension1Text: string;
   tension2Icon: string;
   tension2Text: string;
+  /** Layout Enemie: campos numéricos coloridos */
+  enemieRedNumber: string;
+  enemieGreenNumber: string;
+  enemieBlueNumber: string;
+  /** Layout Enemie: cores selecionadas para skills */
+  enemieBlueColor: boolean;
+  enemieYellowColor: boolean;
+  enemiePurpleColor: boolean;
+  /** Layout Enemie: ícone principal de inimigos */
+  enemieMainIcon: string;
+  enemieMainIconNumber: string;
+  /** Layout Enemie: número em branco na frente do ícone 06 (quando 06 está selecionado) */
+  enemieBlueExtraNumber: string;
+  enemiePurpleExtraNumber: string;
+  enemieYellowExtraNumber: string;
 };
 
 const createInitialFormState = (): FormState => ({
@@ -441,6 +652,9 @@ const createInitialFormState = (): FormState => ({
   accent: DEFAULT_ACCENT,
   selectedSkills: [],
   skillNumbers: {},
+  enemieBlueSkills: [],
+  enemieYellowSkills: [],
+  enemiePurpleSkills: [],
   equip3Number: "",
   linhaDeTiro: "LOS",
   effect2Icon: "",
@@ -453,6 +667,17 @@ const createInitialFormState = (): FormState => ({
   tension1Text: "",
   tension2Icon: "",
   tension2Text: "",
+  enemieRedNumber: "0",
+  enemieGreenNumber: "0",
+  enemieBlueNumber: "0",
+  enemieBlueColor: false,
+  enemieYellowColor: false,
+  enemiePurpleColor: false,
+  enemieMainIcon: "",
+  enemieMainIconNumber: "",
+  enemieBlueExtraNumber: "",
+  enemiePurpleExtraNumber: "",
+  enemieYellowExtraNumber: "",
 });
 
 type CardDesign = {
@@ -469,6 +694,9 @@ type CardDesign = {
   layoutPositions: LayoutPositions;
   selectedSkills: string[];
   skillNumbers: Record<string, string>;
+  enemieBlueSkills: string[];
+  enemieYellowSkills: string[];
+  enemiePurpleSkills: string[];
   equip3Number: string;
   linhaDeTiro: string;
   effect2Icon: string;
@@ -481,6 +709,17 @@ type CardDesign = {
   tension1Text: string;
   tension2Icon: string;
   tension2Text: string;
+  enemieRedNumber: string;
+  enemieGreenNumber: string;
+  enemieBlueNumber: string;
+  enemieBlueColor: boolean;
+  enemieYellowColor: boolean;
+  enemiePurpleColor: boolean;
+  enemieMainIcon: string;
+  enemieMainIconNumber: string;
+  enemieBlueExtraNumber: string;
+  enemiePurpleExtraNumber: string;
+  enemieYellowExtraNumber: string;
 };
 
 type CardPreviewProps = {
@@ -494,6 +733,7 @@ type CardPreviewProps = {
   effect4IconOptions?: IconOption[];
   effectIconOptions04?: IconOption[];
   tensionIconOptions?: IconOption[];
+  enemieIconOptions?: IconOption[];
   showDebugBackground?: boolean;
 };
 
@@ -510,6 +750,7 @@ const CardPreview = ({
   effect4IconOptions = [],
   effectIconOptions04 = [],
   tensionIconOptions = [],
+  enemieIconOptions = [],
   showDebugBackground = true,
 }: CardPreviewProps) => {
   const titleRef = useRef<HTMLHeadingElement>(null);
@@ -549,12 +790,71 @@ const CardPreview = ({
     setTitleFontSizePx(Math.max(newSize, TITLE_FONT_MIN_PX));
   }, [titleMeasureKey, titleFontSizePx]);
 
+  const isEnemie = isEnemieLayout(card.layoutId);
+  /** Resolve ícone de inimigo (skills por cor) a partir de enemieIconOptions. */
+  const findEnemieIconForSkill = (skillId: string) =>
+    enemieIconOptions.find(
+      (o) =>
+        o.id === skillId ||
+        String(o.id) === String(skillId) ||
+        o.src === skillId ||
+        (skillId && o.src?.includes(skillId)),
+    );
+  /** True se o skillId é o ícone 01.png (exclusivo da div 1a). */
+  const isEnemie01 = (skillId: string) => {
+    const icon = findEnemieIconForSkill(skillId);
+    return (
+      icon &&
+      (String(icon.id) === "01" ||
+        (icon.src?.includes("01.png") && !icon.src?.includes("02")))
+    );
+  };
+  /** True se o skillId é o ícone 02 (exclusivo da div 2a). */
+  const isEnemie02 = (skillId: string) => {
+    const icon = findEnemieIconForSkill(skillId);
+    return (
+      icon &&
+      (String(icon.id) === "02" ||
+        String(icon.id) === "2" ||
+        (icon.src?.includes("02.png") && !icon.src?.includes("02-A")) ||
+        (icon.src?.includes("2.png") && !icon.src?.includes("2-A")))
+    );
+  };
+  /** True se o skillId é o ícone 06 (fixo no início da div 2b). */
+  const isEnemie06 = (skillId: string) => {
+    const icon = findEnemieIconForSkill(skillId);
+    return (
+      icon &&
+      (String(icon.id) === "06" ||
+        (icon.src?.includes("06.png") && !icon.src?.includes("06-A")))
+    );
+  };
+  const ENEMIE_01_ICON = "/models/icons/Enemies/01.png";
+  const ENEMIE_02_ICON = "/models/icons/Enemies/02.png";
+  const ENEMIE_06_ICON = "/models/icons/Enemies/06.png";
+  const cardOuterDimensions = isEnemie
+    ? ENEMIE_OUTER_DIMENSIONS
+    : OUTER_DIMENSIONS;
+  const cardInnerDimensions = isEnemie
+    ? ENEMIE_INNER_DIMENSIONS
+    : INNER_DIMENSIONS;
+  const cardInnerOffset = isEnemie
+    ? {
+        left: Math.round(
+          (ENEMIE_OUTER_DIMENSIONS.width - ENEMIE_INNER_DIMENSIONS.width) / 2,
+        ),
+        top: Math.round(
+          (ENEMIE_OUTER_DIMENSIONS.height - ENEMIE_INNER_DIMENSIONS.height) / 2,
+        ),
+      }
+    : INNER_OFFSET;
+
   const innerCardStyle: React.CSSProperties = {
     position: "absolute",
-    left: INNER_OFFSET.left,
-    top: INNER_OFFSET.top,
-    width: INNER_DIMENSIONS.width,
-    height: INNER_DIMENSIONS.height,
+    left: `${cardInnerOffset.left}px`,
+    top: `${cardInnerOffset.top}px`,
+    width: cardInnerDimensions.width,
+    height: cardInnerDimensions.height,
     borderColor: CARD_BORDER_COLOR,
     backgroundImage: `url("${heroImage}")`,
     backgroundSize: "100% 100%",
@@ -569,8 +869,8 @@ const CardPreview = ({
       id={htmlId}
       className="relative overflow-hidden rounded-3xl border-2 border-white/30 transition"
       style={{
-        width: OUTER_DIMENSIONS.width,
-        height: OUTER_DIMENSIONS.height,
+        width: cardOuterDimensions.width,
+        height: cardOuterDimensions.height,
         backgroundImage: `url("${BASE_IMAGE}")`,
         backgroundSize: "100% 100%",
         backgroundPosition: "center",
@@ -578,6 +878,61 @@ const CardPreview = ({
       }}
     >
       <div className="relative overflow-hidden" style={innerCardStyle}>
+        {isEnemie && (
+          <>
+            {(card.enemieRedNumber || card.enemieRedNumber === "0") &&
+              layoutPositions.enemieRedNumberPosition && (
+                <div
+                  className="absolute flex items-center justify-center rounded-lg font-bold drop-shadow-lg z-20 text-center"
+                  style={{
+                    top: layoutPositions.enemieRedNumberPosition.top,
+                    left: layoutPositions.enemieRedNumberPosition.left,
+                    width: layoutPositions.enemieRedNumberPosition.width,
+                    height: layoutPositions.enemieRedNumberPosition.height,
+                    fontSize: "45px",
+                    color: "#1F1612",
+                    fontFamily: bebasNeue.style.fontFamily,
+                  }}
+                >
+                  {card.enemieRedNumber}
+                </div>
+              )}
+            {(card.enemieGreenNumber || card.enemieGreenNumber === "0") &&
+              layoutPositions.enemieGreenNumberPosition && (
+                <div
+                  className="absolute flex items-center justify-center rounded-lg font-bold drop-shadow-lg z-20 text-center"
+                  style={{
+                    top: layoutPositions.enemieGreenNumberPosition.top,
+                    left: layoutPositions.enemieGreenNumberPosition.left,
+                    width: layoutPositions.enemieGreenNumberPosition.width,
+                    height: layoutPositions.enemieGreenNumberPosition.height,
+                    fontSize: "60px",
+                    color: "#1F1612",
+                    fontFamily: bebasNeue.style.fontFamily,
+                  }}
+                >
+                  {card.enemieGreenNumber}
+                </div>
+              )}
+            {(card.enemieBlueNumber || card.enemieBlueNumber === "0") &&
+              layoutPositions.enemieBlueNumberPosition && (
+                <div
+                  className="absolute flex items-center justify-center rounded-lg font-bold drop-shadow-lg z-20 text-center"
+                  style={{
+                    top: layoutPositions.enemieBlueNumberPosition.top,
+                    left: layoutPositions.enemieBlueNumberPosition.left,
+                    width: layoutPositions.enemieBlueNumberPosition.width,
+                    height: layoutPositions.enemieBlueNumberPosition.height,
+                    fontSize: "60px",
+                    color: "#CDB39E",
+                    fontFamily: bebasNeue.style.fontFamily,
+                  }}
+                >
+                  {card.enemieBlueNumber}
+                </div>
+              )}
+          </>
+        )}
         {!isBgLayout(card.layoutId) &&
           !isTensionLayout(card.layoutId) &&
           overlayImage && (
@@ -588,83 +943,814 @@ const CardPreview = ({
                 left: layoutPositions.overlay.left,
                 width: layoutPositions.overlay.width,
                 height: layoutPositions.overlay.height,
-                ...(showDebugBackground && {
-                  backgroundColor: "rgba(255, 0, 0, 0.3)",
-                }),
               }}
             >
               <img
                 src={overlayImage}
                 alt="Arte personalizada do card"
-                className="h-full w-full object-contain object-center"
+                className={`h-full w-full object-center ${
+                  isEnemie ? "object-cover" : "object-contain"
+                }`}
               />
             </div>
           )}
         {!isBgLayout(card.layoutId) &&
           !isTensionLayout(card.layoutId) &&
-          card.selectedSkills?.length > 0 && (
+          (isEnemie || card.selectedSkills?.length > 0) && (
             <div
-              className="flex flex-wrap items-center justify-center gap-2"
+              className={
+                isEnemie
+                  ? "flex flex-col items-center"
+                  : "flex flex-wrap items-center justify-center gap-2"
+              }
               style={{
                 position: "absolute",
                 top: layoutPositions.skills.top,
                 left: layoutPositions.skills.left,
-                width: layoutPositions.skills.width,
-                height: layoutPositions.skills.height,
-                ...(showDebugBackground && {
-                  backgroundColor: "rgba(0, 0, 255, 0.3)",
-                }),
+                width: isEnemie ? "285px" : layoutPositions.skills.width,
+                height: isEnemie
+                  ? `${ENEMIE_SKILLS_CONTAINER_HEIGHT_PX}px`
+                  : layoutPositions.skills.height,
+                ...(showDebugBackground &&
+                  !isEnemie && {
+                    backgroundColor: "rgba(0, 0, 255, 0.3)",
+                  }),
               }}
             >
-              {card.selectedSkills.map((skillId) => {
-                const skill = isEquipWithEffectsLayout(card.layoutId)
-                  ? effectIconOptions04.find((o) => o.id === skillId)
-                  : skillIconOptions.find((o) => o.id === skillId);
-                if (!skill) return null;
-                const numberInFront = card.skillNumbers?.[skillId]?.trim();
-                const skillTooltip = numberInFront
-                  ? TOOLTIP_SKILL_NUMBER[numberInFront]
-                  : undefined;
-                const isEffectSkill = isEquipWithEffectsLayout(card.layoutId);
-                return (
-                  <div
-                    key={skillId}
-                    className="group relative flex items-center justify-center"
-                    title={skillTooltip}
-                  >
-                    {skillTooltip && (
-                      <span
-                        className="pointer-events-none invisible absolute bottom-full left-1/2 z-[100] mb-1 -translate-x-1/2 whitespace-nowrap rounded bg-slate-800 px-2 py-1 text-xs text-white opacity-0 transition group-hover:visible group-hover:opacity-100"
-                        aria-hidden
-                      >
-                        {skillTooltip}
-                      </span>
-                    )}
-                    <img
-                      src={skill.src}
-                      alt={skill.label}
-                      className="h-26 w-30 object-contain"
-                    />
-                    {numberInFront ? (
+              {isEnemie &&
+              (card.enemieBlueSkills?.length ||
+                card.enemieYellowSkills?.length ||
+                card.enemiePurpleSkills?.length) ? (
+                <>
+                  {/* Div Azul - aparece se tiver pelo menos uma skill azul */}
+                  {card.enemieBlueSkills &&
+                    card.enemieBlueSkills.length > 0 && (
                       <div
-                        className="absolute inset-0 z-10 flex items-center justify-center font-semibold drop-shadow-lg"
-                        style={{
-                          color: "#E3DBD2",
-                          fontSize: "55px",
-                          fontFamily: bebasNeue.style.fontFamily,
-                        }}
+                        className="flex flex-col gap-2"
+                        style={{ height: `${ENEMIE_COLOR_DIV_HEIGHT_PX}px` }}
                       >
-                        {numberInFront}
+                        {/* Azul - Linha 1: blue1a (1 ícone) | blue2a (vazio) */}
+                        <div className="flex items-center justify-center gap-2">
+                          {/* blue1a - coluna esquerda: exclusivo para 01.png */}
+                          <div
+                            id="blue1a"
+                            className="enemie-label-bg flex items-center justify-center gap-1"
+                            style={{
+                              width: "65px",
+                              height: `${ENEMIE_SKILL_LINE_HEIGHT_PX}px`,
+                              minHeight: `${ENEMIE_SKILL_LINE_HEIGHT_PX}px`,
+                              maxHeight: `${ENEMIE_SKILL_LINE_HEIGHT_PX}px`,
+                              border: "2px solid #000000",
+                              borderRadius: "20px",
+                              boxShadow: "inset 0 0 15px rgba(0, 0, 0, 0.8)",
+                              background: `repeating-linear-gradient(135deg, rgba(57, 89, 163, 0.75) 0%, rgba(57, 89, 163, 0.75) 28.57%, transparent 28.57%, transparent 42.86%, rgba(57, 89, 163, 0.75) 42.86%, rgba(57, 89, 163, 0.75) 71.43%, transparent 71.43%, transparent 100%)`,
+                              backgroundPosition: "right center",
+                            }}
+                          >
+                            {card.enemieBlueSkills?.find(isEnemie01) && (
+                              <img
+                                key="blue-l1-01"
+                                src={ENEMIE_01_ICON}
+                                alt="01"
+                                style={{
+                                  maxHeight: `${ENEMIE_SKILL_ICON_SLOT_HEIGHT_PX}px`,
+                                  width: "auto",
+                                  height: "auto",
+                                  objectFit: "contain",
+                                }}
+                              />
+                            )}
+                          </div>
+                          {/* blue2a - coluna direita linha 1: 02.png exclusivo (só aqui) */}
+                          <div
+                            id="blue2a"
+                            className="enemie-label-bg flex items-center justify-start"
+                            style={{
+                              width: `${ENEMIE_SKILL_2B_CONTAINER_WIDTH_PX}px`,
+                              paddingLeft: `${ENEMIE_SKILL_2B_SIDE_MARGIN_PX}px`,
+                              paddingRight: `${ENEMIE_SKILL_2B_SIDE_MARGIN_PX}px`,
+                              gap: `${ENEMIE_SKILL_2B_GAP_PX / 2}px`,
+                              height: `${ENEMIE_SKILL_LINE_HEIGHT_PX}px`,
+                              minHeight: `${ENEMIE_SKILL_LINE_HEIGHT_PX}px`,
+                              maxHeight: `${ENEMIE_SKILL_LINE_HEIGHT_PX}px`,
+                              border: "2px solid #000000",
+                              borderRadius: "20px",
+                              boxShadow: "inset 0 0 15px rgba(0, 0, 0, 0.8)",
+                              background: `repeating-linear-gradient(135deg, rgba(57, 89, 163, 0.75) 0%, rgba(57, 89, 163, 0.75) 14.285%, transparent 14.285%, transparent 28.57%, rgba(57, 89, 163, 0.75) 28.57%, rgba(57, 89, 163, 0.75) 42.855%, transparent 42.855%, transparent 57.14%, rgba(57, 89, 163, 0.75) 57.14%, rgba(57, 89, 163, 0.75) 71.425%, transparent 71.425%, transparent 85.71%, rgba(57, 89, 163, 0.75) 85.71%, rgba(57, 89, 163, 0.75) 100%)`,
+                            }}
+                          >
+                            {hasEnemie02InSkills(
+                              enemieIconOptions,
+                              card.enemieBlueSkills,
+                            ) && (
+                              <div
+                                className="relative flex shrink-0 items-center justify-center"
+                                style={{
+                                  height: `${ENEMIE_SKILL_ICON_SLOT_HEIGHT_PX}px`,
+                                  width: `${ENEMIE_SKILL_2B_SLOT_WIDTH_PX}px`,
+                                  flex: `0 0 ${ENEMIE_SKILL_2B_SLOT_WIDTH_PX}px`,
+                                }}
+                              >
+                                <img
+                                  src={ENEMIE_02_ICON}
+                                  alt="02"
+                                  style={{
+                                    maxHeight: `${ENEMIE_SKILL_ICON_SLOT_HEIGHT_PX}px`,
+                                    width: "auto",
+                                    height: "auto",
+                                    objectFit: "contain",
+                                  }}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        {/* Azul - Linha 2: blue1b (número do ícone único) | blue2b (3 ícones + números na frente) */}
+                        <div className="flex items-center justify-center gap-2">
+                          {/* blue1b - coluna esquerda: número do ícone único */}
+                          <div
+                            id="blue1b"
+                            className="enemie-label-bg relative flex items-center justify-center gap-1"
+                            style={{
+                              width: "65px",
+                              height: `${ENEMIE_SKILL_LINE_HEIGHT_PX}px`,
+                              minHeight: `${ENEMIE_SKILL_LINE_HEIGHT_PX}px`,
+                              maxHeight: `${ENEMIE_SKILL_LINE_HEIGHT_PX}px`,
+                              border: "2px solid #000000",
+                              borderRadius: "20px",
+                              boxShadow: "inset 0 0 15px rgba(0, 0, 0, 0.8)",
+                              background: `repeating-linear-gradient(135deg, rgba(57, 89, 163, 0.75) 0%, rgba(57, 89, 163, 0.75) 28.57%, transparent 28.57%, transparent 42.86%, rgba(57, 89, 163, 0.75) 42.86%, rgba(57, 89, 163, 0.75) 71.43%, transparent 71.43%, transparent 100%)`,
+                              backgroundPosition: "right center",
+                            }}
+                          >
+                            {card.enemieBlueSkills?.length > 0 &&
+                              (() => {
+                                const list = card.enemieBlueSkills ?? [];
+                                const id01 = list.find(isEnemie01);
+                                const num = id01
+                                  ? card.skillNumbers?.[
+                                      `enemie-blue-${id01}`
+                                    ]?.trim()
+                                  : undefined;
+                                return num ? (
+                                  <div
+                                    className="flex w-full items-center justify-center font-semibold drop-shadow-lg"
+                                    style={{
+                                      color: ENEMIE_SKILL_1B_NUMBER_COLOR,
+                                      fontSize: `${ENEMIE_SKILL_1B_NUMBER_FONT_SIZE}px`,
+                                      fontFamily: bebasNeue.style.fontFamily,
+                                      textAlign: "center",
+                                    }}
+                                  >
+                                    {num}
+                                  </div>
+                                ) : null;
+                              })()}
+                          </div>
+                          {/* blue2b - coluna direita: ícones à esquerda, largura ajustada para 3 parecerem centralizados */}
+                          <div
+                            id="blue2b"
+                            className="enemie-label-bg flex items-center justify-start"
+                            style={{
+                              width: `${ENEMIE_SKILL_2B_CONTAINER_WIDTH_PX}px`,
+                              paddingLeft: `${ENEMIE_SKILL_2B_SIDE_MARGIN_PX}px`,
+                              paddingRight: `${ENEMIE_SKILL_2B_SIDE_MARGIN_PX}px`,
+                              gap: `${ENEMIE_SKILL_2B_GAP_PX / 2}px`,
+                              height: `${ENEMIE_SKILL_LINE_HEIGHT_PX}px`,
+                              minHeight: `${ENEMIE_SKILL_LINE_HEIGHT_PX}px`,
+                              maxHeight: `${ENEMIE_SKILL_LINE_HEIGHT_PX}px`,
+                              border: "2px solid #000000",
+                              borderRadius: "20px",
+                              boxShadow: "inset 0 0 15px rgba(0, 0, 0, 0.8)",
+                              background: `repeating-linear-gradient(135deg, rgba(57, 89, 163, 0.75) 0%, rgba(57, 89, 163, 0.75) 14.285%, transparent 14.285%, transparent 28.57%, rgba(57, 89, 163, 0.75) 28.57%, rgba(57, 89, 163, 0.75) 42.855%, transparent 42.855%, transparent 57.14%, rgba(57, 89, 163, 0.75) 57.14%, rgba(57, 89, 163, 0.75) 71.425%, transparent 71.425%, transparent 85.71%, rgba(57, 89, 163, 0.75) 85.71%, rgba(57, 89, 163, 0.75) 100%)`,
+                            }}
+                          >
+                            {(() => {
+                              const list = card.enemieBlueSkills ?? [];
+                              const has06 = hasEnemie06InSkills(
+                                enemieIconOptions,
+                                list,
+                              );
+                              const others = list.filter(
+                                (id) =>
+                                  !isEnemie01(id) &&
+                                  !isEnemie02(id) &&
+                                  !isEnemie06(id),
+                              );
+                              const ordered: { skillId: string; is06: boolean }[] =
+                                has06
+                                  ? [
+                                      {
+                                        skillId:
+                                          list.find((id) => isEnemie06(id)) ??
+                                          "06",
+                                        is06: true,
+                                      },
+                                      ...others.map((id) => ({
+                                        skillId: id,
+                                        is06: false,
+                                      })),
+                                    ]
+                                  : others.map((id) => ({
+                                      skillId: id,
+                                      is06: false,
+                                    }));
+                              return ordered.slice(0, 3);
+                            })().map(({ skillId, is06 }) => {
+                              const id06 = (card.enemieBlueSkills ?? []).find(
+                                (id) => isEnemie06(id),
+                              );
+                              const num = is06
+                                ? (card.skillNumbers?.[
+                                    `enemie-blue-${id06 ?? "06"}`
+                                  ] ??
+                                    card.enemieBlueExtraNumber)?.trim()
+                                : card.skillNumbers?.[
+                                    `enemie-blue-${skillId}`
+                                  ]?.trim();
+                              return (
+                                <div
+                                  key={`blue-2b-${skillId}`}
+                                  className="relative flex shrink-0 items-center justify-center"
+                                  style={{
+                                    height: `${ENEMIE_SKILL_ICON_SLOT_HEIGHT_PX}px`,
+                                    width: `${ENEMIE_SKILL_2B_SLOT_WIDTH_PX}px`,
+                                    flex: `0 0 ${ENEMIE_SKILL_2B_SLOT_WIDTH_PX}px`,
+                                  }}
+                                >
+                                  {(() => {
+                                    const iconSrc = is06
+                                      ? ENEMIE_06_ICON
+                                      : (findEnemieIconForSkill(skillId)
+                                          ?.src ?? "");
+                                    if (!iconSrc) return null;
+                                    return (
+                                      <img
+                                        src={iconSrc}
+                                        alt={
+                                          is06
+                                            ? "06"
+                                            : (findEnemieIconForSkill(skillId)
+                                                ?.label ?? skillId)
+                                        }
+                                        style={{
+                                          maxHeight: `${ENEMIE_SKILL_ICON_SLOT_HEIGHT_PX}px`,
+                                          width: "auto",
+                                          height: "auto",
+                                          objectFit: "contain",
+                                        }}
+                                      />
+                                    );
+                                  })()}
+                                  {num ? (
+                                    <div
+                                      className="absolute inset-0 flex items-center justify-center font-semibold drop-shadow-lg"
+                                      style={{
+                                        color: ENEMIE_SKILL_NUMBER_COLOR,
+                                        fontSize: `${ENEMIE_SKILL_NUMBER_FONT_SIZE}px`,
+                                        fontFamily: bebasNeue.style.fontFamily,
+                                      }}
+                                    >
+                                      {num}
+                                    </div>
+                                  ) : null}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
                       </div>
-                    ) : null}
-                  </div>
-                );
-              })}
+                    )}
+                  {/* Div Roxo - ordem: Azul, Roxo, Amarelo */}
+                  {card.enemiePurpleSkills &&
+                    card.enemiePurpleSkills.length > 0 && (
+                      <div
+                        className="flex flex-col gap-2"
+                        style={{ height: `${ENEMIE_COLOR_DIV_HEIGHT_PX}px` }}
+                      >
+                        {/* Roxo - Linha 1: purple1a (1 ícone) | purple2a (vazio) */}
+                        <div className="flex items-center justify-center gap-2">
+                          {/* purple1a - coluna esquerda: exclusivo para 01.png */}
+                          <div
+                            id="purple1a"
+                            className="enemie-label-bg flex items-center justify-center gap-1"
+                            style={{
+                              width: "65px",
+                              height: `${ENEMIE_SKILL_LINE_HEIGHT_PX}px`,
+                              minHeight: `${ENEMIE_SKILL_LINE_HEIGHT_PX}px`,
+                              maxHeight: `${ENEMIE_SKILL_LINE_HEIGHT_PX}px`,
+                              border: "2px solid #000000",
+                              borderRadius: "20px",
+                              boxShadow: "inset 0 0 15px rgba(0, 0, 0, 0.8)",
+                              background: `repeating-linear-gradient(135deg, rgba(83, 44, 115, 0.75) 0%, rgba(83, 44, 115, 0.75) 28.57%, transparent 28.57%, transparent 42.86%, rgba(83, 44, 115, 0.75) 42.86%, rgba(83, 44, 115, 0.75) 71.43%, transparent 71.43%, transparent 100%)`,
+                              backgroundPosition: "right center",
+                            }}
+                          >
+                            {card.enemiePurpleSkills?.find(isEnemie01) && (
+                              <img
+                                key="purple-l1-01"
+                                src={ENEMIE_01_ICON}
+                                alt="01"
+                                style={{
+                                  maxHeight: `${ENEMIE_SKILL_ICON_SLOT_HEIGHT_PX}px`,
+                                  width: "auto",
+                                  height: "auto",
+                                  objectFit: "contain",
+                                }}
+                              />
+                            )}
+                          </div>
+                          {/* purple2a - coluna direita linha 1: 02.png exclusivo (só aqui) */}
+                          <div
+                            id="purple2a"
+                            className="enemie-label-bg flex items-center justify-start"
+                            style={{
+                              width: `${ENEMIE_SKILL_2B_CONTAINER_WIDTH_PX}px`,
+                              paddingLeft: `${ENEMIE_SKILL_2B_SIDE_MARGIN_PX}px`,
+                              paddingRight: `${ENEMIE_SKILL_2B_SIDE_MARGIN_PX}px`,
+                              gap: `${ENEMIE_SKILL_2B_GAP_PX / 2}px`,
+                              height: `${ENEMIE_SKILL_LINE_HEIGHT_PX}px`,
+                              minHeight: `${ENEMIE_SKILL_LINE_HEIGHT_PX}px`,
+                              maxHeight: `${ENEMIE_SKILL_LINE_HEIGHT_PX}px`,
+                              border: "2px solid #000000",
+                              borderRadius: "20px",
+                              boxShadow: "inset 0 0 15px rgba(0, 0, 0, 0.8)",
+                              background: `repeating-linear-gradient(135deg, rgba(83, 44, 115, 0.75) 0%, rgba(83, 44, 115, 0.75) 14.285%, transparent 14.285%, transparent 28.57%, rgba(83, 44, 115, 0.75) 28.57%, rgba(83, 44, 115, 0.75) 42.855%, transparent 42.855%, transparent 57.14%, rgba(83, 44, 115, 0.75) 57.14%, rgba(83, 44, 115, 0.75) 71.425%, transparent 71.425%, transparent 85.71%, rgba(83, 44, 115, 0.75) 85.71%, rgba(83, 44, 115, 0.75) 100%)`,
+                            }}
+                          >
+                            {hasEnemie02InSkills(
+                              enemieIconOptions,
+                              card.enemiePurpleSkills,
+                            ) && (
+                              <div
+                                className="relative flex shrink-0 items-center justify-center"
+                                style={{
+                                  height: `${ENEMIE_SKILL_ICON_SLOT_HEIGHT_PX}px`,
+                                  width: `${ENEMIE_SKILL_2B_SLOT_WIDTH_PX}px`,
+                                  flex: `0 0 ${ENEMIE_SKILL_2B_SLOT_WIDTH_PX}px`,
+                                }}
+                              >
+                                <img
+                                  src={ENEMIE_02_ICON}
+                                  alt="02"
+                                  style={{
+                                    maxHeight: `${ENEMIE_SKILL_ICON_SLOT_HEIGHT_PX}px`,
+                                    width: "auto",
+                                    height: "auto",
+                                    objectFit: "contain",
+                                  }}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        {/* Roxo - Linha 2: purple1b (número) | purple2b (3 ícones + números na frente) */}
+                        <div className="flex items-center justify-center gap-2">
+                          {/* purple1b - coluna esquerda: número do ícone único */}
+                          <div
+                            id="purple1b"
+                            className="enemie-label-bg flex items-center justify-center gap-1"
+                            style={{
+                              width: "65px",
+                              height: `${ENEMIE_SKILL_LINE_HEIGHT_PX}px`,
+                              minHeight: `${ENEMIE_SKILL_LINE_HEIGHT_PX}px`,
+                              maxHeight: `${ENEMIE_SKILL_LINE_HEIGHT_PX}px`,
+                              border: "2px solid #000000",
+                              borderRadius: "20px",
+                              boxShadow: "inset 0 0 15px rgba(0, 0, 0, 0.8)",
+                              background: `repeating-linear-gradient(135deg, rgba(83, 44, 115, 0.75) 0%, rgba(83, 44, 115, 0.75) 28.57%, transparent 28.57%, transparent 42.86%, rgba(83, 44, 115, 0.75) 42.86%, rgba(83, 44, 115, 0.75) 71.43%, transparent 71.43%, transparent 100%)`,
+                              backgroundPosition: "right center",
+                            }}
+                          >
+                            {card.enemiePurpleSkills?.length > 0 &&
+                              (() => {
+                                const list = card.enemiePurpleSkills ?? [];
+                                const id01 = list.find(isEnemie01);
+                                const num = id01
+                                  ? card.skillNumbers?.[
+                                      `enemie-purple-${id01}`
+                                    ]?.trim()
+                                  : undefined;
+                                return num ? (
+                                  <div
+                                    className="flex w-full items-center justify-center font-semibold drop-shadow-lg"
+                                    style={{
+                                      color: ENEMIE_SKILL_1B_NUMBER_COLOR,
+                                      fontSize: `${ENEMIE_SKILL_1B_NUMBER_FONT_SIZE}px`,
+                                      fontFamily: bebasNeue.style.fontFamily,
+                                      textAlign: "center",
+                                    }}
+                                  >
+                                    {num}
+                                  </div>
+                                ) : null;
+                              })()}
+                          </div>
+                          {/* purple2b - coluna direita: ícones à esquerda, largura ajustada para 3 parecerem centralizados */}
+                          <div
+                            id="purple2b"
+                            className="enemie-label-bg flex items-center justify-start"
+                            style={{
+                              width: `${ENEMIE_SKILL_2B_CONTAINER_WIDTH_PX}px`,
+                              paddingLeft: `${ENEMIE_SKILL_2B_SIDE_MARGIN_PX}px`,
+                              paddingRight: `${ENEMIE_SKILL_2B_SIDE_MARGIN_PX}px`,
+                              gap: `${ENEMIE_SKILL_2B_GAP_PX / 2}px`,
+                              height: `${ENEMIE_SKILL_LINE_HEIGHT_PX}px`,
+                              minHeight: `${ENEMIE_SKILL_LINE_HEIGHT_PX}px`,
+                              maxHeight: `${ENEMIE_SKILL_LINE_HEIGHT_PX}px`,
+                              border: "2px solid #000000",
+                              borderRadius: "20px",
+                              boxShadow: "inset 0 0 15px rgba(0, 0, 0, 0.8)",
+                              background: `repeating-linear-gradient(135deg, rgba(83, 44, 115, 0.75) 0%, rgba(83, 44, 115, 0.75) 14.285%, transparent 14.285%, transparent 28.57%, rgba(83, 44, 115, 0.75) 28.57%, rgba(83, 44, 115, 0.75) 42.855%, transparent 42.855%, transparent 57.14%, rgba(83, 44, 115, 0.75) 57.14%, rgba(83, 44, 115, 0.75) 71.425%, transparent 71.425%, transparent 85.71%, rgba(83, 44, 115, 0.75) 85.71%, rgba(83, 44, 115, 0.75) 100%)`,
+                            }}
+                          >
+                            {(() => {
+                              const list = card.enemiePurpleSkills ?? [];
+                              const has06 = hasEnemie06InSkills(
+                                enemieIconOptions,
+                                list,
+                              );
+                              const others = list.filter(
+                                (id) =>
+                                  !isEnemie01(id) &&
+                                  !isEnemie02(id) &&
+                                  !isEnemie06(id),
+                              );
+                              const ordered: { skillId: string; is06: boolean }[] =
+                                has06
+                                  ? [
+                                      {
+                                        skillId:
+                                          list.find((id) => isEnemie06(id)) ??
+                                          "06",
+                                        is06: true,
+                                      },
+                                      ...others.map((id) => ({
+                                        skillId: id,
+                                        is06: false,
+                                      })),
+                                    ]
+                                  : others.map((id) => ({
+                                      skillId: id,
+                                      is06: false,
+                                    }));
+                              return ordered.slice(0, 3);
+                            })().map(({ skillId, is06 }) => {
+                              const id06 = (card.enemiePurpleSkills ?? []).find(
+                                (id) => isEnemie06(id),
+                              );
+                              const num = is06
+                                ? (card.skillNumbers?.[
+                                    `enemie-purple-${id06 ?? "06"}`
+                                  ] ??
+                                    card.enemiePurpleExtraNumber)?.trim()
+                                : card.skillNumbers?.[
+                                    `enemie-purple-${skillId}`
+                                  ]?.trim();
+                              return (
+                                <div
+                                  key={`purple-2b-${skillId}`}
+                                  className="relative flex shrink-0 items-center justify-center"
+                                  style={{
+                                    height: `${ENEMIE_SKILL_ICON_SLOT_HEIGHT_PX}px`,
+                                    width: `${ENEMIE_SKILL_2B_SLOT_WIDTH_PX}px`,
+                                    flex: `0 0 ${ENEMIE_SKILL_2B_SLOT_WIDTH_PX}px`,
+                                  }}
+                                >
+                                  {(() => {
+                                    const iconSrc = is06
+                                      ? ENEMIE_06_ICON
+                                      : (findEnemieIconForSkill(skillId)
+                                          ?.src ?? "");
+                                    if (!iconSrc) return null;
+                                    return (
+                                      <img
+                                        src={iconSrc}
+                                        alt={
+                                          is06
+                                            ? "06"
+                                            : (findEnemieIconForSkill(skillId)
+                                                ?.label ?? skillId)
+                                        }
+                                        style={{
+                                          maxHeight: `${ENEMIE_SKILL_ICON_SLOT_HEIGHT_PX}px`,
+                                          width: "auto",
+                                          height: "auto",
+                                          objectFit: "contain",
+                                        }}
+                                      />
+                                    );
+                                  })()}
+                                  {num ? (
+                                    <div
+                                      className="absolute inset-0 flex items-center justify-center font-semibold drop-shadow-lg"
+                                      style={{
+                                        color: ENEMIE_SKILL_NUMBER_COLOR,
+                                        fontSize: `${ENEMIE_SKILL_NUMBER_FONT_SIZE}px`,
+                                        fontFamily: bebasNeue.style.fontFamily,
+                                      }}
+                                    >
+                                      {num}
+                                    </div>
+                                  ) : null}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  {/* Div Amarelo - por último na ordem Azul, Roxo, Amarelo */}
+                  {card.enemieYellowSkills &&
+                    card.enemieYellowSkills.length > 0 && (
+                      <div
+                        className="flex flex-col gap-2"
+                        style={{ height: `${ENEMIE_COLOR_DIV_HEIGHT_PX}px` }}
+                      >
+                        {/* Amarelo - Linha 1: yellow1a (1 ícone) | yellow2a (vazio) */}
+                        <div className="flex items-center justify-center gap-2">
+                          {/* yellow1a - coluna esquerda: exclusivo para 01.png */}
+                          <div
+                            id="yellow1a"
+                            className="enemie-label-bg flex items-center justify-center gap-1"
+                            style={{
+                              width: "65px",
+                              height: `${ENEMIE_SKILL_LINE_HEIGHT_PX}px`,
+                              minHeight: `${ENEMIE_SKILL_LINE_HEIGHT_PX}px`,
+                              maxHeight: `${ENEMIE_SKILL_LINE_HEIGHT_PX}px`,
+                              border: "2px solid #000000",
+                              borderRadius: "20px",
+                              boxShadow: "inset 0 0 15px rgba(0, 0, 0, 0.8)",
+                              background: `repeating-linear-gradient(135deg, #CFC752 0%, #CFC752 28.57%, transparent 28.57%, transparent 42.86%, #CFC752 42.86%, #CFC752 71.43%, transparent 71.43%, transparent 100%)`,
+                              backgroundPosition: "right center",
+                            }}
+                          >
+                            {card.enemieYellowSkills?.find(isEnemie01) && (
+                              <img
+                                key="yellow-l1-01"
+                                src={ENEMIE_01_ICON}
+                                alt="01"
+                                style={{
+                                  maxHeight: `${ENEMIE_SKILL_ICON_SLOT_HEIGHT_PX}px`,
+                                  width: "auto",
+                                  height: "auto",
+                                  objectFit: "contain",
+                                }}
+                              />
+                            )}
+                          </div>
+                          {/* yellow2a - coluna direita linha 1: 02.png exclusivo (só aqui) */}
+                          <div
+                            id="yellow2a"
+                            className="enemie-label-bg flex items-center justify-start"
+                            style={{
+                              width: `${ENEMIE_SKILL_2B_CONTAINER_WIDTH_PX}px`,
+                              paddingLeft: `${ENEMIE_SKILL_2B_SIDE_MARGIN_PX}px`,
+                              paddingRight: `${ENEMIE_SKILL_2B_SIDE_MARGIN_PX}px`,
+                              gap: `${ENEMIE_SKILL_2B_GAP_PX / 2}px`,
+                              height: `${ENEMIE_SKILL_LINE_HEIGHT_PX}px`,
+                              minHeight: `${ENEMIE_SKILL_LINE_HEIGHT_PX}px`,
+                              maxHeight: `${ENEMIE_SKILL_LINE_HEIGHT_PX}px`,
+                              border: "2px solid #000000",
+                              borderRadius: "20px",
+                              boxShadow: "inset 0 0 15px rgba(0, 0, 0, 0.8)",
+                              background: `repeating-linear-gradient(135deg, #CFC752 0%, #CFC752 14.285%, transparent 14.285%, transparent 28.57%, #CFC752 28.57%, #CFC752 42.855%, transparent 42.855%, transparent 57.14%, #CFC752 57.14%, #CFC752 71.425%, transparent 71.425%, transparent 85.71%, #CFC752 85.71%, #CFC752 100%)`,
+                            }}
+                          >
+                            {hasEnemie02InSkills(
+                              enemieIconOptions,
+                              card.enemieYellowSkills,
+                            ) && (
+                              <div
+                                className="relative flex shrink-0 items-center justify-center"
+                                style={{
+                                  height: `${ENEMIE_SKILL_ICON_SLOT_HEIGHT_PX}px`,
+                                  width: `${ENEMIE_SKILL_2B_SLOT_WIDTH_PX}px`,
+                                  flex: `0 0 ${ENEMIE_SKILL_2B_SLOT_WIDTH_PX}px`,
+                                }}
+                              >
+                                <img
+                                  src={ENEMIE_02_ICON}
+                                  alt="02"
+                                  style={{
+                                    maxHeight: `${ENEMIE_SKILL_ICON_SLOT_HEIGHT_PX}px`,
+                                    width: "auto",
+                                    height: "auto",
+                                    objectFit: "contain",
+                                  }}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        {/* Amarelo - Linha 2: yellow1b (número) | yellow2b (3 ícones + números na frente) */}
+                        <div className="flex items-center justify-center gap-2">
+                          {/* yellow1b - coluna esquerda: número do ícone único */}
+                          <div
+                            id="yellow1b"
+                            className="enemie-label-bg flex items-center justify-center gap-1"
+                            style={{
+                              width: "65px",
+                              height: `${ENEMIE_SKILL_LINE_HEIGHT_PX}px`,
+                              minHeight: `${ENEMIE_SKILL_LINE_HEIGHT_PX}px`,
+                              maxHeight: `${ENEMIE_SKILL_LINE_HEIGHT_PX}px`,
+                              border: "2px solid #000000",
+                              borderRadius: "20px",
+                              boxShadow: "inset 0 0 15px rgba(0, 0, 0, 0.8)",
+                              background: `repeating-linear-gradient(135deg, #CFC752 0%, #CFC752 28.57%, transparent 28.57%, transparent 42.86%, #CFC752 42.86%, #CFC752 71.43%, transparent 71.43%, transparent 100%)`,
+                              backgroundPosition: "right center",
+                            }}
+                          >
+                            {card.enemieYellowSkills?.length > 0 &&
+                              (() => {
+                                const list = card.enemieYellowSkills ?? [];
+                                const id01 = list.find(isEnemie01);
+                                const num = id01
+                                  ? card.skillNumbers?.[
+                                      `enemie-yellow-${id01}`
+                                    ]?.trim()
+                                  : undefined;
+                                return num ? (
+                                  <div
+                                    className="flex w-full items-center justify-center font-semibold drop-shadow-lg"
+                                    style={{
+                                      color: ENEMIE_SKILL_1B_NUMBER_COLOR,
+                                      fontSize: `${ENEMIE_SKILL_1B_NUMBER_FONT_SIZE}px`,
+                                      fontFamily: bebasNeue.style.fontFamily,
+                                      textAlign: "center",
+                                    }}
+                                  >
+                                    {num}
+                                  </div>
+                                ) : null;
+                              })()}
+                          </div>
+                          {/* yellow2b - coluna direita: ícones à esquerda, largura ajustada para 3 parecerem centralizados */}
+                          <div
+                            id="yellow2b"
+                            className="enemie-label-bg flex items-center justify-start"
+                            style={{
+                              width: `${ENEMIE_SKILL_2B_CONTAINER_WIDTH_PX}px`,
+                              paddingLeft: `${ENEMIE_SKILL_2B_SIDE_MARGIN_PX}px`,
+                              paddingRight: `${ENEMIE_SKILL_2B_SIDE_MARGIN_PX}px`,
+                              gap: `${ENEMIE_SKILL_2B_GAP_PX / 2}px`,
+                              height: `${ENEMIE_SKILL_LINE_HEIGHT_PX}px`,
+                              minHeight: `${ENEMIE_SKILL_LINE_HEIGHT_PX}px`,
+                              maxHeight: `${ENEMIE_SKILL_LINE_HEIGHT_PX}px`,
+                              border: "2px solid #000000",
+                              borderRadius: "20px",
+                              boxShadow: "inset 0 0 15px rgba(0, 0, 0, 0.8)",
+                              background: `repeating-linear-gradient(135deg, #CFC752 0%, #CFC752 14.285%, transparent 14.285%, transparent 28.57%, #CFC752 28.57%, #CFC752 42.855%, transparent 42.855%, transparent 57.14%, #CFC752 57.14%, #CFC752 71.425%, transparent 71.425%, transparent 85.71%, #CFC752 85.71%, #CFC752 100%)`,
+                            }}
+                          >
+                            {(() => {
+                              const list = card.enemieYellowSkills ?? [];
+                              const has06 = hasEnemie06InSkills(
+                                enemieIconOptions,
+                                list,
+                              );
+                              const others = list.filter(
+                                (id) =>
+                                  !isEnemie01(id) &&
+                                  !isEnemie02(id) &&
+                                  !isEnemie06(id),
+                              );
+                              const ordered: { skillId: string; is06: boolean }[] =
+                                has06
+                                  ? [
+                                      {
+                                        skillId:
+                                          list.find((id) => isEnemie06(id)) ??
+                                          "06",
+                                        is06: true,
+                                      },
+                                      ...others.map((id) => ({
+                                        skillId: id,
+                                        is06: false,
+                                      })),
+                                    ]
+                                  : others.map((id) => ({
+                                      skillId: id,
+                                      is06: false,
+                                    }));
+                              return ordered.slice(0, 3);
+                            })().map(({ skillId, is06 }) => {
+                              const id06 = (card.enemieYellowSkills ?? []).find(
+                                (id) => isEnemie06(id),
+                              );
+                              const num = is06
+                                ? (card.skillNumbers?.[
+                                    `enemie-yellow-${id06 ?? "06"}`
+                                  ] ??
+                                    card.enemieYellowExtraNumber)?.trim()
+                                : card.skillNumbers?.[
+                                    `enemie-yellow-${skillId}`
+                                  ]?.trim();
+                              return (
+                                <div
+                                  key={`yellow-2b-${skillId}`}
+                                  className="relative flex shrink-0 items-center justify-center"
+                                  style={{
+                                    height: `${ENEMIE_SKILL_ICON_SLOT_HEIGHT_PX}px`,
+                                    width: `${ENEMIE_SKILL_2B_SLOT_WIDTH_PX}px`,
+                                    flex: `0 0 ${ENEMIE_SKILL_2B_SLOT_WIDTH_PX}px`,
+                                  }}
+                                >
+                                  {(() => {
+                                    const iconSrc = is06
+                                      ? ENEMIE_06_ICON
+                                      : (findEnemieIconForSkill(skillId)
+                                          ?.src ?? "");
+                                    if (!iconSrc) return null;
+                                    return (
+                                      <img
+                                        src={iconSrc}
+                                        alt={
+                                          is06
+                                            ? "06"
+                                            : (findEnemieIconForSkill(skillId)
+                                                ?.label ?? skillId)
+                                        }
+                                        style={{
+                                          maxHeight: `${ENEMIE_SKILL_ICON_SLOT_HEIGHT_PX}px`,
+                                          width: "auto",
+                                          height: "auto",
+                                          objectFit: "contain",
+                                        }}
+                                      />
+                                    );
+                                  })()}
+                                  {num ? (
+                                    <div
+                                      className="absolute inset-0 flex items-center justify-center font-semibold drop-shadow-lg"
+                                      style={{
+                                        color: ENEMIE_SKILL_NUMBER_COLOR,
+                                        fontSize: `${ENEMIE_SKILL_NUMBER_FONT_SIZE}px`,
+                                        fontFamily: bebasNeue.style.fontFamily,
+                                      }}
+                                    >
+                                      {num}
+                                    </div>
+                                  ) : null}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                </>
+              ) : (
+                card.selectedSkills.map((skillId) => {
+                  const skill = isEquipWithEffectsLayout(card.layoutId)
+                    ? effectIconOptions04.find((o) => o.id === skillId)
+                    : skillIconOptions.find((o) => o.id === skillId);
+                  if (!skill) return null;
+                  const numberInFront = card.skillNumbers?.[skillId]?.trim();
+                  const skillTooltip = numberInFront
+                    ? TOOLTIP_SKILL_NUMBER[numberInFront]
+                    : undefined;
+                  const isEffectSkill = isEquipWithEffectsLayout(card.layoutId);
+                  return (
+                    <div
+                      key={skillId}
+                      className="group relative flex items-center justify-center"
+                      title={skillTooltip}
+                    >
+                      {skillTooltip && (
+                        <span
+                          className="pointer-events-none invisible absolute bottom-full left-1/2 z-[100] mb-1 -translate-x-1/2 whitespace-nowrap rounded bg-slate-800 px-2 py-1 text-xs text-white opacity-0 transition group-hover:visible group-hover:opacity-100"
+                          aria-hidden
+                        >
+                          {skillTooltip}
+                        </span>
+                      )}
+                      <img
+                        src={skill.src}
+                        alt={skill.label}
+                        className="h-26 w-30 object-contain"
+                      />
+                      {numberInFront ? (
+                        <div
+                          className="absolute inset-0 z-10 flex items-center justify-center font-semibold drop-shadow-lg"
+                          style={{
+                            color: "#E3DBD2",
+                            fontSize: isEffectSkill ? "40px" : "55px",
+                            fontFamily: bebasNeue.style.fontFamily,
+                          }}
+                        >
+                          {numberInFront}
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })
+              )}
             </div>
           )}
         {!isBgLayout(card.layoutId) && (
           <div className="flex h-full flex-col gap-0 text-white">
-            {!isTensionLayout(card.layoutId) && (
+            {!isTensionLayout(card.layoutId) && !isEnemie && (
               <div className="flex items-center gap-4">
                 <div
                   className="relative flex h-24 w-24 flex-col items-center justify-center"
@@ -719,7 +1805,7 @@ const CardPreview = ({
                       className="flex items-center justify-center"
                       style={{
                         position: "absolute",
-                        width: "70px",
+                        width: "65px",
                         top: layoutPositions.icon2.top,
                         left: layoutPositions.icon2.left,
                         textAlign: "center",
@@ -1060,9 +2146,6 @@ const CardPreview = ({
                 flexShrink: 1,
                 flexBasis: "auto",
                 flex: 1,
-                ...(showDebugBackground && {
-                  backgroundColor: "rgba(255, 0, 0, 0.3)",
-                }),
               }}
             >
               {card.title || ""}
@@ -1073,13 +2156,11 @@ const CardPreview = ({
                 style={{
                   top: layoutPositions.description.top,
                   left: layoutPositions.description.left,
-                  width: "570px",
+                  width: layoutPositions.description.width || "570px",
+                  height: layoutPositions.description.height,
                   fontFamily: ebGaramond.style.fontFamily,
                   fontWeight: 590,
                   lineHeight: 1,
-                  ...(showDebugBackground && {
-                    backgroundColor: "rgba(255, 0, 0, 0.3)",
-                  }),
                 }}
               >
                 <p
@@ -1157,15 +2238,32 @@ const CardPreview = ({
                   fontFamily: ebGaramond.style.fontFamily,
                   fontWeight: 590,
                   lineHeight: 1,
-                  width: "570px",
-                  height: "420px",
+                  width: layoutPositions.description.width || "570px",
+                  height: layoutPositions.description.height || "420px",
                   whiteSpace: "pre-line",
-                  ...(showDebugBackground && {
-                    backgroundColor: "rgba(255, 0, 0, 0.3)",
+                  ...(isEnemie && {
+                    boxShadow: "inset 0 0 10px rgba(0, 0, 0, 0.3)",
                   }),
                 }}
               >
-                {renderTextWithInlineIcons(card.description || "")}
+                {isEnemie
+                  ? (() => {
+                      const desc = card.description || "";
+                      const br = desc.indexOf("\n");
+                      if (br === -1) return renderTextWithInlineIcons(desc);
+                      const first = desc.slice(0, br);
+                      const rest = desc.slice(br + 1);
+                      return (
+                        <>
+                          <span style={{ fontWeight: 700 }}>
+                            {renderTextWithInlineIcons(first)}
+                          </span>
+                          {"\n"}
+                          {renderTextWithInlineIcons(rest)}
+                        </>
+                      );
+                    })()
+                  : renderTextWithInlineIcons(card.description || "")}
               </p>
             )}
           </div>
@@ -1180,6 +2278,10 @@ export default function Home() {
   const [form, setForm] = useState<FormState>(createInitialFormState());
   const [cards, setCards] = useState<CardDesign[]>([]);
   const [overlayImage, setOverlayImage] = useState<string | null>(null);
+  const [imageToCrop, setImageToCrop] = useState<string | null>(null);
+  const [cropCompleteArea, setCropCompleteArea] = useState<Area | null>(null);
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
   const [overlayCache, setOverlayCache] = useState<
     Record<string, string | null>
   >({});
@@ -1205,6 +2307,7 @@ export default function Home() {
   const [tensionIconOptions, setTensionIconOptions] = useState<IconOption[]>(
     [],
   );
+  const [enemieIconOptions, setEnemieIconOptions] = useState<IconOption[]>([]);
   const [exportZipProgress, setExportZipProgress] = useState<number | null>(
     null,
   );
@@ -1229,6 +2332,7 @@ export default function Home() {
       "Effects/03",
       "Effects/04",
       "Tension",
+      "Enemies",
     ] as const;
     const setters = [
       setIconOptionsA,
@@ -1239,6 +2343,7 @@ export default function Home() {
       setEffect4IconOptions,
       setEffectIconOptions04,
       setTensionIconOptions,
+      setEnemieIconOptions,
     ];
     Promise.all(
       paths.map((p) =>
@@ -1266,12 +2371,43 @@ export default function Home() {
     const reader = new FileReader();
     reader.onload = () => {
       if (typeof reader.result === "string") {
-        setOverlayImage(reader.result);
+        setImageToCrop(reader.result);
+        setCropCompleteArea(null);
+        setCrop({ x: 0, y: 0 });
+        setZoom(1);
       }
     };
     reader.readAsDataURL(file);
     event.target.value = "";
   };
+
+  const cropAspect = (() => {
+    const config = getLayoutConfig(form.layout);
+    const overlay = config.positions?.overlay;
+    if (!overlay?.width || !overlay?.height) return 440 / 285;
+    const w = parsePx(overlay.width);
+    const h = parsePx(overlay.height);
+    return w / h;
+  })();
+
+  const handleCropConfirm = useCallback(async () => {
+    if (!imageToCrop || !cropCompleteArea) return;
+    try {
+      const cropped = await createCroppedImage(imageToCrop, cropCompleteArea);
+      setOverlayImage(cropped);
+      setImageToCrop(null);
+      setCropCompleteArea(null);
+    } catch (err) {
+      console.error("Erro ao recortar imagem:", err);
+    }
+  }, [imageToCrop, cropCompleteArea]);
+
+  const handleCropCancel = useCallback(() => {
+    setImageToCrop(null);
+    setCropCompleteArea(null);
+    setCrop({ x: 0, y: 0 });
+    setZoom(1);
+  }, []);
 
   const handleLoadCard = async (card: CardDesign) => {
     setForm({
@@ -1297,6 +2433,20 @@ export default function Home() {
       tension1Text: card.tension1Text ?? "",
       tension2Icon: card.tension2Icon ?? "",
       tension2Text: card.tension2Text ?? "",
+      enemieRedNumber: card.enemieRedNumber ?? "0",
+      enemieGreenNumber: card.enemieGreenNumber ?? "0",
+      enemieBlueNumber: card.enemieBlueNumber ?? "0",
+      enemieBlueColor: card.enemieBlueColor ?? false,
+      enemieYellowColor: card.enemieYellowColor ?? false,
+      enemiePurpleColor: card.enemiePurpleColor ?? false,
+      enemieBlueSkills: card.enemieBlueSkills ?? [],
+      enemieYellowSkills: card.enemieYellowSkills ?? [],
+      enemiePurpleSkills: card.enemiePurpleSkills ?? [],
+      enemieMainIcon: card.enemieMainIcon ?? "",
+      enemieMainIconNumber: card.enemieMainIconNumber ?? "",
+      enemieBlueExtraNumber: card.enemieBlueExtraNumber ?? "",
+      enemiePurpleExtraNumber: card.enemiePurpleExtraNumber ?? "",
+      enemieYellowExtraNumber: card.enemieYellowExtraNumber ?? "",
     });
     const cachedOverlay = await getOverlayImage(card.id);
     setOverlayImage(cachedOverlay);
@@ -1351,6 +2501,20 @@ export default function Home() {
           tension1Text: card.tension1Text ?? "",
           tension2Icon: card.tension2Icon ?? "",
           tension2Text: card.tension2Text ?? "",
+          enemieRedNumber: card.enemieRedNumber ?? "0",
+          enemieGreenNumber: card.enemieGreenNumber ?? "0",
+          enemieBlueNumber: card.enemieBlueNumber ?? "0",
+          enemieBlueColor: card.enemieBlueColor ?? false,
+          enemieYellowColor: card.enemieYellowColor ?? false,
+          enemiePurpleColor: card.enemiePurpleColor ?? false,
+          enemieBlueSkills: card.enemieBlueSkills ?? [],
+          enemieYellowSkills: card.enemieYellowSkills ?? [],
+          enemiePurpleSkills: card.enemiePurpleSkills ?? [],
+          enemieMainIcon: card.enemieMainIcon ?? "",
+          enemieMainIconNumber: card.enemieMainIconNumber ?? "",
+          enemieBlueExtraNumber: card.enemieBlueExtraNumber ?? "",
+          enemiePurpleExtraNumber: card.enemiePurpleExtraNumber ?? "",
+          enemieYellowExtraNumber: card.enemieYellowExtraNumber ?? "",
         };
       });
       setCards(sanitized);
@@ -1411,6 +2575,9 @@ export default function Home() {
     layoutId: form.layout,
     selectedSkills: form.selectedSkills,
     skillNumbers: form.skillNumbers ?? {},
+    enemieBlueSkills: form.enemieBlueSkills ?? [],
+    enemieYellowSkills: form.enemieYellowSkills ?? [],
+    enemiePurpleSkills: form.enemiePurpleSkills ?? [],
     equip3Number: form.equip3Number,
     linhaDeTiro: form.linhaDeTiro,
     effect2Icon: form.effect2Icon,
@@ -1423,6 +2590,17 @@ export default function Home() {
     tension1Text: form.tension1Text,
     tension2Icon: form.tension2Icon,
     tension2Text: form.tension2Text,
+    enemieRedNumber: form.enemieRedNumber,
+    enemieGreenNumber: form.enemieGreenNumber,
+    enemieBlueNumber: form.enemieBlueNumber,
+    enemieBlueColor: form.enemieBlueColor,
+    enemieYellowColor: form.enemieYellowColor,
+    enemiePurpleColor: form.enemiePurpleColor,
+    enemieMainIcon: form.enemieMainIcon || "",
+    enemieMainIconNumber: form.enemieMainIconNumber || "",
+    enemieBlueExtraNumber: form.enemieBlueExtraNumber ?? "",
+    enemiePurpleExtraNumber: form.enemiePurpleExtraNumber ?? "",
+    enemieYellowExtraNumber: form.enemieYellowExtraNumber ?? "",
     layoutPositions: currentLayoutConfig.positions,
   };
 
@@ -1527,6 +2705,20 @@ export default function Home() {
         tension1Text,
         tension2Icon,
         tension2Text,
+        enemieRedNumber,
+        enemieGreenNumber,
+        enemieBlueNumber,
+        enemieBlueColor,
+        enemieYellowColor,
+        enemiePurpleColor,
+        enemieBlueSkills,
+        enemieYellowSkills,
+        enemiePurpleSkills,
+        enemieMainIcon,
+        enemieMainIconNumber,
+        enemieBlueExtraNumber,
+        enemiePurpleExtraNumber,
+        enemieYellowExtraNumber,
       }: CardDesign) => ({
         title,
         description,
@@ -1548,6 +2740,20 @@ export default function Home() {
         tension1Text,
         tension2Icon,
         tension2Text,
+        enemieRedNumber,
+        enemieGreenNumber,
+        enemieBlueNumber,
+        enemieBlueColor,
+        enemieYellowColor,
+        enemiePurpleColor,
+        enemieBlueSkills: enemieBlueSkills ?? [],
+        enemieYellowSkills: enemieYellowSkills ?? [],
+        enemiePurpleSkills: enemiePurpleSkills ?? [],
+        enemieMainIcon: enemieMainIcon ?? "",
+        enemieMainIconNumber: enemieMainIconNumber ?? "",
+        enemieBlueExtraNumber: enemieBlueExtraNumber ?? "",
+        enemiePurpleExtraNumber: enemiePurpleExtraNumber ?? "",
+        enemieYellowExtraNumber: enemieYellowExtraNumber ?? "",
       }),
     );
 
@@ -1661,6 +2867,20 @@ export default function Home() {
           tension1Text?: string | null;
           tension2Icon?: string | null;
           tension2Text?: string | null;
+          enemieRedNumber?: string | null;
+          enemieGreenNumber?: string | null;
+          enemieBlueNumber?: string | null;
+          enemieBlueColor?: boolean | null;
+          enemieYellowColor?: boolean | null;
+          enemiePurpleColor?: boolean | null;
+          enemieBlueSkills?: string[];
+          enemieYellowSkills?: string[];
+          enemiePurpleSkills?: string[];
+          enemieMainIcon?: string | null;
+          enemieMainIconNumber?: string | null;
+          enemieBlueExtraNumber?: string | null;
+          enemiePurpleExtraNumber?: string | null;
+          enemieYellowExtraNumber?: string | null;
         }>;
         const importedCards = parsed.map((item) => {
           const layout = getLayoutConfig(item.layoutId);
@@ -1692,6 +2912,20 @@ export default function Home() {
             tension1Text: item.tension1Text ?? "",
             tension2Icon: item.tension2Icon ?? "",
             tension2Text: item.tension2Text ?? "",
+            enemieRedNumber: item.enemieRedNumber ?? "0",
+            enemieGreenNumber: item.enemieGreenNumber ?? "0",
+            enemieBlueNumber: item.enemieBlueNumber ?? "0",
+            enemieBlueColor: item.enemieBlueColor ?? false,
+            enemieYellowColor: item.enemieYellowColor ?? false,
+            enemiePurpleColor: item.enemiePurpleColor ?? false,
+            enemieBlueSkills: item.enemieBlueSkills ?? [],
+            enemieYellowSkills: item.enemieYellowSkills ?? [],
+            enemiePurpleSkills: item.enemiePurpleSkills ?? [],
+            enemieMainIcon: item.enemieMainIcon ?? "",
+            enemieMainIconNumber: item.enemieMainIconNumber ?? "",
+            enemieBlueExtraNumber: item.enemieBlueExtraNumber ?? "",
+            enemiePurpleExtraNumber: item.enemiePurpleExtraNumber ?? "",
+            enemieYellowExtraNumber: item.enemieYellowExtraNumber ?? "",
             layoutPositions: layout.positions,
           };
         });
@@ -1866,6 +3100,7 @@ export default function Home() {
                             htmlId={`thumb-${savedCard.id}`}
                             iconOptionsA={iconOptionsA}
                             skillIconOptions={skillIconOptions}
+                            enemieIconOptions={enemieIconOptions}
                             effect2IconOptions={effect2IconOptions}
                             effect3IconOptions={effect3IconOptions}
                             effect4IconOptions={effect4IconOptions}
@@ -1899,8 +3134,18 @@ export default function Home() {
             Novo card
           </button>
         </div>
-        <section className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
-          <div className="space-y-6 rounded-3xl  border-white/10 bg-black/40 p-6 shadow-xl">
+        <section
+          className={`grid gap-8 ${
+            isEnemieLayout(form.layout)
+              ? "lg:grid-rows-[auto_1fr]"
+              : "lg:grid-cols-[1.1fr_0.9fr]"
+          }`}
+        >
+          <div
+            className={`space-y-6 rounded-3xl border-white/10 bg-black/40 p-6 shadow-xl ${
+              isEnemieLayout(form.layout) ? "order-1" : ""
+            }`}
+          >
             <div className="flex flex-col gap-3">
               <h2 className="text-2xl font-semibold">Conteúdo do card</h2>
             </div>
@@ -1911,12 +3156,12 @@ export default function Home() {
                 <textarea
                   rows={2}
                   placeholder="Lançamento imperdível"
-                  value={form.title ?? ""}
-                  className="rounded-2xl border border-white/10 bg-transparent px-4 py-3 text-base text-white outline-none transition focus:border-slate-300 uppercase resize-none"
+                  value={form.title || ""}
+                  className="rounded-2xl border border-white/10 bg-transparent px-4 py-3 text-base text-white outline-none transition focus:border-slate-300 resize-none"
                   onChange={(event) =>
                     setForm((prev) => ({
                       ...prev,
-                      title: event.target.value.toUpperCase(),
+                      title: event.target.value,
                     }))
                   }
                 />
@@ -1927,7 +3172,7 @@ export default function Home() {
                   ref={descriptionTextareaRef}
                   rows={3}
                   placeholder="Conte um pouco mais sobre a campanha..."
-                  value={form.description ?? ""}
+                  value={form.description || ""}
                   className="rounded-2xl border border-white/10 bg-transparent px-4 py-3 text-sm leading-relaxed text-white outline-none transition focus:border-slate-300 overflow-hidden resize-y min-h-[80px]"
                   style={{ minHeight: 80 }}
                   onChange={(event) =>
@@ -1997,6 +3242,61 @@ export default function Home() {
                   })}
                 </div>
               </div>
+              {isEnemieLayout(form.layout) && (
+                <div className="flex gap-4">
+                  <label className="flex flex-col gap-2 text-sm text-slate-300 flex-1">
+                    <span className="text-red-400">Perigo</span>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={form.enemieRedNumber || "0"}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/\D/g, "");
+                        setForm((prev) => ({
+                          ...prev,
+                          enemieRedNumber: value.slice(-1) || "0",
+                        }));
+                      }}
+                      className="rounded-2xl border border-red-500/50 bg-transparent px-4 py-3 text-base text-white outline-none transition focus:border-red-500"
+                      placeholder="0"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-2 text-sm text-slate-300 flex-1">
+                    <span className="text-green-400">Velocidade</span>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={form.enemieGreenNumber || "0"}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/\D/g, "");
+                        setForm((prev) => ({
+                          ...prev,
+                          enemieGreenNumber: value.slice(-1) || "0",
+                        }));
+                      }}
+                      className="rounded-2xl border border-green-500/50 bg-transparent px-4 py-3 text-base text-white outline-none transition focus:border-green-500"
+                      placeholder="0"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-2 text-sm text-slate-300 flex-1">
+                    <span className="text-blue-400">Vida</span>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={form.enemieBlueNumber || "0"}
+                      onChange={(e) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          enemieBlueNumber:
+                            e.target.value.replace(/\D/g, "") || "0",
+                        }))
+                      }
+                      className="rounded-2xl border border-blue-500/50 bg-transparent px-4 py-3 text-base text-white outline-none transition focus:border-blue-500"
+                      placeholder="0"
+                    />
+                  </label>
+                </div>
+              )}
               <div className="flex flex-col gap-2 text-sm text-slate-300">
                 <span>Arte própria?</span>
                 <button
@@ -2016,50 +3316,22 @@ export default function Home() {
               </div>
             </div>
 
-            {form.layout !== "equip3" && !isTensionLayout(form.layout) && (
-              <>
-                <div className="space-y-3">
-                  <h3 className="text-xl font-semibold">Ícone 1</h3>
-                  <div className="flex gap-3">
-                    {iconOptionsA.map((item) => (
-                      <button
-                        key={item.id}
-                        type="button"
-                        onClick={() =>
-                          setForm((prev) => ({ ...prev, icon: item.src }))
-                        }
-                        className={`flex h-12 w-12 items-center justify-center rounded-full border transition ${
-                          form.icon === item.src
-                            ? "border-amber-400 bg-[#EDE4D7]"
-                            : "border-white/20 bg-[#EDE4D7]/70"
-                        }`}
-                      >
-                        <img
-                          src={item.src}
-                          alt={item.label}
-                          className="h-6 w-6 object-contain"
-                        />
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                {showExtraIcons && (
+            {form.layout !== "equip3" &&
+              !isTensionLayout(form.layout) &&
+              !isEnemieLayout(form.layout) && (
+                <>
                   <div className="space-y-3">
-                    <h3 className="text-xl font-semibold">Dados</h3>
+                    <h3 className="text-xl font-semibold">Ícone 1</h3>
                     <div className="flex gap-3">
-                      {iconOptionsB.map((item) => (
+                      {iconOptionsA.map((item) => (
                         <button
                           key={item.id}
                           type="button"
                           onClick={() =>
-                            setForm((prev) => ({
-                              ...prev,
-                              icon2: item.src,
-                              icon2Id: item.id,
-                            }))
+                            setForm((prev) => ({ ...prev, icon: item.src }))
                           }
                           className={`flex h-12 w-12 items-center justify-center rounded-full border transition ${
-                            form.icon2 === item.src
+                            form.icon === item.src
                               ? "border-amber-400 bg-[#EDE4D7]"
                               : "border-white/20 bg-[#EDE4D7]/70"
                           }`}
@@ -2073,104 +3345,136 @@ export default function Home() {
                       ))}
                     </div>
                   </div>
-                )}
-              </>
-            )}
-
-            {form.layout !== "equip3" && !isTensionLayout(form.layout) && (
-              <div className="space-y-3">
-                <h3 className="text-xl font-semibold">Skills</h3>
-                <div className="flex flex-wrap gap-4">
-                  {skillIconOptions.map((skill) => {
-                    const selected = form.selectedSkills.includes(skill.id);
-                    return (
-                      <div
-                        key={skill.id}
-                        className="flex flex-col items-center gap-1"
-                      >
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setForm((prev) => {
-                              const exists = prev.selectedSkills.includes(
-                                skill.id,
-                              );
-                              const next = exists
-                                ? prev.selectedSkills.filter(
-                                    (id) => id !== skill.id,
-                                  )
-                                : [...prev.selectedSkills, skill.id];
-                              return { ...prev, selectedSkills: next };
-                            })
-                          }
-                          className={`flex h-12 w-12 items-center justify-center rounded-full border transition ${
-                            selected
-                              ? "border-amber-400 bg-[#EDE4D7]"
-                              : "border-white/20 bg-[#EDE4D7]/70"
-                          }`}
-                          title={
-                            TOOLTIP_SKILL_NUMBER[String(Number(skill.id))] ??
-                            skill.label
-                          }
-                        >
-                          <img
-                            src={skill.src}
-                            alt={skill.label}
-                            className="h-6 w-6 object-contain"
-                          />
-                        </button>
-                        <input
-                          type="text"
-                          inputMode="numeric"
-                          value={form.skillNumbers?.[skill.id] ?? ""}
-                          onChange={(e) =>
-                            setForm((prev) => ({
-                              ...prev,
-                              skillNumbers: {
-                                ...prev.skillNumbers,
-                                [skill.id]: e.target.value.replace(/\D/g, ""),
-                              },
-                            }))
-                          }
-                          className="w-12 rounded border border-white/10 bg-white/5 px-1 py-0.5 text-center text-xs text-white"
-                          placeholder="Nº"
-                          title={Object.entries(TOOLTIP_SKILL_NUMBER)
-                            .map(([k, v]) => `${k} = ${v}`)
-                            .join(" | ")}
-                        />
+                  {showExtraIcons && (
+                    <div className="space-y-3">
+                      <h3 className="text-xl font-semibold">Dados</h3>
+                      <div className="flex gap-3">
+                        {iconOptionsB.map((item) => (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() =>
+                              setForm((prev) => ({
+                                ...prev,
+                                icon2: item.src,
+                                icon2Id: item.id,
+                              }))
+                            }
+                            className={`flex h-12 w-12 items-center justify-center rounded-full border transition ${
+                              form.icon2 === item.src
+                                ? "border-amber-400 bg-[#EDE4D7]"
+                                : "border-white/20 bg-[#EDE4D7]/70"
+                            }`}
+                          >
+                            <img
+                              src={item.src}
+                              alt={item.label}
+                              className="h-6 w-6 object-contain"
+                            />
+                          </button>
+                        ))}
                       </div>
-                    );
-                  })}
-                </div>
-                <div className="flex flex-wrap items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 p-2 text-xs uppercase tracking-[0.3em] text-slate-300">
-                  {form.selectedSkills.length === 0 ? (
-                    <span className="w-full text-center text-[0.55rem]">
-                      Nenhuma skill selecionada
-                    </span>
-                  ) : (
-                    form.selectedSkills.map((skillId) => {
-                      const skill = skillIconOptions.find(
-                        (option) => option.id === skillId,
-                      );
-                      if (!skill) return null;
-                      return (
-                        <span
-                          key={`selected-skill-${skillId}`}
-                          className="flex items-center gap-1 rounded-full border border-white/30 bg-white/10 px-2 py-1 text-[0.6rem] text-slate-100"
-                        >
-                          <img
-                            src={skill.src}
-                            alt={skill.label}
-                            className="h-4 w-4 object-contain"
-                          />
-                          {skill.label}
-                        </span>
-                      );
-                    })
+                    </div>
                   )}
+                </>
+              )}
+
+            {form.layout !== "equip3" &&
+              !isTensionLayout(form.layout) &&
+              !isEnemieLayout(form.layout) && (
+                <div className="space-y-3">
+                  <h3 className="text-xl font-semibold">Skills</h3>
+                  <div className="flex flex-wrap gap-4">
+                    {skillIconOptions.map((skill) => {
+                      const selected = form.selectedSkills.includes(skill.id);
+                      return (
+                        <div
+                          key={skill.id}
+                          className="flex flex-col items-center gap-1"
+                        >
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setForm((prev) => {
+                                const exists = prev.selectedSkills.includes(
+                                  skill.id,
+                                );
+                                const next = exists
+                                  ? prev.selectedSkills.filter(
+                                      (id) => id !== skill.id,
+                                    )
+                                  : [...prev.selectedSkills, skill.id];
+                                return { ...prev, selectedSkills: next };
+                              })
+                            }
+                            className={`flex h-12 w-12 items-center justify-center rounded-full border transition ${
+                              selected
+                                ? "border-amber-400 bg-[#EDE4D7]"
+                                : "border-white/20 bg-[#EDE4D7]/70"
+                            }`}
+                            title={
+                              TOOLTIP_SKILL_NUMBER[String(Number(skill.id))] ??
+                              skill.label
+                            }
+                          >
+                            <img
+                              src={skill.src}
+                              alt={skill.label}
+                              className="h-6 w-6 object-contain"
+                            />
+                          </button>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            value={form.skillNumbers?.[skill.id] || ""}
+                            onChange={(e) =>
+                              setForm((prev) => ({
+                                ...prev,
+                                skillNumbers: {
+                                  ...prev.skillNumbers,
+                                  [skill.id]: e.target.value.replace(/\D/g, ""),
+                                },
+                              }))
+                            }
+                            className="w-12 rounded border border-white/10 bg-white/5 px-1 py-0.5 text-center text-xs text-white"
+                            placeholder="Nº"
+                            title={Object.entries(TOOLTIP_SKILL_NUMBER)
+                              .map(([k, v]) => `${k} = ${v}`)
+                              .join(" | ")}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="flex flex-wrap items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 p-2 text-xs uppercase tracking-[0.3em] text-slate-300">
+                    {form.selectedSkills.length === 0 ? (
+                      <span className="w-full text-center text-[0.55rem]">
+                        Nenhuma skill selecionada
+                      </span>
+                    ) : (
+                      form.selectedSkills.map((skillId) => {
+                        const skill = skillIconOptions.find(
+                          (option) => option.id === skillId,
+                        );
+                        if (!skill) return null;
+                        return (
+                          <span
+                            key={`selected-skill-${skillId}`}
+                            className="flex items-center gap-1 rounded-full border border-white/30 bg-white/10 px-2 py-1 text-[0.6rem] text-slate-100"
+                          >
+                            <img
+                              src={skill.src}
+                              alt={skill.label}
+                              className="h-4 w-4 object-contain"
+                            />
+                            {skill.label}
+                          </span>
+                        );
+                      })
+                    )}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
             {form.layout === "equip3" && (
               <>
                 <label className="flex flex-col gap-2 text-sm text-slate-300">
@@ -2178,7 +3482,7 @@ export default function Home() {
                   <input
                     type="text"
                     inputMode="numeric"
-                    value={form.equip3Number ?? ""}
+                    value={form.equip3Number || ""}
                     maxLength={3}
                     className="rounded-2xl border border-white/10 bg-transparent px-4 py-3 text-sm text-white outline-none transition focus:border-slate-300"
                     placeholder="ex: 09"
@@ -2198,7 +3502,7 @@ export default function Home() {
                     </span>
                     <input
                       type="text"
-                      value={form.linhaDeTiro ?? ""}
+                      value={form.linhaDeTiro || ""}
                       onChange={(e) =>
                         setForm((prev) => ({
                           ...prev,
@@ -2218,7 +3522,7 @@ export default function Home() {
                       <input
                         type="text"
                         inputMode="numeric"
-                        value={form.effect2Number ?? ""}
+                        value={form.effect2Number || ""}
                         onChange={(e) =>
                           setForm((prev) => ({
                             ...prev,
@@ -2271,7 +3575,7 @@ export default function Home() {
                       <input
                         type="text"
                         inputMode="numeric"
-                        value={form.effect3Number ?? ""}
+                        value={form.effect3Number || ""}
                         onChange={(e) =>
                           setForm((prev) => ({
                             ...prev,
@@ -2322,7 +3626,7 @@ export default function Home() {
                       <input
                         type="text"
                         inputMode="numeric"
-                        value={form.effect4Number ?? ""}
+                        value={form.effect4Number || ""}
                         onChange={(e) =>
                           setForm((prev) => ({
                             ...prev,
@@ -2416,7 +3720,7 @@ export default function Home() {
                           <input
                             type="text"
                             inputMode="numeric"
-                            value={form.skillNumbers?.[item.id] ?? ""}
+                            value={form.skillNumbers?.[item.id] || ""}
                             onChange={(e) =>
                               setForm((prev) => ({
                                 ...prev,
@@ -2501,7 +3805,7 @@ export default function Home() {
                       {form.tension2Icon === tensionIconOptions[1].id && (
                         <input
                           type="text"
-                          value={form.tension2Text ?? ""}
+                          value={form.tension2Text || ""}
                           onChange={(e) =>
                             setForm((prev) => ({
                               ...prev,
@@ -2546,7 +3850,7 @@ export default function Home() {
                       {form.tension1Icon === tensionIconOptions[0].id && (
                         <input
                           type="text"
-                          value={form.tension1Text ?? ""}
+                          value={form.tension1Text || ""}
                           onChange={(e) =>
                             setForm((prev) => ({
                               ...prev,
@@ -2559,6 +3863,381 @@ export default function Home() {
                       )}
                     </div>
                   )}
+                </div>
+              </div>
+            )}
+
+            {isEnemieLayout(form.layout) && (
+              <div className="space-y-4 border-t border-white/10 pt-4">
+                <h3 className="text-xl font-semibold">Skills por cor</h3>
+                <p className="text-sm text-slate-400">
+                  Clique no ícone para adicionar à cor. O número digitado abaixo
+                  do ícone 06 será exibido na frente dele no card.
+                </p>
+                <div className="flex flex-wrap gap-4">
+                {/* Azul */}
+                <div className="flex-1 min-w-[320px] space-y-2 rounded-lg border border-blue-500/30 bg-blue-500/5 p-3">
+                  <span className="text-sm font-medium text-slate-300 flex items-center gap-2">
+                    <span
+                      className="inline-block w-4 h-4 rounded"
+                      style={{ backgroundColor: "#3959A3" }}
+                    ></span>
+                    Azul
+                  </span>
+                  <div className="grid grid-cols-6 gap-2">
+                    {enemieIconOptions.map((icon) => {
+                        const list = form.enemieBlueSkills ?? [];
+                        const has06 = hasEnemie06InSkills(
+                          enemieIconOptions,
+                          list,
+                        );
+                        const is06 = isIcon06(icon);
+                        const isSelected = is06
+                          ? list.includes(icon.id) ||
+                            list.includes(icon.src ?? "") ||
+                            has06
+                          : list.includes(icon.id) ||
+                            list.includes(icon.src ?? "");
+                        const skillId = icon.id;
+                        return (
+                          <div
+                            key={icon.id}
+                            className="flex flex-col items-center gap-1"
+                          >
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setForm((prev) => {
+                                  const list = prev.enemieBlueSkills ?? [];
+                                  const has06 = hasEnemie06InSkills(
+                                    enemieIconOptions,
+                                    list,
+                                  );
+                                  let next: string[];
+                                  if (isIcon06(icon)) {
+                                    const has06InList = list.some(
+                                      (id) =>
+                                        id === icon.id ||
+                                        id === icon.src ||
+                                        isId06(id),
+                                    );
+                                    if (has06InList) {
+                                      next = list.filter(
+                                        (id) =>
+                                          id !== icon.id &&
+                                          id !== icon.src &&
+                                          !isId06(id),
+                                      );
+                                    } else if (has06) {
+                                      next = list;
+                                    } else {
+                                      next = [...list, icon.id];
+                                    }
+                                  } else {
+                                    const exists = list.some(
+                                      (id) =>
+                                        id === icon.id || id === icon.src,
+                                    );
+                                    next = exists
+                                      ? list.filter(
+                                          (id) =>
+                                            id !== icon.id && id !== icon.src,
+                                        )
+                                      : [...list, icon.id];
+                                  }
+                                  return { ...prev, enemieBlueSkills: next };
+                                })
+                              }
+                              className={`flex h-10 w-10 items-center justify-center rounded-lg transition ${
+                                isSelected
+                                  ? "border-4 border-amber-400 bg-[#EDE4D7]"
+                                  : "border border-white/20 bg-[#D9CCBE]"
+                              }`}
+                              title={icon.label}
+                            >
+                              <img
+                                src={icon.src}
+                                alt={icon.label}
+                                className="h-6 w-6 object-contain"
+                              />
+                            </button>
+                            {isSelected && (
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                value={
+                                  (form.skillNumbers?.[
+                                    `enemie-blue-${is06 && has06 ? "06" : skillId}`
+                                  ] ??
+                                    (is06 && has06
+                                      ? form.enemieBlueExtraNumber
+                                      : undefined)) ?? ""
+                                }
+                                onChange={(e) => {
+                                  const key = is06 && has06 ? "06" : skillId;
+                                  const val = e.target.value.replace(/\D/g, "");
+                                  setForm((prev) => ({
+                                    ...prev,
+                                    ...(is06 && has06
+                                      ? { enemieBlueExtraNumber: val }
+                                      : {}),
+                                    skillNumbers: {
+                                      ...prev.skillNumbers,
+                                      [`enemie-blue-${key}`]: val,
+                                    },
+                                  }));
+                                }}
+                                className="w-12 rounded border border-white/10 bg-white/5 px-1 py-0.5 text-center text-xs text-white"
+                                placeholder="Nº"
+                              />
+                            )}
+                          </div>
+                        );
+                      })}
+                  </div>
+                </div>
+                {/* Roxo */}
+                <div className="flex-1 min-w-[320px] space-y-2 rounded-lg border border-purple-500/30 bg-purple-500/5 p-3">
+                  <span className="text-sm font-medium text-slate-300 flex items-center gap-2">
+                    <span
+                      className="inline-block w-4 h-4 rounded"
+                      style={{ backgroundColor: "#532C73" }}
+                    ></span>
+                    Roxo
+                  </span>
+                  <div className="grid grid-cols-6 gap-2">
+                    {enemieIconOptions.map((icon) => {
+                        const list = form.enemiePurpleSkills ?? [];
+                        const has06 = hasEnemie06InSkills(
+                          enemieIconOptions,
+                          list,
+                        );
+                        const is06 = isIcon06(icon);
+                        const isSelected = is06
+                          ? list.includes(icon.id) ||
+                            list.includes(icon.src ?? "") ||
+                            has06
+                          : list.includes(icon.id) ||
+                            list.includes(icon.src ?? "");
+                        const skillId = icon.id;
+                        return (
+                          <div
+                            key={icon.id}
+                            className="flex flex-col items-center gap-1"
+                          >
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setForm((prev) => {
+                                  const list = prev.enemiePurpleSkills ?? [];
+                                  const has06 = hasEnemie06InSkills(
+                                    enemieIconOptions,
+                                    list,
+                                  );
+                                  let next: string[];
+                                  if (isIcon06(icon)) {
+                                    const has06InList = list.some(
+                                      (id) =>
+                                        id === icon.id ||
+                                        id === icon.src ||
+                                        isId06(id),
+                                    );
+                                    if (has06InList) {
+                                      next = list.filter(
+                                        (id) =>
+                                          id !== icon.id &&
+                                          id !== icon.src &&
+                                          !isId06(id),
+                                      );
+                                    } else if (has06) {
+                                      next = list;
+                                    } else {
+                                      next = [...list, icon.id];
+                                    }
+                                  } else {
+                                    const exists = list.some(
+                                      (id) =>
+                                        id === icon.id || id === icon.src,
+                                    );
+                                    next = exists
+                                      ? list.filter(
+                                          (id) =>
+                                            id !== icon.id && id !== icon.src,
+                                        )
+                                      : [...list, icon.id];
+                                  }
+                                  return { ...prev, enemiePurpleSkills: next };
+                                })
+                              }
+                              className={`flex h-10 w-10 items-center justify-center rounded-lg transition ${
+                                isSelected
+                                  ? "border-4 border-amber-400 bg-[#EDE4D7]"
+                                  : "border border-white/20 bg-[#D9CCBE]"
+                              }`}
+                              title={icon.label}
+                            >
+                              <img
+                                src={icon.src}
+                                alt={icon.label}
+                                className="h-6 w-6 object-contain"
+                              />
+                            </button>
+                            {isSelected && (
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                value={
+                                  (form.skillNumbers?.[
+                                    `enemie-purple-${is06 && has06 ? "06" : skillId}`
+                                  ] ??
+                                    (is06 && has06
+                                      ? form.enemiePurpleExtraNumber
+                                      : undefined)) ?? ""
+                                }
+                                onChange={(e) => {
+                                  const key = is06 && has06 ? "06" : skillId;
+                                  const val = e.target.value.replace(/\D/g, "");
+                                  setForm((prev) => ({
+                                    ...prev,
+                                    ...(is06 && has06
+                                      ? { enemiePurpleExtraNumber: val }
+                                      : {}),
+                                    skillNumbers: {
+                                      ...prev.skillNumbers,
+                                      [`enemie-purple-${key}`]: val,
+                                    },
+                                  }));
+                                }}
+                                className="w-12 rounded border border-white/10 bg-white/5 px-1 py-0.5 text-center text-xs text-white"
+                                placeholder="Nº"
+                              />
+                            )}
+                          </div>
+                        );
+                      })}
+                  </div>
+                </div>
+                {/* Amarelo */}
+                <div className="flex-1 min-w-[320px] space-y-2 rounded-lg border border-yellow-500/30 bg-yellow-500/5 p-3">
+                  <span className="text-sm font-medium text-slate-300 flex items-center gap-2">
+                    <span
+                      className="inline-block w-4 h-4 rounded"
+                      style={{ backgroundColor: "#CFC752" }}
+                    ></span>
+                    Amarelo
+                  </span>
+                  <div className="grid grid-cols-6 gap-2">
+                    {enemieIconOptions.map((icon) => {
+                        const list = form.enemieYellowSkills ?? [];
+                        const has06 = hasEnemie06InSkills(
+                          enemieIconOptions,
+                          list,
+                        );
+                        const is06 = isIcon06(icon);
+                        const isSelected = is06
+                          ? list.includes(icon.id) ||
+                            list.includes(icon.src ?? "") ||
+                            has06
+                          : list.includes(icon.id) ||
+                            list.includes(icon.src ?? "");
+                        const skillId = icon.id;
+                        return (
+                          <div
+                            key={icon.id}
+                            className="flex flex-col items-center gap-1"
+                          >
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setForm((prev) => {
+                                  const list = prev.enemieYellowSkills ?? [];
+                                  const has06 = hasEnemie06InSkills(
+                                    enemieIconOptions,
+                                    list,
+                                  );
+                                  let next: string[];
+                                  if (isIcon06(icon)) {
+                                    const has06InList = list.some(
+                                      (id) =>
+                                        id === icon.id ||
+                                        id === icon.src ||
+                                        isId06(id),
+                                    );
+                                    if (has06InList) {
+                                      next = list.filter(
+                                        (id) =>
+                                          id !== icon.id &&
+                                          id !== icon.src &&
+                                          !isId06(id),
+                                      );
+                                    } else if (has06) {
+                                      next = list;
+                                    } else {
+                                      next = [...list, icon.id];
+                                    }
+                                  } else {
+                                    const exists = list.some(
+                                      (id) =>
+                                        id === icon.id || id === icon.src,
+                                    );
+                                    next = exists
+                                      ? list.filter(
+                                          (id) =>
+                                            id !== icon.id && id !== icon.src,
+                                        )
+                                      : [...list, icon.id];
+                                  }
+                                  return { ...prev, enemieYellowSkills: next };
+                                })
+                              }
+                              className={`flex h-10 w-10 items-center justify-center rounded-lg transition ${
+                                isSelected
+                                  ? "border-4 border-amber-400 bg-[#EDE4D7]"
+                                  : "border border-white/20 bg-[#D9CCBE]"
+                              }`}
+                              title={icon.label}
+                            >
+                              <img
+                                src={icon.src}
+                                alt={icon.label}
+                                className="h-6 w-6 object-contain"
+                              />
+                            </button>
+                            {isSelected && (
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                value={
+                                  (form.skillNumbers?.[
+                                    `enemie-yellow-${is06 && has06 ? "06" : skillId}`
+                                  ] ??
+                                    (is06 && has06
+                                      ? form.enemieYellowExtraNumber
+                                      : undefined)) ?? ""
+                                }
+                                onChange={(e) => {
+                                  const key = is06 && has06 ? "06" : skillId;
+                                  const val = e.target.value.replace(/\D/g, "");
+                                  setForm((prev) => ({
+                                    ...prev,
+                                    ...(is06 && has06
+                                      ? { enemieYellowExtraNumber: val }
+                                      : {}),
+                                    skillNumbers: {
+                                      ...prev.skillNumbers,
+                                      [`enemie-yellow-${key}`]: val,
+                                    },
+                                  }));
+                                }}
+                                className="w-12 rounded border border-white/10 bg-white/5 px-1 py-0.5 text-center text-xs text-white"
+                                placeholder="Nº"
+                              />
+                            )}
+                          </div>
+                        );
+                      })}
+                  </div>
+                </div>
                 </div>
               </div>
             )}
@@ -2591,7 +4270,11 @@ export default function Home() {
               </div>
             )}
           </div>
-          <div className="flex flex-col items-center gap-5 rounded-3xl border border-white/10 bg-slate-900/70 p-6 shadow-xl self-start">
+          <div
+            className={`flex flex-col items-center gap-5 rounded-3xl border border-white/10 bg-slate-900/70 p-6 shadow-xl self-start ${
+              isEnemieLayout(form.layout) ? "order-2" : ""
+            }`}
+          >
             <div className="overflow-x-auto" style={{ width: "100%" }}>
               <CardPreview
                 card={previewCard}
@@ -2599,6 +4282,7 @@ export default function Home() {
                 htmlId="preview-card"
                 iconOptionsA={iconOptionsA}
                 skillIconOptions={skillIconOptions}
+                enemieIconOptions={enemieIconOptions}
                 effect2IconOptions={effect2IconOptions}
                 effect3IconOptions={effect3IconOptions}
                 effect4IconOptions={effect4IconOptions}
@@ -2625,6 +4309,7 @@ export default function Home() {
               overlayImage={overlayCache[card.id] ?? null}
               htmlId={`zip-card-${card.id}`}
               iconOptionsA={iconOptionsA}
+              enemieIconOptions={enemieIconOptions}
               skillIconOptions={skillIconOptions}
               effect2IconOptions={effect2IconOptions}
               effect3IconOptions={effect3IconOptions}
@@ -2635,6 +4320,54 @@ export default function Home() {
           ))}
         </div>
       </main>
+
+      {/* Modal de crop - selecionar área da imagem para o card */}
+      {imageToCrop && (
+        <div
+          className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black/80 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="crop-modal-title"
+        >
+          <h2
+            id="crop-modal-title"
+            className="mb-4 text-xl font-semibold text-white"
+          >
+            Selecione a área da imagem para o card
+          </h2>
+          <div className="relative h-[60vh] w-full max-w-2xl rounded-xl overflow-hidden bg-slate-800">
+            <Cropper
+              image={imageToCrop}
+              crop={crop}
+              zoom={zoom}
+              aspect={cropAspect}
+              onCropChange={setCrop}
+              onZoomChange={setZoom}
+              onCropAreaChange={(_area, croppedAreaPixels) => {
+                setCropCompleteArea(croppedAreaPixels);
+              }}
+              objectFit="contain"
+            />
+          </div>
+          <div className="mt-4 flex gap-4">
+            <button
+              type="button"
+              onClick={handleCropCancel}
+              className="rounded-xl border border-white/30 px-6 py-2 font-semibold text-white transition hover:bg-white/10"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleCropConfirm()}
+              disabled={!cropCompleteArea}
+              className="rounded-xl bg-amber-500 px-6 py-2 font-semibold text-black transition hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Aplicar
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
