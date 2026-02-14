@@ -1269,8 +1269,14 @@
     "image": "/models/cards/Enemie.png",
     "positions": {
       "icon": {
-        "top": "195px",
+        "top": "55px",
         "left": "40px"
+      },
+      "enemieIcon": {
+        "top": "21px",
+        "left": "30px",
+        "width": "125px",
+        "height": "125px"
       },
       "title": {
         "top": "23px",
@@ -1282,36 +1288,36 @@
       "description": {
         "top": "165px",
         "left": "630px",
-        "width": "335px",
-        "height": "505px"
+        "width": "340px",
+        "height": "508px"
       },
       "overlay": {
         "top": "165px",
-        "left": "19px",
+        "left": "16px",
         "width": "300px",
-        "height": "505px"
+        "height": "508px"
       },
       "skills": {
         "top": "175px",
         "left": "331px",
         "width": "285px",
-        "height": "505px"
+        "height": "508px"
       },
       "enemieRedNumberPosition": {
         "top": "90px",
-        "left": "588px",
+        "left": "590px",
         "width": "80px",
         "height": "40px"
       },
       "enemieGreenNumberPosition": {
         "top": "64px",
-        "left": "713px",
+        "left": "715px",
         "width": "80px",
         "height": "40px"
       },
       "enemieBlueNumberPosition": {
         "top": "73px",
-        "left": "844px",
+        "left": "846px",
         "width": "80px",
         "height": "40px"
       }
