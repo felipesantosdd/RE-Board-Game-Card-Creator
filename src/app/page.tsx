@@ -2,6 +2,7 @@
 
 import {
   ChangeEvent,
+  Fragment,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -178,6 +179,31 @@ const INLINE_ICON_MAP: Record<string, string> = {
   "0009": "/models/icons/Icons/09.png",
   "0010": "/models/icons/Icons/10.png",
 };
+
+/** Renderiza texto com **texto** em negrito e ícones inline. */
+function renderTextWithBoldAndIcons(
+  text: string,
+  iconSizePx: number = 38,
+): ReactNode {
+  if (!text) return text;
+  const parts = text.split(/\*\*([\s\S]*?)\*\*/g);
+  const result: ReactNode[] = [];
+  for (let i = 0; i < parts.length; i++) {
+    const segment = parts[i];
+    const content = renderTextWithInlineIcons(segment, iconSizePx);
+    result.push(
+      i % 2 === 1 ? (
+        <span key={`b-${i}`} style={{ fontWeight: 700 }}>
+          {content}
+        </span>
+      ) : (
+        <Fragment key={`n-${i}`}>{content}</Fragment>
+      ),
+    );
+  }
+  if (result.length === 1 && typeof result[0] !== "object") return result[0];
+  return <>{result}</>;
+}
 
 function renderTextWithInlineIcons(
   text: string,
@@ -396,7 +422,10 @@ const isTensionLayout = (layoutId: string) =>
   TENSION_LAYOUT_IDS.includes(layoutId);
 
 /** Layout Enemie: card horizontal */
-const isEnemieLayout = (layoutId: string) => layoutId === "enemie";
+const isEnemieLayout = (layoutId: string) =>
+  layoutId === "enemie" || layoutId === "enemie2";
+/** Layout Enemie (não Enemie 2): tem campo de ícone principal. */
+const hasEnemieIconLayout = (layoutId: string) => layoutId === "enemie";
 
 const mergeLayoutPositions = (
   candidate: Partial<LayoutPositions>,
@@ -923,7 +952,7 @@ const CardPreview = ({
       }}
     >
       <div className="relative overflow-hidden" style={innerCardStyle}>
-        {isEnemie && (
+        {hasEnemieIconLayout(card.layoutId) && (
           <>
             {(card.enemieRedNumber || card.enemieRedNumber === "0") &&
               layoutPositions.enemieRedNumberPosition && (
@@ -1003,7 +1032,9 @@ const CardPreview = ({
               />
             </div>
           )}
-        {isEnemie && layoutPositions.enemieIcon && card.enemieMainIcon && (
+        {(hasEnemieIconLayout(card.layoutId) || card.layoutId === "enemie2") &&
+          layoutPositions.enemieIcon &&
+          card.enemieMainIcon && (
           <div
             className="absolute overflow-hidden "
             style={{
@@ -1025,7 +1056,9 @@ const CardPreview = ({
         )}
         {!isBgLayout(card.layoutId) &&
           !isTensionLayout(card.layoutId) &&
-          (isEnemie || card.selectedSkills?.length > 0) && (
+          (isEnemie
+            ? hasEnemieIconLayout(card.layoutId)
+            : (card.selectedSkills?.length ?? 0) > 0) && (
             <div
               className={
                 isEnemie
@@ -2201,7 +2234,9 @@ const CardPreview = ({
             </div>
             <h3
               ref={titleRef}
-              className="leading-tight text-black text-center drop-shadow-lg "
+              className={`leading-tight text-black drop-shadow-lg ${
+                isEnemie ? "text-left" : "text-center"
+              }`}
               style={{
                 position: "absolute",
                 top: layoutPositions.title.top,
@@ -2213,11 +2248,11 @@ const CardPreview = ({
                     ? `${titleFontSizePx}px`
                     : UNIFIED_TITLE_FONT_SIZE,
                 lineHeight: 0.9,
-                textAlign: "center",
+                textAlign: isEnemie ? "left" : "center",
                 whiteSpace: "pre-line",
                 display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
+                alignItems: isEnemie ? "flex-start" : "center",
+                justifyContent: isEnemie ? "flex-start" : "center",
                 flexDirection: "column",
                 flexWrap: "wrap",
                 flexGrow: 1,
@@ -2249,22 +2284,7 @@ const CardPreview = ({
                     lineHeight: 1,
                   }}
                 >
-                  {(() => {
-                    const desc = card.description || "";
-                    const br = desc.indexOf("\n");
-                    if (br === -1) return renderTextWithInlineIcons(desc);
-                    const first = desc.slice(0, br);
-                    const rest = desc.slice(br + 1);
-                    return (
-                      <>
-                        <span style={{ fontWeight: 700 }}>
-                          {renderTextWithInlineIcons(first)}
-                        </span>
-                        {"\n"}
-                        {renderTextWithInlineIcons(rest)}
-                      </>
-                    );
-                  })()}
+                  {renderTextWithBoldAndIcons(card.description || "")}
                 </p>
                 {(card.tension1Icon || card.tension2Icon) && (
                   <div className="flex flex-col gap-3">
@@ -2309,7 +2329,9 @@ const CardPreview = ({
               </div>
             ) : (
               <p
-                className="absolute text-3xl text-black drop-shadow-lg text-center"
+                className={`absolute text-3xl text-black drop-shadow-lg ${
+                  isEnemie ? "text-left" : "text-center"
+                }`}
                 style={{
                   top: layoutPositions.description.top,
                   left: layoutPositions.description.left,
@@ -2319,6 +2341,7 @@ const CardPreview = ({
                   width: layoutPositions.description.width || "570px",
                   height: layoutPositions.description.height || "420px",
                   whiteSpace: "pre-line",
+                  textAlign: isEnemie ? "left" : "center",
                   ...(isEnemie && (card.description || "").trim()
                     ? {
                         borderRadius: "12px",
@@ -2332,24 +2355,7 @@ const CardPreview = ({
                   }),
                 }}
               >
-                {isEnemie
-                  ? (() => {
-                      const desc = card.description || "";
-                      const br = desc.indexOf("\n");
-                      if (br === -1) return renderTextWithInlineIcons(desc);
-                      const first = desc.slice(0, br);
-                      const rest = desc.slice(br + 1);
-                      return (
-                        <>
-                          <span style={{ fontWeight: 700 }}>
-                            {renderTextWithInlineIcons(first)}
-                          </span>
-                          {"\n"}
-                          {renderTextWithInlineIcons(rest)}
-                        </>
-                      );
-                    })()
-                  : renderTextWithInlineIcons(card.description || "")}
+                {renderTextWithBoldAndIcons(card.description || "")}
               </p>
             )}
           </div>
@@ -3241,38 +3247,6 @@ export default function Home() {
             </div>
 
             <div className="space-y-4">
-              <label className="flex flex-col gap-2 text-sm text-slate-300">
-                Título (Enter quebra a linha)
-                <textarea
-                  rows={2}
-                  placeholder="Lançamento imperdível"
-                  value={form.title || ""}
-                  className="rounded-2xl border border-white/10 bg-transparent px-4 py-3 text-base text-white outline-none transition focus:border-slate-300 resize-none"
-                  onChange={(event) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      title: event.target.value,
-                    }))
-                  }
-                />
-              </label>
-              <label className="flex flex-col gap-2 text-sm text-slate-300">
-                Descrição (Enter quebra a linha)
-                <textarea
-                  ref={descriptionTextareaRef}
-                  rows={3}
-                  placeholder="Conte um pouco mais sobre a campanha..."
-                  value={form.description || ""}
-                  className="rounded-2xl border border-white/10 bg-transparent px-4 py-3 text-sm leading-relaxed text-white outline-none transition focus:border-slate-300 overflow-hidden resize-y min-h-[80px]"
-                  style={{ minHeight: 80 }}
-                  onChange={(event) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      description: capitalizeLongWords(event.target.value),
-                    }))
-                  }
-                />
-              </label>
               <div className="flex w-full min-w-0 flex-col gap-2 text-sm text-slate-300">
                 <span>Layout</span>
                 <div
@@ -3333,7 +3307,39 @@ export default function Home() {
                   })}
                 </div>
               </div>
-              {isEnemieLayout(form.layout) && (
+              <label className="flex flex-col gap-2 text-sm text-slate-300">
+                Título (Enter quebra a linha)
+                <textarea
+                  rows={1}
+                  placeholder="Lançamento imperdível"
+                  value={form.title || ""}
+                  className="rounded-2xl border border-white/10 bg-transparent px-4 py-3 text-base text-white outline-none transition focus:border-slate-300 resize-none"
+                  onChange={(event) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      title: event.target.value,
+                    }))
+                  }
+                />
+              </label>
+              <label className="flex flex-col gap-2 text-sm text-slate-300">
+                Descrição (Enter quebra a linha)
+                <textarea
+                  ref={descriptionTextareaRef}
+                  rows={3}
+                  placeholder="Conte um pouco mais sobre a campanha..."
+                  value={form.description || ""}
+                  className="rounded-2xl border border-white/10 bg-transparent px-4 py-3 text-sm leading-relaxed text-white outline-none transition focus:border-slate-300 overflow-hidden resize-y min-h-[80px]"
+                  style={{ minHeight: 80 }}
+                  onChange={(event) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      description: capitalizeLongWords(event.target.value),
+                    }))
+                  }
+                />
+              </label>
+              {hasEnemieIconLayout(form.layout) && (
                 <div className="flex gap-4">
                   <label className="flex flex-col gap-2 text-sm text-slate-300 flex-1">
                     <span className="text-red-400">Perigo</span>
@@ -3960,6 +3966,8 @@ export default function Home() {
 
             {isEnemieLayout(form.layout) && (
               <div className="space-y-4 border-t border-white/10 pt-4">
+                {(hasEnemieIconLayout(form.layout) ||
+                  form.layout === "enemie2") && (
                 <div className="flex flex-col gap-2">
                   <span className="text-sm font-medium text-slate-300">
                     Ícone do inimigo
@@ -4002,6 +4010,9 @@ export default function Home() {
                     })}
                   </div>
                 </div>
+                )}
+                {hasEnemieIconLayout(form.layout) && (
+                <>
                 <h3 className="text-xl font-semibold">Skills por cor</h3>
                 <p className="text-sm text-slate-400">
                   Clique no ícone para adicionar à cor. O número digitado abaixo
@@ -4417,6 +4428,8 @@ export default function Home() {
                     </div>
                   </div>
                 </div>
+                </>
+                )}
               </div>
             )}
 

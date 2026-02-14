@@ -1322,5 +1322,65 @@
         "height": "40px"
       }
     }
+  },
+  {
+    "id": "enemie2",
+    "label": "Enemie 2",
+    "image": "/models/cards/Enemie 01.png",
+    "positions": {
+      "icon": {
+        "top": "55px",
+        "left": "40px"
+      },
+      "enemieIcon": {
+        "top": "21px",
+        "left": "30px",
+        "width": "125px",
+        "height": "125px"
+      },
+      "title": {
+        "top": "23px",
+        "left": "165px",
+        "width": "810px",
+        "height": "120px",
+        "fontSize": "__UNIFIED_TITLE_FONT_SIZE__"
+      },
+      "description": {
+        "top": "165px",
+        "left": "331px",
+        "width": "630px",
+        "height": "508px"
+      },
+      "overlay": {
+        "top": "165px",
+        "left": "16px",
+        "width": "300px",
+        "height": "508px"
+      },
+      "skills": {
+        "top": "175px",
+        "left": "331px",
+        "width": "285px",
+        "height": "508px"
+      },
+      "enemieRedNumberPosition": {
+        "top": "90px",
+        "left": "590px",
+        "width": "80px",
+        "height": "40px"
+      },
+      "enemieGreenNumberPosition": {
+        "top": "64px",
+        "left": "715px",
+        "width": "80px",
+        "height": "40px"
+      },
+      "enemieBlueNumberPosition": {
+        "top": "73px",
+        "left": "846px",
+        "width": "80px",
+        "height": "40px"
+      }
+    }
   }
 ]
