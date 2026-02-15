@@ -935,7 +935,9 @@ const CardPreview = ({
     backgroundPosition: "center",
     backgroundRepeat: "no-repeat",
     fontFamily: bebasNeue.style.fontFamily,
-    ...(isBgLayout(card.layoutId) && { borderRadius: 16 }),
+    ...((isBgLayout(card.layoutId) || !isEnemieLayout(card.layoutId)) && {
+      borderRadius: 16,
+    }),
   };
 
   return (
@@ -2316,7 +2318,7 @@ const CardPreview = ({
             </h3>
             {isTensionLayout(card.layoutId) ? (
               <div
-                className="absolute flex flex-col gap-3 text-black text-4xl drop-shadow-lg"
+                className="absolute flex flex-col gap-3 text-black text-5xl drop-shadow-lg"
                 style={{
                   top: layoutPositions.description.top,
                   left: layoutPositions.description.left,
@@ -2381,7 +2383,7 @@ const CardPreview = ({
               </div>
             ) : (
               <p
-                className={`absolute text-3xl text-black drop-shadow-lg ${
+                className={`absolute text-4xl text-black drop-shadow-lg ${
                   isEnemie ? "text-left" : "text-center"
                 }`}
                 style={{
@@ -2394,7 +2396,7 @@ const CardPreview = ({
                   height: layoutPositions.description.height || "420px",
                   whiteSpace: "pre-line",
                   textAlign: isEnemie ? "left" : "center",
-                  padding: "20px",
+                  padding: "40px",
                   ...(isEnemie && (card.description || "").trim()
                     ? {
                         borderRadius: "12px",

@@ -19,20 +19,20 @@
       "title": {
         "top": "30px",
         "left": "160px",
-        "width": "460px",
+        "width": "468px",
         "height": "125px",
         "fontSize": "__UNIFIED_TITLE_FONT_SIZE__"
       },
       "description": {
         "top": "480px",
-        "left": "40px",
-        "width": "583px",
+        "left": "20px",
+        "width": "610px",
         "height": "440px"
       },
       "overlay": {
         "top": "165px",
-        "left": "163px",
-        "width": "460px",
+        "left": "160px",
+        "width": "470px",
         "height": "300px"
       },
       "skills": {
@@ -69,14 +69,14 @@
       },
       "description": {
         "top": "480px",
-        "left": "40px",
-        "width": "583px",
+        "left": "20px",
+        "width": "610px",
         "height": "440px"
       },
       "overlay": {
         "top": "165px",
-        "left": "183px",
-        "width": "440px",
+        "left": "160px",
+        "width": "470px",
         "height": "300px"
       },
       "skills": {
