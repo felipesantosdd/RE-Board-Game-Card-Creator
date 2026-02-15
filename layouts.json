@@ -6,31 +6,37 @@
     "positions": {
       "icon": {
         "top": "195px",
-        "left": "40px"
+        "left": "40px",
+        "width": "128px",
+        "height": "128px"
       },
       "icon2": {
         "top": "-154px",
-        "left": "499px"
+        "left": "499px",
+        "width": "128px",
+        "height": "128px"
       },
       "title": {
         "top": "30px",
-        "left": "188px",
-        "width": "430px",
-        "height": "120px",
+        "left": "160px",
+        "width": "460px",
+        "height": "125px",
         "fontSize": "__UNIFIED_TITLE_FONT_SIZE__"
       },
       "description": {
-        "top": "510px",
-        "left": "40px"
+        "top": "480px",
+        "left": "40px",
+        "width": "583px",
+        "height": "440px"
       },
       "overlay": {
-        "top": "175px",
-        "left": "183px",
-        "width": "440px",
-        "height": "285px"
+        "top": "165px",
+        "left": "163px",
+        "width": "460px",
+        "height": "300px"
       },
       "skills": {
-        "top": "820px",
+        "top": "800px",
         "left": "45px",
         "width": "560px",
         "height": "100px"
@@ -44,34 +50,40 @@
     "positions": {
       "icon": {
         "top": "195px",
-        "left": "40px"
+        "left": "40px",
+        "width": "128px",
+        "height": "128px"
       },
       "icon2": {
-        "top": "-154px",
-        "left": "499px"
+        "top": "-165px",
+        "left": "460px",
+        "width": "128px",
+        "height": "128px"
       },
       "title": {
         "top": "30px",
-        "left": "188px",
-        "width": "280px",
-        "height": "120px",
+        "left": "160px",
+        "width": "330px",
+        "height": "125px",
         "fontSize": "__UNIFIED_TITLE_FONT_SIZE__"
       },
       "description": {
-        "top": "510px",
-        "left": "40px"
+        "top": "480px",
+        "left": "40px",
+        "width": "583px",
+        "height": "440px"
       },
       "overlay": {
-        "top": "175px",
+        "top": "165px",
         "left": "183px",
         "width": "440px",
-        "height": "285px"
+        "height": "300px"
       },
       "skills": {
-        "top": "850px",
-        "left": "70px",
+        "top": "800px",
+        "left": "45px",
         "width": "560px",
-        "height": "120px"
+        "height": "100px"
       }
     }
   },
@@ -82,11 +94,15 @@
     "positions": {
       "icon": {
         "top": "250px",
-        "left": "40px"
+        "left": "40px",
+        "width": "128px",
+        "height": "128px"
       },
       "icon2": {
         "top": "82px",
-        "left": "530px"
+        "left": "530px",
+        "width": "128px",
+        "height": "128px"
       },
       "title": {
         "top": "30px",
@@ -97,7 +113,9 @@
       },
       "description": {
         "top": "560px",
-        "left": "40px"
+        "left": "40px",
+        "width": "570px",
+        "height": "420px"
       },
       "overlay": {
         "top": "175px",
@@ -113,19 +131,27 @@
       },
       "effect1": {
         "top": "630px",
-        "left": "30px"
+        "left": "30px",
+        "width": "130px",
+        "height": "115px"
       },
       "effect2": {
         "top": "620px",
-        "left": "185px"
+        "left": "185px",
+        "width": "130px",
+        "height": "115px"
       },
       "effect3": {
         "top": "620px",
-        "left": "337px"
+        "left": "337px",
+        "width": "130px",
+        "height": "115px"
       },
       "effect4": {
         "top": "620px",
-        "left": "490px"
+        "left": "490px",
+        "width": "130px",
+        "height": "115px"
       },
       "effect2NumberPosition": {
         "top": "0",
@@ -148,11 +174,15 @@
     "positions": {
       "icon": {
         "top": "292px",
-        "left": "72px"
+        "left": "72px",
+        "width": "128px",
+        "height": "128px"
       },
       "icon2": {
         "top": "120px",
-        "left": "545px"
+        "left": "545px",
+        "width": "128px",
+        "height": "128px"
       },
       "title": {
         "top": "27px",
@@ -163,7 +193,9 @@
       },
       "description": {
         "top": "200px",
-        "left": "40px"
+        "left": "40px",
+        "width": "570px",
+        "height": "420px"
       },
       "overlay": {
         "top": "215px",
@@ -179,19 +211,27 @@
       },
       "effect1": {
         "top": "675px",
-        "left": "59px"
+        "left": "59px",
+        "width": "130px",
+        "height": "115px"
       },
       "effect2": {
         "top": "670px",
-        "left": "208px"
+        "left": "208px",
+        "width": "130px",
+        "height": "115px"
       },
       "effect3": {
         "top": "670px",
-        "left": "357px"
+        "left": "357px",
+        "width": "130px",
+        "height": "115px"
       },
       "effect4": {
         "top": "670px",
-        "left": "506px"
+        "left": "506px",
+        "width": "130px",
+        "height": "115px"
       },
       "effect2NumberPosition": {
         "top": "0",
@@ -214,11 +254,15 @@
     "positions": {
       "icon": {
         "top": "292px",
-        "left": "72px"
+        "left": "72px",
+        "width": "128px",
+        "height": "128px"
       },
       "icon2": {
         "top": "120px",
-        "left": "545px"
+        "left": "545px",
+        "width": "128px",
+        "height": "128px"
       },
       "title": {
         "top": "27px",
@@ -229,7 +273,9 @@
       },
       "description": {
         "top": "200px",
-        "left": "40px"
+        "left": "40px",
+        "width": "570px",
+        "height": "420px"
       },
       "overlay": {
         "top": "215px",
@@ -245,19 +291,27 @@
       },
       "effect1": {
         "top": "675px",
-        "left": "59px"
+        "left": "59px",
+        "width": "130px",
+        "height": "115px"
       },
       "effect2": {
         "top": "670px",
-        "left": "208px"
+        "left": "208px",
+        "width": "130px",
+        "height": "115px"
       },
       "effect3": {
         "top": "670px",
-        "left": "357px"
+        "left": "357px",
+        "width": "130px",
+        "height": "115px"
       },
       "effect4": {
         "top": "670px",
-        "left": "506px"
+        "left": "506px",
+        "width": "130px",
+        "height": "115px"
       },
       "effect2NumberPosition": {
         "top": "0",
@@ -280,11 +334,15 @@
     "positions": {
       "icon": {
         "top": "292px",
-        "left": "72px"
+        "left": "72px",
+        "width": "128px",
+        "height": "128px"
       },
       "icon2": {
         "top": "120px",
-        "left": "545px"
+        "left": "545px",
+        "width": "128px",
+        "height": "128px"
       },
       "title": {
         "top": "27px",
@@ -295,7 +353,9 @@
       },
       "description": {
         "top": "200px",
-        "left": "40px"
+        "left": "40px",
+        "width": "570px",
+        "height": "420px"
       },
       "overlay": {
         "top": "215px",
@@ -311,19 +371,27 @@
       },
       "effect1": {
         "top": "675px",
-        "left": "59px"
+        "left": "59px",
+        "width": "130px",
+        "height": "115px"
       },
       "effect2": {
         "top": "670px",
-        "left": "208px"
+        "left": "208px",
+        "width": "130px",
+        "height": "115px"
       },
       "effect3": {
         "top": "670px",
-        "left": "357px"
+        "left": "357px",
+        "width": "130px",
+        "height": "115px"
       },
       "effect4": {
         "top": "670px",
-        "left": "506px"
+        "left": "506px",
+        "width": "130px",
+        "height": "115px"
       },
       "effect2NumberPosition": {
         "top": "0",
@@ -346,11 +414,15 @@
     "positions": {
       "icon": {
         "top": "292px",
-        "left": "72px"
+        "left": "72px",
+        "width": "128px",
+        "height": "128px"
       },
       "icon2": {
         "top": "120px",
-        "left": "545px"
+        "left": "545px",
+        "width": "128px",
+        "height": "128px"
       },
       "title": {
         "top": "27px",
@@ -361,7 +433,9 @@
       },
       "description": {
         "top": "200px",
-        "left": "40px"
+        "left": "40px",
+        "width": "570px",
+        "height": "420px"
       },
       "overlay": {
         "top": "215px",
@@ -377,19 +451,27 @@
       },
       "effect1": {
         "top": "675px",
-        "left": "59px"
+        "left": "59px",
+        "width": "130px",
+        "height": "115px"
       },
       "effect2": {
         "top": "670px",
-        "left": "208px"
+        "left": "208px",
+        "width": "130px",
+        "height": "115px"
       },
       "effect3": {
         "top": "670px",
-        "left": "357px"
+        "left": "357px",
+        "width": "130px",
+        "height": "115px"
       },
       "effect4": {
         "top": "670px",
-        "left": "506px"
+        "left": "506px",
+        "width": "130px",
+        "height": "115px"
       },
       "effect2NumberPosition": {
         "top": "0",
@@ -412,11 +494,15 @@
     "positions": {
       "icon": {
         "top": "292px",
-        "left": "72px"
+        "left": "72px",
+        "width": "128px",
+        "height": "128px"
       },
       "icon2": {
         "top": "120px",
-        "left": "545px"
+        "left": "545px",
+        "width": "128px",
+        "height": "128px"
       },
       "title": {
         "top": "27px",
@@ -427,7 +513,9 @@
       },
       "description": {
         "top": "200px",
-        "left": "40px"
+        "left": "40px",
+        "width": "570px",
+        "height": "420px"
       },
       "overlay": {
         "top": "215px",
@@ -443,19 +531,27 @@
       },
       "effect1": {
         "top": "675px",
-        "left": "59px"
+        "left": "59px",
+        "width": "130px",
+        "height": "115px"
       },
       "effect2": {
         "top": "670px",
-        "left": "208px"
+        "left": "208px",
+        "width": "130px",
+        "height": "115px"
       },
       "effect3": {
         "top": "670px",
-        "left": "357px"
+        "left": "357px",
+        "width": "130px",
+        "height": "115px"
       },
       "effect4": {
         "top": "670px",
-        "left": "506px"
+        "left": "506px",
+        "width": "130px",
+        "height": "115px"
       },
       "effect2NumberPosition": {
         "top": "0",
@@ -478,11 +574,15 @@
     "positions": {
       "icon": {
         "top": "292px",
-        "left": "72px"
+        "left": "72px",
+        "width": "128px",
+        "height": "128px"
       },
       "icon2": {
         "top": "120px",
-        "left": "545px"
+        "left": "545px",
+        "width": "128px",
+        "height": "128px"
       },
       "title": {
         "top": "27px",
@@ -493,7 +593,9 @@
       },
       "description": {
         "top": "200px",
-        "left": "40px"
+        "left": "40px",
+        "width": "570px",
+        "height": "420px"
       },
       "overlay": {
         "top": "215px",
@@ -509,19 +611,27 @@
       },
       "effect1": {
         "top": "675px",
-        "left": "59px"
+        "left": "59px",
+        "width": "130px",
+        "height": "115px"
       },
       "effect2": {
         "top": "670px",
-        "left": "208px"
+        "left": "208px",
+        "width": "130px",
+        "height": "115px"
       },
       "effect3": {
         "top": "670px",
-        "left": "357px"
+        "left": "357px",
+        "width": "130px",
+        "height": "115px"
       },
       "effect4": {
         "top": "670px",
-        "left": "506px"
+        "left": "506px",
+        "width": "130px",
+        "height": "115px"
       },
       "effect2NumberPosition": {
         "top": "0",
@@ -544,11 +654,15 @@
     "positions": {
       "icon": {
         "top": "292px",
-        "left": "72px"
+        "left": "72px",
+        "width": "128px",
+        "height": "128px"
       },
       "icon2": {
         "top": "120px",
-        "left": "545px"
+        "left": "545px",
+        "width": "128px",
+        "height": "128px"
       },
       "title": {
         "top": "27px",
@@ -559,7 +673,9 @@
       },
       "description": {
         "top": "200px",
-        "left": "40px"
+        "left": "40px",
+        "width": "570px",
+        "height": "420px"
       },
       "overlay": {
         "top": "215px",
@@ -575,19 +691,27 @@
       },
       "effect1": {
         "top": "675px",
-        "left": "59px"
+        "left": "59px",
+        "width": "130px",
+        "height": "115px"
       },
       "effect2": {
         "top": "670px",
-        "left": "208px"
+        "left": "208px",
+        "width": "130px",
+        "height": "115px"
       },
       "effect3": {
         "top": "670px",
-        "left": "357px"
+        "left": "357px",
+        "width": "130px",
+        "height": "115px"
       },
       "effect4": {
         "top": "670px",
-        "left": "506px"
+        "left": "506px",
+        "width": "130px",
+        "height": "115px"
       },
       "effect2NumberPosition": {
         "top": "0",
@@ -610,11 +734,15 @@
     "positions": {
       "icon": {
         "top": "292px",
-        "left": "72px"
+        "left": "72px",
+        "width": "128px",
+        "height": "128px"
       },
       "icon2": {
         "top": "120px",
-        "left": "545px"
+        "left": "545px",
+        "width": "128px",
+        "height": "128px"
       },
       "title": {
         "top": "27px",
@@ -625,7 +753,9 @@
       },
       "description": {
         "top": "200px",
-        "left": "40px"
+        "left": "40px",
+        "width": "570px",
+        "height": "420px"
       },
       "overlay": {
         "top": "215px",
@@ -641,19 +771,27 @@
       },
       "effect1": {
         "top": "675px",
-        "left": "59px"
+        "left": "59px",
+        "width": "130px",
+        "height": "115px"
       },
       "effect2": {
         "top": "670px",
-        "left": "208px"
+        "left": "208px",
+        "width": "130px",
+        "height": "115px"
       },
       "effect3": {
         "top": "670px",
-        "left": "357px"
+        "left": "357px",
+        "width": "130px",
+        "height": "115px"
       },
       "effect4": {
         "top": "670px",
-        "left": "506px"
+        "left": "506px",
+        "width": "130px",
+        "height": "115px"
       },
       "effect2NumberPosition": {
         "top": "0",
@@ -676,11 +814,15 @@
     "positions": {
       "icon": {
         "top": "292px",
-        "left": "72px"
+        "left": "72px",
+        "width": "128px",
+        "height": "128px"
       },
       "icon2": {
         "top": "120px",
-        "left": "545px"
+        "left": "545px",
+        "width": "128px",
+        "height": "128px"
       },
       "title": {
         "top": "27px",
@@ -691,7 +833,9 @@
       },
       "description": {
         "top": "200px",
-        "left": "40px"
+        "left": "40px",
+        "width": "570px",
+        "height": "420px"
       },
       "overlay": {
         "top": "215px",
@@ -707,19 +851,27 @@
       },
       "effect1": {
         "top": "675px",
-        "left": "59px"
+        "left": "59px",
+        "width": "130px",
+        "height": "115px"
       },
       "effect2": {
         "top": "670px",
-        "left": "208px"
+        "left": "208px",
+        "width": "130px",
+        "height": "115px"
       },
       "effect3": {
         "top": "670px",
-        "left": "357px"
+        "left": "357px",
+        "width": "130px",
+        "height": "115px"
       },
       "effect4": {
         "top": "670px",
-        "left": "506px"
+        "left": "506px",
+        "width": "130px",
+        "height": "115px"
       },
       "effect2NumberPosition": {
         "top": "0",
@@ -742,11 +894,15 @@
     "positions": {
       "icon": {
         "top": "292px",
-        "left": "72px"
+        "left": "72px",
+        "width": "128px",
+        "height": "128px"
       },
       "icon2": {
         "top": "120px",
-        "left": "545px"
+        "left": "545px",
+        "width": "128px",
+        "height": "128px"
       },
       "title": {
         "top": "27px",
@@ -757,7 +913,9 @@
       },
       "description": {
         "top": "200px",
-        "left": "40px"
+        "left": "40px",
+        "width": "570px",
+        "height": "420px"
       },
       "overlay": {
         "top": "215px",
@@ -773,19 +931,27 @@
       },
       "effect1": {
         "top": "675px",
-        "left": "59px"
+        "left": "59px",
+        "width": "130px",
+        "height": "115px"
       },
       "effect2": {
         "top": "670px",
-        "left": "208px"
+        "left": "208px",
+        "width": "130px",
+        "height": "115px"
       },
       "effect3": {
         "top": "670px",
-        "left": "357px"
+        "left": "357px",
+        "width": "130px",
+        "height": "115px"
       },
       "effect4": {
         "top": "670px",
-        "left": "506px"
+        "left": "506px",
+        "width": "130px",
+        "height": "115px"
       },
       "effect2NumberPosition": {
         "top": "0",
@@ -808,11 +974,15 @@
     "positions": {
       "icon": {
         "top": "292px",
-        "left": "72px"
+        "left": "72px",
+        "width": "128px",
+        "height": "128px"
       },
       "icon2": {
         "top": "120px",
-        "left": "545px"
+        "left": "545px",
+        "width": "128px",
+        "height": "128px"
       },
       "title": {
         "top": "27px",
@@ -823,7 +993,9 @@
       },
       "description": {
         "top": "200px",
-        "left": "40px"
+        "left": "40px",
+        "width": "570px",
+        "height": "420px"
       },
       "overlay": {
         "top": "215px",
@@ -839,19 +1011,27 @@
       },
       "effect1": {
         "top": "675px",
-        "left": "59px"
+        "left": "59px",
+        "width": "130px",
+        "height": "115px"
       },
       "effect2": {
         "top": "670px",
-        "left": "208px"
+        "left": "208px",
+        "width": "130px",
+        "height": "115px"
       },
       "effect3": {
         "top": "670px",
-        "left": "357px"
+        "left": "357px",
+        "width": "130px",
+        "height": "115px"
       },
       "effect4": {
         "top": "670px",
-        "left": "506px"
+        "left": "506px",
+        "width": "130px",
+        "height": "115px"
       },
       "effect2NumberPosition": {
         "top": "0",
@@ -874,11 +1054,15 @@
     "positions": {
       "icon": {
         "top": "292px",
-        "left": "72px"
+        "left": "72px",
+        "width": "128px",
+        "height": "128px"
       },
       "icon2": {
         "top": "120px",
-        "left": "545px"
+        "left": "545px",
+        "width": "128px",
+        "height": "128px"
       },
       "title": {
         "top": "27px",
@@ -889,7 +1073,9 @@
       },
       "description": {
         "top": "200px",
-        "left": "40px"
+        "left": "40px",
+        "width": "570px",
+        "height": "420px"
       },
       "overlay": {
         "top": "215px",
@@ -905,19 +1091,27 @@
       },
       "effect1": {
         "top": "675px",
-        "left": "59px"
+        "left": "59px",
+        "width": "130px",
+        "height": "115px"
       },
       "effect2": {
         "top": "670px",
-        "left": "208px"
+        "left": "208px",
+        "width": "130px",
+        "height": "115px"
       },
       "effect3": {
         "top": "670px",
-        "left": "357px"
+        "left": "357px",
+        "width": "130px",
+        "height": "115px"
       },
       "effect4": {
         "top": "670px",
-        "left": "506px"
+        "left": "506px",
+        "width": "130px",
+        "height": "115px"
       },
       "effect2NumberPosition": {
         "top": "0",
@@ -940,11 +1134,15 @@
     "positions": {
       "icon": {
         "top": "292px",
-        "left": "72px"
+        "left": "72px",
+        "width": "128px",
+        "height": "128px"
       },
       "icon2": {
         "top": "120px",
-        "left": "545px"
+        "left": "545px",
+        "width": "128px",
+        "height": "128px"
       },
       "title": {
         "top": "27px",
@@ -955,7 +1153,9 @@
       },
       "description": {
         "top": "200px",
-        "left": "40px"
+        "left": "40px",
+        "width": "570px",
+        "height": "420px"
       },
       "overlay": {
         "top": "215px",
@@ -971,19 +1171,27 @@
       },
       "effect1": {
         "top": "675px",
-        "left": "59px"
+        "left": "59px",
+        "width": "130px",
+        "height": "115px"
       },
       "effect2": {
         "top": "670px",
-        "left": "208px"
+        "left": "208px",
+        "width": "130px",
+        "height": "115px"
       },
       "effect3": {
         "top": "670px",
-        "left": "357px"
+        "left": "357px",
+        "width": "130px",
+        "height": "115px"
       },
       "effect4": {
         "top": "670px",
-        "left": "506px"
+        "left": "506px",
+        "width": "130px",
+        "height": "115px"
       },
       "effect2NumberPosition": {
         "top": "0",
@@ -1006,11 +1214,15 @@
     "positions": {
       "icon": {
         "top": "292px",
-        "left": "72px"
+        "left": "72px",
+        "width": "128px",
+        "height": "128px"
       },
       "icon2": {
         "top": "120px",
-        "left": "545px"
+        "left": "545px",
+        "width": "128px",
+        "height": "128px"
       },
       "title": {
         "top": "27px",
@@ -1021,7 +1233,9 @@
       },
       "description": {
         "top": "200px",
-        "left": "40px"
+        "left": "40px",
+        "width": "570px",
+        "height": "420px"
       },
       "overlay": {
         "top": "215px",
@@ -1037,19 +1251,27 @@
       },
       "effect1": {
         "top": "675px",
-        "left": "59px"
+        "left": "59px",
+        "width": "130px",
+        "height": "115px"
       },
       "effect2": {
         "top": "670px",
-        "left": "208px"
+        "left": "208px",
+        "width": "130px",
+        "height": "115px"
       },
       "effect3": {
         "top": "670px",
-        "left": "357px"
+        "left": "357px",
+        "width": "130px",
+        "height": "115px"
       },
       "effect4": {
         "top": "670px",
-        "left": "506px"
+        "left": "506px",
+        "width": "130px",
+        "height": "115px"
       },
       "effect2NumberPosition": {
         "top": "0",
@@ -1072,11 +1294,15 @@
     "positions": {
       "icon": {
         "top": "292px",
-        "left": "72px"
+        "left": "72px",
+        "width": "128px",
+        "height": "128px"
       },
       "icon2": {
         "top": "120px",
-        "left": "545px"
+        "left": "545px",
+        "width": "128px",
+        "height": "128px"
       },
       "title": {
         "top": "27px",
@@ -1087,7 +1313,9 @@
       },
       "description": {
         "top": "200px",
-        "left": "40px"
+        "left": "40px",
+        "width": "570px",
+        "height": "420px"
       },
       "overlay": {
         "top": "215px",
@@ -1103,19 +1331,27 @@
       },
       "effect1": {
         "top": "675px",
-        "left": "59px"
+        "left": "59px",
+        "width": "130px",
+        "height": "115px"
       },
       "effect2": {
         "top": "670px",
-        "left": "208px"
+        "left": "208px",
+        "width": "130px",
+        "height": "115px"
       },
       "effect3": {
         "top": "670px",
-        "left": "357px"
+        "left": "357px",
+        "width": "130px",
+        "height": "115px"
       },
       "effect4": {
         "top": "670px",
-        "left": "506px"
+        "left": "506px",
+        "width": "130px",
+        "height": "115px"
       },
       "effect2NumberPosition": {
         "top": "0",
@@ -1138,11 +1374,15 @@
     "positions": {
       "icon": {
         "top": "292px",
-        "left": "72px"
+        "left": "72px",
+        "width": "128px",
+        "height": "128px"
       },
       "icon2": {
         "top": "120px",
-        "left": "545px"
+        "left": "545px",
+        "width": "128px",
+        "height": "128px"
       },
       "title": {
         "top": "27px",
@@ -1153,7 +1393,9 @@
       },
       "description": {
         "top": "200px",
-        "left": "40px"
+        "left": "40px",
+        "width": "570px",
+        "height": "420px"
       },
       "overlay": {
         "top": "215px",
@@ -1169,19 +1411,27 @@
       },
       "effect1": {
         "top": "675px",
-        "left": "59px"
+        "left": "59px",
+        "width": "130px",
+        "height": "115px"
       },
       "effect2": {
         "top": "670px",
-        "left": "208px"
+        "left": "208px",
+        "width": "130px",
+        "height": "115px"
       },
       "effect3": {
         "top": "670px",
-        "left": "357px"
+        "left": "357px",
+        "width": "130px",
+        "height": "115px"
       },
       "effect4": {
         "top": "670px",
-        "left": "506px"
+        "left": "506px",
+        "width": "130px",
+        "height": "115px"
       },
       "effect2NumberPosition": {
         "top": "0",
@@ -1204,11 +1454,15 @@
     "positions": {
       "icon": {
         "top": "292px",
-        "left": "72px"
+        "left": "72px",
+        "width": "128px",
+        "height": "128px"
       },
       "icon2": {
         "top": "120px",
-        "left": "545px"
+        "left": "545px",
+        "width": "128px",
+        "height": "128px"
       },
       "title": {
         "top": "27px",
@@ -1219,7 +1473,9 @@
       },
       "description": {
         "top": "200px",
-        "left": "40px"
+        "left": "40px",
+        "width": "570px",
+        "height": "420px"
       },
       "overlay": {
         "top": "215px",
@@ -1235,19 +1491,27 @@
       },
       "effect1": {
         "top": "675px",
-        "left": "59px"
+        "left": "59px",
+        "width": "130px",
+        "height": "115px"
       },
       "effect2": {
         "top": "670px",
-        "left": "208px"
+        "left": "208px",
+        "width": "130px",
+        "height": "115px"
       },
       "effect3": {
         "top": "670px",
-        "left": "357px"
+        "left": "357px",
+        "width": "130px",
+        "height": "115px"
       },
       "effect4": {
         "top": "670px",
-        "left": "506px"
+        "left": "506px",
+        "width": "130px",
+        "height": "115px"
       },
       "effect2NumberPosition": {
         "top": "0",
@@ -1270,7 +1534,9 @@
     "positions": {
       "icon": {
         "top": "55px",
-        "left": "40px"
+        "left": "40px",
+        "width": "128px",
+        "height": "128px"
       },
       "enemieIcon": {
         "top": "21px",
@@ -1330,7 +1596,9 @@
     "positions": {
       "icon": {
         "top": "55px",
-        "left": "40px"
+        "left": "40px",
+        "width": "128px",
+        "height": "128px"
       },
       "enemieIcon": {
         "top": "21px",

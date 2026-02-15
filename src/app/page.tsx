@@ -296,8 +296,8 @@ const ebGaramond = EB_Garamond({
 });
 
 type LayoutPositions = {
-  icon: { top: string; left: string };
-  icon2?: { top: string; left: string };
+  icon: { top: string; left: string; width?: string; height?: string };
+  icon2?: { top: string; left: string; width?: string; height?: string };
   title: {
     top: string;
     left: string;
@@ -324,10 +324,10 @@ type LayoutPositions = {
     height: string;
   };
   /** Layout 3: 4 ícones de effects (posição ajustável) */
-  effect1?: { top: string; left: string };
-  effect2?: { top: string; left: string };
-  effect3?: { top: string; left: string };
-  effect4?: { top: string; left: string };
+  effect1?: { top: string; left: string; width?: string; height?: string };
+  effect2?: { top: string; left: string; width?: string; height?: string };
+  effect3?: { top: string; left: string; width?: string; height?: string };
+  effect4?: { top: string; left: string; width?: string; height?: string };
   /** Posição do número sobre cada ícone (relativo ao bloco do ícone). Ajuste top/left aqui. */
   effect2NumberPosition?: { top: string; left: string };
   effect3NumberPosition?: { top: string; left: string };
@@ -1021,6 +1021,11 @@ const CardPreview = ({
                   borderRadius: "12px",
                   boxShadow: "inset 0 0 10px 4px rgba(0, 0, 0, 0.65)",
                 }),
+                ...(!isEnemieLayout(card.layoutId) && {
+                  borderRadius: "15px",
+                  boxShadow:
+                    "inset 0 0 8px 2px rgba(0, 0, 0, 0.5), inset 2px -2px 12px 3px rgba(0, 0, 0, 0.5)",
+                }),
               }}
             >
               <img
@@ -1035,25 +1040,25 @@ const CardPreview = ({
         {(hasEnemieIconLayout(card.layoutId) || card.layoutId === "enemie2") &&
           layoutPositions.enemieIcon &&
           card.enemieMainIcon && (
-          <div
-            className="absolute overflow-hidden "
-            style={{
-              top: layoutPositions.enemieIcon.top,
-              left: layoutPositions.enemieIcon.left,
-              width: layoutPositions.enemieIcon.width,
-              height: layoutPositions.enemieIcon.height,
-            }}
-          >
-            <img
-              src={card.enemieMainIcon}
+            <div
+              className="absolute overflow-hidden "
               style={{
-                objectFit: "fill",
-                objectPosition: "center",
+                top: layoutPositions.enemieIcon.top,
+                left: layoutPositions.enemieIcon.left,
+                width: layoutPositions.enemieIcon.width,
+                height: layoutPositions.enemieIcon.height,
               }}
-              alt="Ícone do inimigo"
-            />
-          </div>
-        )}
+            >
+              <img
+                src={card.enemieMainIcon}
+                style={{
+                  objectFit: "fill",
+                  objectPosition: "center",
+                }}
+                alt="Ícone do inimigo"
+              />
+            </div>
+          )}
         {!isBgLayout(card.layoutId) &&
           !isTensionLayout(card.layoutId) &&
           (isEnemie
@@ -1074,7 +1079,8 @@ const CardPreview = ({
                   ? `${ENEMIE_SKILLS_CONTAINER_HEIGHT_PX}px`
                   : layoutPositions.skills.height,
                 ...(showDebugBackground &&
-                  !isEnemie && {
+                  !isEnemie &&
+                  card.layoutId !== "equip1" && {
                     backgroundColor: "rgba(0, 0, 255, 0.3)",
                   }),
               }}
@@ -1873,26 +1879,66 @@ const CardPreview = ({
                 >
                   {isEquipWithEffectsLayout(card.layoutId) ? null : (
                     <>
-                      <img
-                        src={
-                          card.icon ||
-                          iconOptionsA[0]?.src ||
-                          DEFAULT_ICON_FALLBACK
+                      <div
+                        className="relative flex shrink-0 flex-col items-center justify-center"
+                        style={
+                          !isEnemieLayout(card.layoutId)
+                            ? {
+                                width:
+                                  layoutPositions.icon?.width != null
+                                    ? parsePx(layoutPositions.icon.width)
+                                    : 128,
+                                height:
+                                  layoutPositions.icon?.height != null
+                                    ? parsePx(layoutPositions.icon.height)
+                                    : 128,
+                                borderRadius: "50%",
+                                padding: 20,
+                                boxShadow:
+                                  "inset 0 0 8px 2px rgba(0, 0, 0, 0.5), inset 2px -2px 12px 3px rgba(0, 0, 0, 0.5)",
+                                overflow: "hidden",
+                              }
+                            : undefined
                         }
-                        alt="Ícone do card"
-                        className="h-32 w-32 object-contain"
-                      />
-                      {card.icon2 && layoutPositions.icon2 && (
+                      >
                         <img
-                          src={card.icon2}
-                          alt="Segundo ícone"
-                          className="absolute h-32 w-32 object-contain"
+                          src={
+                            card.icon ||
+                            iconOptionsA[0]?.src ||
+                            DEFAULT_ICON_FALLBACK
+                          }
+                          alt="Ícone do card"
+                          className="h-32 w-32 shrink-0 object-contain"
+                        />
+                      </div>
+                      {card.icon2 && layoutPositions.icon2 && (
+                        <div
+                          className="absolute flex items-center justify-center overflow-hidden"
                           style={{
                             top: layoutPositions.icon2.top,
                             left: layoutPositions.icon2.left,
-                            transform: "translate(-20px, -15px)",
+                            width:
+                              layoutPositions.icon2?.width != null
+                                ? parsePx(layoutPositions.icon2.width)
+                                : 128,
+                            height:
+                              layoutPositions.icon2?.height != null
+                                ? parsePx(layoutPositions.icon2.height)
+                                : 128,
+                            borderRadius: "50%",
+                            padding: 20,
+                            ...(!isEnemieLayout(card.layoutId) && {
+                              boxShadow:
+                                "inset 0 0 8px 2px rgba(0, 0, 0, 0.5), inset 2px -2px 12px 3px rgba(0, 0, 0, 0.5)",
+                            }),
                           }}
-                        />
+                        >
+                          <img
+                            src={card.icon2}
+                            alt="Segundo ícone"
+                            className="h-full w-full object-contain"
+                          />
+                        </div>
                       )}
                     </>
                   )}
@@ -2259,6 +2305,11 @@ const CardPreview = ({
                 flexShrink: 1,
                 flexBasis: "auto",
                 flex: 1,
+                ...(!isEnemieLayout(card.layoutId) && {
+                  borderRadius: "15px",
+                  boxShadow:
+                    "inset 0 0 8px 2px rgba(0, 0, 0, 0.5), inset 2px -2px 12px 3px rgba(0, 0, 0, 0.5)",
+                }),
               }}
             >
               {card.title || ""}
@@ -2274,6 +2325,7 @@ const CardPreview = ({
                   fontFamily: ebGaramond.style.fontFamily,
                   fontWeight: 590,
                   lineHeight: 1,
+                  padding: "20px",
                 }}
               >
                 <p
@@ -2342,6 +2394,7 @@ const CardPreview = ({
                   height: layoutPositions.description.height || "420px",
                   whiteSpace: "pre-line",
                   textAlign: isEnemie ? "left" : "center",
+                  padding: "20px",
                   ...(isEnemie && (card.description || "").trim()
                     ? {
                         borderRadius: "12px",
@@ -2349,9 +2402,12 @@ const CardPreview = ({
                       }
                     : {}),
                   ...(isEnemie && {
-                    paddingTop: "2%",
-                    paddingLeft: "2%",
-                    paddingRight: "2%",
+                    padding: "2%",
+                  }),
+                  ...(!isEnemieLayout(card.layoutId) && {
+                    borderRadius: "15px",
+                    boxShadow:
+                      "inset 0 0 8px 2px rgba(0, 0, 0, 0.5), inset 2px -2px 12px 3px rgba(0, 0, 0, 0.5)",
                   }),
                 }}
               >
@@ -3968,467 +4024,482 @@ export default function Home() {
               <div className="space-y-4 border-t border-white/10 pt-4">
                 {(hasEnemieIconLayout(form.layout) ||
                   form.layout === "enemie2") && (
-                <div className="flex flex-col gap-2">
-                  <span className="text-sm font-medium text-slate-300">
-                    Ícone do inimigo
-                  </span>
-                  <p className="text-xs text-slate-400">
-                    Ícones da pasta Enemies/Icons
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {enemieMainIconOptions.map((icon) => {
-                      const src = icon.src ?? "";
-                      const isSelected =
-                        form.enemieMainIcon === src ||
-                        form.enemieMainIcon === icon.id;
-                      return (
-                        <button
-                          key={icon.id}
-                          type="button"
-                          onClick={() =>
-                            setForm((prev) => ({
-                              ...prev,
-                              enemieMainIcon: isSelected ? "" : src,
-                            }))
-                          }
-                          className={`flex h-12 w-12 items-center justify-center rounded-lg transition ${
-                            isSelected
-                              ? "border-2 border-amber-400 bg-amber-500/20"
-                              : "border border-white/20 bg-white/5 hover:border-white/40"
-                          }`}
-                          title={icon.label}
-                        >
-                          {src ? (
-                            <img
-                              src={src}
-                              alt={icon.label}
-                              className="h-8 w-8 object-contain"
-                            />
-                          ) : null}
-                        </button>
-                      );
-                    })}
+                  <div className="flex flex-col gap-2">
+                    <span className="text-sm font-medium text-slate-300">
+                      Ícone do inimigo
+                    </span>
+                    <p className="text-xs text-slate-400">
+                      Ícones da pasta Enemies/Icons
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {enemieMainIconOptions.map((icon) => {
+                        const src = icon.src ?? "";
+                        const isSelected =
+                          form.enemieMainIcon === src ||
+                          form.enemieMainIcon === icon.id;
+                        return (
+                          <button
+                            key={icon.id}
+                            type="button"
+                            onClick={() =>
+                              setForm((prev) => ({
+                                ...prev,
+                                enemieMainIcon: isSelected ? "" : src,
+                              }))
+                            }
+                            className={`flex h-12 w-12 items-center justify-center rounded-lg transition ${
+                              isSelected
+                                ? "border-2 border-amber-400 bg-amber-500/20"
+                                : "border border-white/20 bg-white/5 hover:border-white/40"
+                            }`}
+                            title={icon.label}
+                          >
+                            {src ? (
+                              <img
+                                src={src}
+                                alt={icon.label}
+                                className="h-8 w-8 object-contain"
+                              />
+                            ) : null}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
                 )}
                 {hasEnemieIconLayout(form.layout) && (
-                <>
-                <h3 className="text-xl font-semibold">Skills por cor</h3>
-                <p className="text-sm text-slate-400">
-                  Clique no ícone para adicionar à cor. O número digitado abaixo
-                  do ícone 06 será exibido na frente dele no card.
-                </p>
-                <div className="flex flex-wrap gap-4">
-                  {/* Azul */}
-                  <div className="flex-1 min-w-[320px] space-y-2 rounded-lg border border-blue-500/30 bg-blue-500/5 p-3">
-                    <div className="grid grid-cols-6 gap-2">
-                      {enemieIconOptions
-                        .filter((icon) => !isIcon02(icon))
-                        .map((icon) => {
-                          const list = form.enemieBlueSkills ?? [];
-                          const has06 = hasEnemie06InSkills(
-                            enemieIconOptions,
-                            list,
-                          );
-                          const is06 = isIcon06(icon);
-                          const is01 = isIcon01(icon);
-                          const icon02 = enemieIconOptions.find(isIcon02);
-                          const id02 = icon02?.id ?? icon02?.src ?? "02";
-                          const isSelected = is06
-                            ? list.includes(icon.id) ||
-                              list.includes(icon.src ?? "") ||
-                              has06
-                            : is01
-                              ? list.some((id) => isId01(id) || isId02(id))
-                              : list.includes(icon.id) ||
-                                list.includes(icon.src ?? "");
-                          const skillId = icon.id;
-                          return (
-                            <div
-                              key={icon.id}
-                              className="flex flex-col items-center gap-1"
-                            >
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setForm((prev) => {
-                                    const list = prev.enemieBlueSkills ?? [];
-                                    const has06 = hasEnemie06InSkills(
-                                      enemieIconOptions,
-                                      list,
-                                    );
-                                    let next: string[];
-                                    if (isIcon06(icon)) {
-                                      const has06InList = list.some(
-                                        (id) =>
-                                          id === icon.id ||
-                                          id === icon.src ||
-                                          isId06(id),
-                                      );
-                                      if (has06InList) {
-                                        next = list.filter(
-                                          (id) =>
-                                            id !== icon.id &&
-                                            id !== icon.src &&
-                                            !isId06(id),
+                  <>
+                    <h3 className="text-xl font-semibold">Skills por cor</h3>
+                    <p className="text-sm text-slate-400">
+                      Clique no ícone para adicionar à cor. O número digitado
+                      abaixo do ícone 06 será exibido na frente dele no card.
+                    </p>
+                    <div className="flex flex-wrap gap-4">
+                      {/* Azul */}
+                      <div className="flex-1 min-w-[320px] space-y-2 rounded-lg border border-blue-500/30 bg-blue-500/5 p-3">
+                        <div className="grid grid-cols-6 gap-2">
+                          {enemieIconOptions
+                            .filter((icon) => !isIcon02(icon))
+                            .map((icon) => {
+                              const list = form.enemieBlueSkills ?? [];
+                              const has06 = hasEnemie06InSkills(
+                                enemieIconOptions,
+                                list,
+                              );
+                              const is06 = isIcon06(icon);
+                              const is01 = isIcon01(icon);
+                              const icon02 = enemieIconOptions.find(isIcon02);
+                              const id02 = icon02?.id ?? icon02?.src ?? "02";
+                              const isSelected = is06
+                                ? list.includes(icon.id) ||
+                                  list.includes(icon.src ?? "") ||
+                                  has06
+                                : is01
+                                  ? list.some((id) => isId01(id) || isId02(id))
+                                  : list.includes(icon.id) ||
+                                    list.includes(icon.src ?? "");
+                              const skillId = icon.id;
+                              return (
+                                <div
+                                  key={icon.id}
+                                  className="flex flex-col items-center gap-1"
+                                >
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setForm((prev) => {
+                                        const list =
+                                          prev.enemieBlueSkills ?? [];
+                                        const has06 = hasEnemie06InSkills(
+                                          enemieIconOptions,
+                                          list,
                                         );
-                                      } else if (has06) {
-                                        next = list;
-                                      } else {
-                                        next = [...list, icon.id];
-                                      }
-                                    } else if (is01) {
-                                      const has01 = list.some(
-                                        (id) => isId01(id) || isId02(id),
-                                      );
-                                      next = has01
-                                        ? list.filter(
-                                            (id) => !isId01(id) && !isId02(id),
-                                          )
-                                        : [...list, icon.id, id02];
-                                    } else {
-                                      const exists = list.some(
-                                        (id) =>
-                                          id === icon.id || id === icon.src,
-                                      );
-                                      next = exists
-                                        ? list.filter(
+                                        let next: string[];
+                                        if (isIcon06(icon)) {
+                                          const has06InList = list.some(
                                             (id) =>
-                                              id !== icon.id && id !== icon.src,
-                                          )
-                                        : [...list, icon.id];
+                                              id === icon.id ||
+                                              id === icon.src ||
+                                              isId06(id),
+                                          );
+                                          if (has06InList) {
+                                            next = list.filter(
+                                              (id) =>
+                                                id !== icon.id &&
+                                                id !== icon.src &&
+                                                !isId06(id),
+                                            );
+                                          } else if (has06) {
+                                            next = list;
+                                          } else {
+                                            next = [...list, icon.id];
+                                          }
+                                        } else if (is01) {
+                                          const has01 = list.some(
+                                            (id) => isId01(id) || isId02(id),
+                                          );
+                                          next = has01
+                                            ? list.filter(
+                                                (id) =>
+                                                  !isId01(id) && !isId02(id),
+                                              )
+                                            : [...list, icon.id, id02];
+                                        } else {
+                                          const exists = list.some(
+                                            (id) =>
+                                              id === icon.id || id === icon.src,
+                                          );
+                                          next = exists
+                                            ? list.filter(
+                                                (id) =>
+                                                  id !== icon.id &&
+                                                  id !== icon.src,
+                                              )
+                                            : [...list, icon.id];
+                                        }
+                                        return {
+                                          ...prev,
+                                          enemieBlueSkills: next,
+                                        };
+                                      })
                                     }
-                                    return { ...prev, enemieBlueSkills: next };
-                                  })
-                                }
-                                className={`flex h-10 w-10 items-center justify-center rounded-lg transition ${
-                                  isSelected
-                                    ? "border-4 border-amber-400 bg-[#EDE4D7]"
-                                    : "border border-white/20 bg-[#D9CCBE]"
-                                }`}
-                                title={icon.label}
-                              >
-                                <img
-                                  src={icon.src}
-                                  alt={icon.label}
-                                  className="h-6 w-6 object-contain"
-                                />
-                              </button>
-                              {isSelected && (
-                                <input
-                                  type="text"
-                                  inputMode="numeric"
-                                  value={
-                                    form.skillNumbers?.[
-                                      `enemie-blue-${is06 && has06 ? "06" : skillId}`
-                                    ] ??
-                                    (is06 && has06
-                                      ? form.enemieBlueExtraNumber
-                                      : undefined) ??
-                                    ""
-                                  }
-                                  onChange={(e) => {
-                                    const key = is06 && has06 ? "06" : skillId;
-                                    const val = e.target.value.replace(
-                                      /\D/g,
-                                      "",
-                                    );
-                                    setForm((prev) => ({
-                                      ...prev,
-                                      ...(is06 && has06
-                                        ? { enemieBlueExtraNumber: val }
-                                        : {}),
-                                      skillNumbers: {
-                                        ...prev.skillNumbers,
-                                        [`enemie-blue-${key}`]: val,
-                                      },
-                                    }));
-                                  }}
-                                  className="w-12 rounded border border-white/10 bg-white/5 px-1 py-0.5 text-center text-xs text-white"
-                                  placeholder="Nº"
-                                />
-                              )}
-                            </div>
-                          );
-                        })}
-                    </div>
-                  </div>
-                  {/* Roxo */}
-                  <div className="flex-1 min-w-[320px] space-y-2 rounded-lg border border-purple-500/30 bg-purple-500/5 p-3">
-                    <div className="grid grid-cols-6 gap-2">
-                      {enemieIconOptions
-                        .filter((icon) => !isIcon02(icon))
-                        .map((icon) => {
-                          const list = form.enemiePurpleSkills ?? [];
-                          const has06 = hasEnemie06InSkills(
-                            enemieIconOptions,
-                            list,
-                          );
-                          const is06 = isIcon06(icon);
-                          const is01 = isIcon01(icon);
-                          const icon02 = enemieIconOptions.find(isIcon02);
-                          const id02 = icon02?.id ?? icon02?.src ?? "02";
-                          const isSelected = is06
-                            ? list.includes(icon.id) ||
-                              list.includes(icon.src ?? "") ||
-                              has06
-                            : is01
-                              ? list.some((id) => isId01(id) || isId02(id))
-                              : list.includes(icon.id) ||
-                                list.includes(icon.src ?? "");
-                          const skillId = icon.id;
-                          return (
-                            <div
-                              key={icon.id}
-                              className="flex flex-col items-center gap-1"
-                            >
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setForm((prev) => {
-                                    const list = prev.enemiePurpleSkills ?? [];
-                                    const has06 = hasEnemie06InSkills(
-                                      enemieIconOptions,
-                                      list,
-                                    );
-                                    let next: string[];
-                                    if (isIcon06(icon)) {
-                                      const has06InList = list.some(
-                                        (id) =>
-                                          id === icon.id ||
-                                          id === icon.src ||
-                                          isId06(id),
-                                      );
-                                      if (has06InList) {
-                                        next = list.filter(
-                                          (id) =>
-                                            id !== icon.id &&
-                                            id !== icon.src &&
-                                            !isId06(id),
+                                    className={`flex h-10 w-10 items-center justify-center rounded-lg transition ${
+                                      isSelected
+                                        ? "border-4 border-amber-400 bg-[#EDE4D7]"
+                                        : "border border-white/20 bg-[#D9CCBE]"
+                                    }`}
+                                    title={icon.label}
+                                  >
+                                    <img
+                                      src={icon.src}
+                                      alt={icon.label}
+                                      className="h-6 w-6 object-contain"
+                                    />
+                                  </button>
+                                  {isSelected && (
+                                    <input
+                                      type="text"
+                                      inputMode="numeric"
+                                      value={
+                                        form.skillNumbers?.[
+                                          `enemie-blue-${is06 && has06 ? "06" : skillId}`
+                                        ] ??
+                                        (is06 && has06
+                                          ? form.enemieBlueExtraNumber
+                                          : undefined) ??
+                                        ""
+                                      }
+                                      onChange={(e) => {
+                                        const key =
+                                          is06 && has06 ? "06" : skillId;
+                                        const val = e.target.value.replace(
+                                          /\D/g,
+                                          "",
                                         );
-                                      } else if (has06) {
-                                        next = list;
-                                      } else {
-                                        next = [...list, icon.id];
-                                      }
-                                    } else if (is01) {
-                                      const has01 = list.some(
-                                        (id) => isId01(id) || isId02(id),
-                                      );
-                                      next = has01
-                                        ? list.filter(
-                                            (id) => !isId01(id) && !isId02(id),
-                                          )
-                                        : [...list, icon.id, id02];
-                                    } else {
-                                      const exists = list.some(
-                                        (id) =>
-                                          id === icon.id || id === icon.src,
-                                      );
-                                      next = exists
-                                        ? list.filter(
-                                            (id) =>
-                                              id !== icon.id && id !== icon.src,
-                                          )
-                                        : [...list, icon.id];
-                                    }
-                                    return {
-                                      ...prev,
-                                      enemiePurpleSkills: next,
-                                    };
-                                  })
-                                }
-                                className={`flex h-10 w-10 items-center justify-center rounded-lg transition ${
-                                  isSelected
-                                    ? "border-4 border-amber-400 bg-[#EDE4D7]"
-                                    : "border border-white/20 bg-[#D9CCBE]"
-                                }`}
-                                title={icon.label}
-                              >
-                                <img
-                                  src={icon.src}
-                                  alt={icon.label}
-                                  className="h-6 w-6 object-contain"
-                                />
-                              </button>
-                              {isSelected && (
-                                <input
-                                  type="text"
-                                  inputMode="numeric"
-                                  value={
-                                    form.skillNumbers?.[
-                                      `enemie-purple-${is06 && has06 ? "06" : skillId}`
-                                    ] ??
-                                    (is06 && has06
-                                      ? form.enemiePurpleExtraNumber
-                                      : undefined) ??
-                                    ""
-                                  }
-                                  onChange={(e) => {
-                                    const key = is06 && has06 ? "06" : skillId;
-                                    const val = e.target.value.replace(
-                                      /\D/g,
-                                      "",
-                                    );
-                                    setForm((prev) => ({
-                                      ...prev,
-                                      ...(is06 && has06
-                                        ? { enemiePurpleExtraNumber: val }
-                                        : {}),
-                                      skillNumbers: {
-                                        ...prev.skillNumbers,
-                                        [`enemie-purple-${key}`]: val,
-                                      },
-                                    }));
-                                  }}
-                                  className="w-12 rounded border border-white/10 bg-white/5 px-1 py-0.5 text-center text-xs text-white"
-                                  placeholder="Nº"
-                                />
-                              )}
-                            </div>
-                          );
-                        })}
-                    </div>
-                  </div>
-                  {/* Amarelo */}
-                  <div className="flex-1 min-w-[320px] space-y-2 rounded-lg border border-yellow-500/30 bg-yellow-500/5 p-3">
-                    <div className="grid grid-cols-6 gap-2">
-                      {enemieIconOptions
-                        .filter((icon) => !isIcon02(icon))
-                        .map((icon) => {
-                          const list = form.enemieYellowSkills ?? [];
-                          const has06 = hasEnemie06InSkills(
-                            enemieIconOptions,
-                            list,
-                          );
-                          const is06 = isIcon06(icon);
-                          const is01 = isIcon01(icon);
-                          const icon02 = enemieIconOptions.find(isIcon02);
-                          const id02 = icon02?.id ?? icon02?.src ?? "02";
-                          const isSelected = is06
-                            ? list.includes(icon.id) ||
-                              list.includes(icon.src ?? "") ||
-                              has06
-                            : is01
-                              ? list.some((id) => isId01(id) || isId02(id))
-                              : list.includes(icon.id) ||
-                                list.includes(icon.src ?? "");
-                          const skillId = icon.id;
-                          return (
-                            <div
-                              key={icon.id}
-                              className="flex flex-col items-center gap-1"
-                            >
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setForm((prev) => {
-                                    const list = prev.enemieYellowSkills ?? [];
-                                    const has06 = hasEnemie06InSkills(
-                                      enemieIconOptions,
-                                      list,
-                                    );
-                                    let next: string[];
-                                    if (isIcon06(icon)) {
-                                      const has06InList = list.some(
-                                        (id) =>
-                                          id === icon.id ||
-                                          id === icon.src ||
-                                          isId06(id),
-                                      );
-                                      if (has06InList) {
-                                        next = list.filter(
-                                          (id) =>
-                                            id !== icon.id &&
-                                            id !== icon.src &&
-                                            !isId06(id),
+                                        setForm((prev) => ({
+                                          ...prev,
+                                          ...(is06 && has06
+                                            ? { enemieBlueExtraNumber: val }
+                                            : {}),
+                                          skillNumbers: {
+                                            ...prev.skillNumbers,
+                                            [`enemie-blue-${key}`]: val,
+                                          },
+                                        }));
+                                      }}
+                                      className="w-12 rounded border border-white/10 bg-white/5 px-1 py-0.5 text-center text-xs text-white"
+                                      placeholder="Nº"
+                                    />
+                                  )}
+                                </div>
+                              );
+                            })}
+                        </div>
+                      </div>
+                      {/* Roxo */}
+                      <div className="flex-1 min-w-[320px] space-y-2 rounded-lg border border-purple-500/30 bg-purple-500/5 p-3">
+                        <div className="grid grid-cols-6 gap-2">
+                          {enemieIconOptions
+                            .filter((icon) => !isIcon02(icon))
+                            .map((icon) => {
+                              const list = form.enemiePurpleSkills ?? [];
+                              const has06 = hasEnemie06InSkills(
+                                enemieIconOptions,
+                                list,
+                              );
+                              const is06 = isIcon06(icon);
+                              const is01 = isIcon01(icon);
+                              const icon02 = enemieIconOptions.find(isIcon02);
+                              const id02 = icon02?.id ?? icon02?.src ?? "02";
+                              const isSelected = is06
+                                ? list.includes(icon.id) ||
+                                  list.includes(icon.src ?? "") ||
+                                  has06
+                                : is01
+                                  ? list.some((id) => isId01(id) || isId02(id))
+                                  : list.includes(icon.id) ||
+                                    list.includes(icon.src ?? "");
+                              const skillId = icon.id;
+                              return (
+                                <div
+                                  key={icon.id}
+                                  className="flex flex-col items-center gap-1"
+                                >
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setForm((prev) => {
+                                        const list =
+                                          prev.enemiePurpleSkills ?? [];
+                                        const has06 = hasEnemie06InSkills(
+                                          enemieIconOptions,
+                                          list,
                                         );
-                                      } else if (has06) {
-                                        next = list;
-                                      } else {
-                                        next = [...list, icon.id];
-                                      }
-                                    } else if (is01) {
-                                      const has01 = list.some(
-                                        (id) => isId01(id) || isId02(id),
-                                      );
-                                      next = has01
-                                        ? list.filter(
-                                            (id) => !isId01(id) && !isId02(id),
-                                          )
-                                        : [...list, icon.id, id02];
-                                    } else {
-                                      const exists = list.some(
-                                        (id) =>
-                                          id === icon.id || id === icon.src,
-                                      );
-                                      next = exists
-                                        ? list.filter(
+                                        let next: string[];
+                                        if (isIcon06(icon)) {
+                                          const has06InList = list.some(
                                             (id) =>
-                                              id !== icon.id && id !== icon.src,
-                                          )
-                                        : [...list, icon.id];
+                                              id === icon.id ||
+                                              id === icon.src ||
+                                              isId06(id),
+                                          );
+                                          if (has06InList) {
+                                            next = list.filter(
+                                              (id) =>
+                                                id !== icon.id &&
+                                                id !== icon.src &&
+                                                !isId06(id),
+                                            );
+                                          } else if (has06) {
+                                            next = list;
+                                          } else {
+                                            next = [...list, icon.id];
+                                          }
+                                        } else if (is01) {
+                                          const has01 = list.some(
+                                            (id) => isId01(id) || isId02(id),
+                                          );
+                                          next = has01
+                                            ? list.filter(
+                                                (id) =>
+                                                  !isId01(id) && !isId02(id),
+                                              )
+                                            : [...list, icon.id, id02];
+                                        } else {
+                                          const exists = list.some(
+                                            (id) =>
+                                              id === icon.id || id === icon.src,
+                                          );
+                                          next = exists
+                                            ? list.filter(
+                                                (id) =>
+                                                  id !== icon.id &&
+                                                  id !== icon.src,
+                                              )
+                                            : [...list, icon.id];
+                                        }
+                                        return {
+                                          ...prev,
+                                          enemiePurpleSkills: next,
+                                        };
+                                      })
                                     }
-                                    return {
-                                      ...prev,
-                                      enemieYellowSkills: next,
-                                    };
-                                  })
-                                }
-                                className={`flex h-10 w-10 items-center justify-center rounded-lg transition ${
-                                  isSelected
-                                    ? "border-4 border-amber-400 bg-[#EDE4D7]"
-                                    : "border border-white/20 bg-[#D9CCBE]"
-                                }`}
-                                title={icon.label}
-                              >
-                                <img
-                                  src={icon.src}
-                                  alt={icon.label}
-                                  className="h-6 w-6 object-contain"
-                                />
-                              </button>
-                              {isSelected && (
-                                <input
-                                  type="text"
-                                  inputMode="numeric"
-                                  value={
-                                    form.skillNumbers?.[
-                                      `enemie-yellow-${is06 && has06 ? "06" : skillId}`
-                                    ] ??
-                                    (is06 && has06
-                                      ? form.enemieYellowExtraNumber
-                                      : undefined) ??
-                                    ""
-                                  }
-                                  onChange={(e) => {
-                                    const key = is06 && has06 ? "06" : skillId;
-                                    const val = e.target.value.replace(
-                                      /\D/g,
-                                      "",
-                                    );
-                                    setForm((prev) => ({
-                                      ...prev,
-                                      ...(is06 && has06
-                                        ? { enemieYellowExtraNumber: val }
-                                        : {}),
-                                      skillNumbers: {
-                                        ...prev.skillNumbers,
-                                        [`enemie-yellow-${key}`]: val,
-                                      },
-                                    }));
-                                  }}
-                                  className="w-12 rounded border border-white/10 bg-white/5 px-1 py-0.5 text-center text-xs text-white"
-                                  placeholder="Nº"
-                                />
-                              )}
-                            </div>
-                          );
-                        })}
+                                    className={`flex h-10 w-10 items-center justify-center rounded-lg transition ${
+                                      isSelected
+                                        ? "border-4 border-amber-400 bg-[#EDE4D7]"
+                                        : "border border-white/20 bg-[#D9CCBE]"
+                                    }`}
+                                    title={icon.label}
+                                  >
+                                    <img
+                                      src={icon.src}
+                                      alt={icon.label}
+                                      className="h-6 w-6 object-contain"
+                                    />
+                                  </button>
+                                  {isSelected && (
+                                    <input
+                                      type="text"
+                                      inputMode="numeric"
+                                      value={
+                                        form.skillNumbers?.[
+                                          `enemie-purple-${is06 && has06 ? "06" : skillId}`
+                                        ] ??
+                                        (is06 && has06
+                                          ? form.enemiePurpleExtraNumber
+                                          : undefined) ??
+                                        ""
+                                      }
+                                      onChange={(e) => {
+                                        const key =
+                                          is06 && has06 ? "06" : skillId;
+                                        const val = e.target.value.replace(
+                                          /\D/g,
+                                          "",
+                                        );
+                                        setForm((prev) => ({
+                                          ...prev,
+                                          ...(is06 && has06
+                                            ? { enemiePurpleExtraNumber: val }
+                                            : {}),
+                                          skillNumbers: {
+                                            ...prev.skillNumbers,
+                                            [`enemie-purple-${key}`]: val,
+                                          },
+                                        }));
+                                      }}
+                                      className="w-12 rounded border border-white/10 bg-white/5 px-1 py-0.5 text-center text-xs text-white"
+                                      placeholder="Nº"
+                                    />
+                                  )}
+                                </div>
+                              );
+                            })}
+                        </div>
+                      </div>
+                      {/* Amarelo */}
+                      <div className="flex-1 min-w-[320px] space-y-2 rounded-lg border border-yellow-500/30 bg-yellow-500/5 p-3">
+                        <div className="grid grid-cols-6 gap-2">
+                          {enemieIconOptions
+                            .filter((icon) => !isIcon02(icon))
+                            .map((icon) => {
+                              const list = form.enemieYellowSkills ?? [];
+                              const has06 = hasEnemie06InSkills(
+                                enemieIconOptions,
+                                list,
+                              );
+                              const is06 = isIcon06(icon);
+                              const is01 = isIcon01(icon);
+                              const icon02 = enemieIconOptions.find(isIcon02);
+                              const id02 = icon02?.id ?? icon02?.src ?? "02";
+                              const isSelected = is06
+                                ? list.includes(icon.id) ||
+                                  list.includes(icon.src ?? "") ||
+                                  has06
+                                : is01
+                                  ? list.some((id) => isId01(id) || isId02(id))
+                                  : list.includes(icon.id) ||
+                                    list.includes(icon.src ?? "");
+                              const skillId = icon.id;
+                              return (
+                                <div
+                                  key={icon.id}
+                                  className="flex flex-col items-center gap-1"
+                                >
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setForm((prev) => {
+                                        const list =
+                                          prev.enemieYellowSkills ?? [];
+                                        const has06 = hasEnemie06InSkills(
+                                          enemieIconOptions,
+                                          list,
+                                        );
+                                        let next: string[];
+                                        if (isIcon06(icon)) {
+                                          const has06InList = list.some(
+                                            (id) =>
+                                              id === icon.id ||
+                                              id === icon.src ||
+                                              isId06(id),
+                                          );
+                                          if (has06InList) {
+                                            next = list.filter(
+                                              (id) =>
+                                                id !== icon.id &&
+                                                id !== icon.src &&
+                                                !isId06(id),
+                                            );
+                                          } else if (has06) {
+                                            next = list;
+                                          } else {
+                                            next = [...list, icon.id];
+                                          }
+                                        } else if (is01) {
+                                          const has01 = list.some(
+                                            (id) => isId01(id) || isId02(id),
+                                          );
+                                          next = has01
+                                            ? list.filter(
+                                                (id) =>
+                                                  !isId01(id) && !isId02(id),
+                                              )
+                                            : [...list, icon.id, id02];
+                                        } else {
+                                          const exists = list.some(
+                                            (id) =>
+                                              id === icon.id || id === icon.src,
+                                          );
+                                          next = exists
+                                            ? list.filter(
+                                                (id) =>
+                                                  id !== icon.id &&
+                                                  id !== icon.src,
+                                              )
+                                            : [...list, icon.id];
+                                        }
+                                        return {
+                                          ...prev,
+                                          enemieYellowSkills: next,
+                                        };
+                                      })
+                                    }
+                                    className={`flex h-10 w-10 items-center justify-center rounded-lg transition ${
+                                      isSelected
+                                        ? "border-4 border-amber-400 bg-[#EDE4D7]"
+                                        : "border border-white/20 bg-[#D9CCBE]"
+                                    }`}
+                                    title={icon.label}
+                                  >
+                                    <img
+                                      src={icon.src}
+                                      alt={icon.label}
+                                      className="h-6 w-6 object-contain"
+                                    />
+                                  </button>
+                                  {isSelected && (
+                                    <input
+                                      type="text"
+                                      inputMode="numeric"
+                                      value={
+                                        form.skillNumbers?.[
+                                          `enemie-yellow-${is06 && has06 ? "06" : skillId}`
+                                        ] ??
+                                        (is06 && has06
+                                          ? form.enemieYellowExtraNumber
+                                          : undefined) ??
+                                        ""
+                                      }
+                                      onChange={(e) => {
+                                        const key =
+                                          is06 && has06 ? "06" : skillId;
+                                        const val = e.target.value.replace(
+                                          /\D/g,
+                                          "",
+                                        );
+                                        setForm((prev) => ({
+                                          ...prev,
+                                          ...(is06 && has06
+                                            ? { enemieYellowExtraNumber: val }
+                                            : {}),
+                                          skillNumbers: {
+                                            ...prev.skillNumbers,
+                                            [`enemie-yellow-${key}`]: val,
+                                          },
+                                        }));
+                                      }}
+                                      className="w-12 rounded border border-white/10 bg-white/5 px-1 py-0.5 text-center text-xs text-white"
+                                      placeholder="Nº"
+                                    />
+                                  )}
+                                </div>
+                              );
+                            })}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-                </>
+                  </>
                 )}
               </div>
             )}
