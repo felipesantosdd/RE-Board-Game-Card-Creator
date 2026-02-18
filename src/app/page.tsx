@@ -297,19 +297,48 @@ const ebGaramond = EB_Garamond({
 
 type LayoutPositions = {
   icon: { top: string; left: string; width?: string; height?: string };
-  icon2?: { top: string; left: string; width?: string; height?: string };
+  icon1BeforeTitle?: {
+    top: string;
+    left: string;
+    width?: string;
+    height?: string;
+    /** Tamanho do ícone (img) dentro da div - se não definido, preenche a div */
+    iconWidth?: string;
+    iconHeight?: string;
+  };
+  icon2?: {
+    top: string;
+    left: string;
+    width?: string;
+    height?: string;
+    /** Tamanho do ícone (img) dentro da div - se não definido, preenche a div */
+    iconWidth?: string;
+    iconHeight?: string;
+  };
   title: {
     top: string;
     left: string;
     width: string;
     height: string;
     fontSize: string;
+    /** Fonte quando o título quebra em 2 linhas */
+    fontSizeLine2?: string;
+    /** Fonte quando o título quebra em 3+ linhas */
+    fontSizeLine3?: string;
+    widthtWith1Icon?: string;
+    /** Largura quando só icon1 está selecionado (título à direita do icon1) */
+    widthtWithOnlyIcon1?: string;
+    widthtWith2Icons?: string;
+    titleLeftWith1Icon?: string;
+    /** Tamanho fixo do bg nas 3 divs (título, icon1, icon2) - mesmo em todas, sem esticar */
+    titleBgSize?: string;
   };
   description: {
     top: string;
     left: string;
     width?: string;
     height?: string;
+    fontSize?: string;
   };
   overlay: {
     top: string;
@@ -338,15 +367,9 @@ type LayoutPositions = {
   effect3NumberPosition?: { top: string; left: string };
   effect4NumberPosition?: { top: string; left: string };
   /** Effects/03: posição do número por ícone (03, 04, 06, 07) - permite ajuste individual */
-  effect3NumberPositionByIcon?: Record<
-    string,
-    { top: string; left: string }
-  >;
+  effect3NumberPositionByIcon?: Record<string, { top: string; left: string }>;
   /** Effects/03 (efeito primário): posição por ícone - central (01,02), dupla (03,04), dupla-cópia (06,07) */
-  effect4NumberPositionByIcon?: Record<
-    string,
-    { top: string; left: string }
-  >;
+  effect4NumberPositionByIcon?: Record<string, { top: string; left: string }>;
   /** Layout Enemie: posições dos campos numéricos (perigo, movimentação, vida) */
   enemieRedNumberPosition?: {
     top: string;
@@ -385,6 +408,28 @@ type LayoutPositions = {
     boxShadow?: string;
     backgroundColor?: string;
   };
+  /** Layout equip4: 3 divs na base do card (verde, amarelo, azul) */
+  bottomBar1?: {
+    top: string;
+    left: string;
+    width: string;
+    height: string;
+    borderRadius?: string;
+  };
+  bottomBar2?: {
+    top: string;
+    left: string;
+    width: string;
+    height: string;
+    borderRadius?: string;
+  };
+  bottomBar3?: {
+    top: string;
+    left: string;
+    width: string;
+    height: string;
+    borderRadius?: string;
+  };
 };
 
 type LayoutOption = {
@@ -396,10 +441,16 @@ type LayoutOption = {
 
 /** Fonte unificada de todos os títulos dos cards; redução por quebra de linha aplicada no CardPreview. */
 const UNIFIED_TITLE_FONT_SIZE = "clamp(5rem, 4vw, 4rem)";
-/** Quanto reduzir a fonte a cada linha extra do título (0.1 = 10% por linha). */
+/** Fonte do título quando quebra em 2 linhas (~82% da base). */
+const UNIFIED_TITLE_FONT_SIZE_LINE2 = "clamp(4.1rem, 3.2vw, 3.2rem)";
+/** Fonte do título quando quebra em 3+ linhas (~64% da base). */
+const UNIFIED_TITLE_FONT_SIZE_LINE3 = "clamp(3.2rem, 2.5vw, 2.5rem)";
+/** Quanto reduzir a fonte a cada linha extra do título (0.1 = 10% por linha) - fallback quando fontSizeLine2/3 não definidos. */
 const TITLE_FONT_REDUCTION_PER_LINE = 0.18;
 /** Tamanho mínimo da fonte do título em px (após redução por quebras). */
 const TITLE_FONT_MIN_PX = 8;
+/** Fonte padrão da descrição dos cards. */
+const UNIFIED_DESCRIPTION_FONT_SIZE = "clamp(1.5rem, 2vw, 1.75rem)";
 
 // Carrega layouts do arquivo JSON e substitui placeholders
 import layoutsData from "../../layouts.json";
@@ -415,7 +466,28 @@ const layoutOptions: LayoutOption[] = (layoutsData as LayoutOption[]).map(
           layout.positions.title.fontSize === "__UNIFIED_TITLE_FONT_SIZE__"
             ? UNIFIED_TITLE_FONT_SIZE
             : layout.positions.title.fontSize,
+        fontSizeLine2:
+          layout.positions.title.fontSizeLine2 ===
+          "__UNIFIED_TITLE_FONT_SIZE_LINE2__"
+            ? UNIFIED_TITLE_FONT_SIZE_LINE2
+            : layout.positions.title.fontSizeLine2,
+        fontSizeLine3:
+          layout.positions.title.fontSizeLine3 ===
+          "__UNIFIED_TITLE_FONT_SIZE_LINE3__"
+            ? UNIFIED_TITLE_FONT_SIZE_LINE3
+            : layout.positions.title.fontSizeLine3,
       },
+      description: layout.positions.description
+        ? {
+            ...layout.positions.description,
+            fontSize:
+              layout.positions.description.fontSize ===
+              "__UNIFIED_DESCRIPTION_FONT_SIZE__"
+                ? UNIFIED_DESCRIPTION_FONT_SIZE
+                : layout.positions.description.fontSize ??
+                  UNIFIED_DESCRIPTION_FONT_SIZE,
+          }
+        : layout.positions.description,
     },
   }),
 );
@@ -487,6 +559,7 @@ const mergeLayoutPositions = (
   fallback: LayoutPositions,
 ): LayoutPositions => ({
   icon: candidate.icon ?? fallback.icon,
+  icon1BeforeTitle: candidate.icon1BeforeTitle ?? fallback.icon1BeforeTitle,
   icon2: candidate.icon2 ?? fallback.icon2,
   title: candidate.title ?? fallback.title,
   description: candidate.description
@@ -526,6 +599,9 @@ const mergeLayoutPositions = (
   enemieIcon: candidate.enemieIcon ?? fallback.enemieIcon,
   descriptionSkillsBox:
     candidate.descriptionSkillsBox ?? fallback.descriptionSkillsBox,
+  bottomBar1: candidate.bottomBar1 ?? fallback.bottomBar1,
+  bottomBar2: candidate.bottomBar2 ?? fallback.bottomBar2,
+  bottomBar3: candidate.bottomBar3 ?? fallback.bottomBar3,
 });
 
 const DEFAULT_LAYOUT = layoutOptions[0];
@@ -763,6 +839,10 @@ type FormState = {
   tension1Text: string;
   tension2Icon: string;
   tension2Text: string;
+  /** Layout equip4: cor de tensão (#067427, #B26E29, #A63E26) */
+  tensionColor: string;
+  /** Layout equip4: cor das 3 divs de baixo (#39558E, #C7C554, #512D71) */
+  bottomBarColor: string;
   /** Layout Enemie: campos numéricos coloridos */
   enemieRedNumber: string;
   enemieGreenNumber: string;
@@ -806,6 +886,8 @@ const createInitialFormState = (): FormState => ({
   tension1Text: "",
   tension2Icon: "",
   tension2Text: "",
+  tensionColor: "#067427",
+  bottomBarColor: "#39558E",
   enemieRedNumber: "0",
   enemieGreenNumber: "0",
   enemieBlueNumber: "0",
@@ -848,6 +930,8 @@ type CardDesign = {
   tension1Text: string;
   tension2Icon: string;
   tension2Text: string;
+  tensionColor: string;
+  bottomBarColor: string;
   enemieRedNumber: string;
   enemieGreenNumber: string;
   enemieBlueNumber: string;
@@ -898,6 +982,8 @@ const CardPreview = ({
   const titleRef = useRef<HTMLHeadingElement>(null);
   const titleMeasureRef = useRef<HTMLDivElement>(null);
   const [titleFontSizePx, setTitleFontSizePx] = useState<number | null>(null);
+  const [titleFontResolvedFromLayout, setTitleFontResolvedFromLayout] =
+    useState<string | null>(null);
   const heroImage = isBgLayout(card.layoutId)
     ? card.image || BG_LAYOUT_IMAGE
     : card.image || CARD_TEMPLATE_IMAGE;
@@ -905,7 +991,28 @@ const CardPreview = ({
 
   const titleFontFromLayout =
     layoutPositions.title?.fontSize ?? UNIFIED_TITLE_FONT_SIZE;
-  const titleMeasureKey = `${card.layoutId ?? ""}-${card.title ?? ""}-${titleFontFromLayout}-${layoutPositions.title.width}-${layoutPositions.title.height}`;
+  const effectiveTitleWidth = (() => {
+    const t = layoutPositions.title;
+    if (!t.widthtWith1Icon && !t.widthtWith2Icons && !t.widthtWithOnlyIcon1)
+      return t.width;
+    const hasIcon1 = Boolean(card.icon);
+    const hasIcon2 = Boolean(card.icon2);
+    const iconCount = (hasIcon1 ? 1 : 0) + (hasIcon2 ? 1 : 0);
+    if (iconCount >= 2 && t.widthtWith2Icons) return t.widthtWith2Icons;
+    if (iconCount === 1) {
+      if (hasIcon1 && !hasIcon2 && t.widthtWithOnlyIcon1)
+        return t.widthtWithOnlyIcon1;
+      if (t.widthtWith1Icon) return t.widthtWith1Icon;
+    }
+    return t.width;
+  })();
+  const effectiveTitleLeft =
+    card.icon &&
+    layoutPositions.icon1BeforeTitle &&
+    layoutPositions.title.titleLeftWith1Icon
+      ? layoutPositions.title.titleLeftWith1Icon
+      : layoutPositions.title.left;
+  const titleMeasureKey = `${card.layoutId ?? ""}-${card.title ?? ""}-${titleFontFromLayout}-${effectiveTitleWidth}-${layoutPositions.title.height}`;
   const prevTitleMeasureKeyRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
@@ -914,12 +1021,15 @@ const CardPreview = ({
       prevTitleMeasureKeyRef.current !== titleMeasureKey;
     prevTitleMeasureKeyRef.current = titleMeasureKey;
     if (keyChanged) {
-      queueMicrotask(() => setTitleFontSizePx(null));
+      queueMicrotask(() => {
+        setTitleFontSizePx(null);
+        setTitleFontResolvedFromLayout(null);
+      });
     }
   }, [titleMeasureKey]);
 
   useLayoutEffect(() => {
-    if (titleFontSizePx !== null) return;
+    if (titleFontSizePx !== null || titleFontResolvedFromLayout !== null) return;
     const measureEl = titleMeasureRef.current;
     if (!measureEl) return;
     const style = getComputedStyle(measureEl);
@@ -929,10 +1039,21 @@ const CardPreview = ({
     const contentHeight = measureEl.offsetHeight;
     const lineCount = Math.ceil(contentHeight / lineHeightPx);
     if (lineCount <= 1) return;
+    const t = layoutPositions.title;
+    if (lineCount === 2 && t.fontSizeLine2) {
+      queueMicrotask(() => setTitleFontResolvedFromLayout(t.fontSizeLine2!));
+      return;
+    }
+    if (lineCount >= 3 && t.fontSizeLine3) {
+      queueMicrotask(() => setTitleFontResolvedFromLayout(t.fontSizeLine3!));
+      return;
+    }
     const level = lineCount - 1;
     const newSize = fontSizePx * (1 - level * TITLE_FONT_REDUCTION_PER_LINE);
-    setTitleFontSizePx(Math.max(newSize, TITLE_FONT_MIN_PX));
-  }, [titleMeasureKey, titleFontSizePx]);
+    queueMicrotask(() =>
+      setTitleFontSizePx(Math.max(newSize, TITLE_FONT_MIN_PX)),
+    );
+  }, [titleMeasureKey, titleFontSizePx, titleFontResolvedFromLayout, layoutPositions.title]);
 
   const isEnemie = isEnemieLayout(card.layoutId);
   /** Resolve ícone de inimigo (skills por cor) a partir de enemieIconOptions. */
@@ -2374,8 +2495,9 @@ const CardPreview = ({
                                     </>
                                   );
                                 }
-                                const iconIdNorm =
-                                  String(effectData.icon).padStart(2, "0");
+                                const iconIdNorm = String(
+                                  effectData.icon,
+                                ).padStart(2, "0");
                                 const isEffect3SpecialPos =
                                   index === 2 &&
                                   EFFECT3_ICONS_SAME_POS_AS_03.includes(
@@ -2400,7 +2522,8 @@ const CardPreview = ({
                                     EFFECT4_ICONS_DUPLA_COPY.includes(
                                       iconIdNorm,
                                     )
-                                      ? (posByIcon?.["03"] ?? posByIcon?.["04"] ?? {
+                                      ? (posByIcon?.["03"] ??
+                                        posByIcon?.["04"] ?? {
                                           top: "5px",
                                           left: "39px",
                                         })
@@ -2499,11 +2622,8 @@ const CardPreview = ({
                 left: 0,
                 top: 0,
                 visibility: "hidden",
-                width: layoutPositions.title.width,
-                fontSize:
-                  titleFontSizePx != null
-                    ? `${titleFontSizePx}px`
-                    : titleFontFromLayout,
+                width: effectiveTitleWidth,
+                fontSize: titleFontFromLayout,
                 lineHeight: 0.9,
                 fontFamily: bebasNeue.style.fontFamily,
               }}
@@ -2518,13 +2638,14 @@ const CardPreview = ({
               style={{
                 position: "absolute",
                 top: layoutPositions.title.top,
-                left: layoutPositions.title.left,
-                width: layoutPositions.title.width,
+                left: effectiveTitleLeft,
+                width: effectiveTitleWidth,
                 height: layoutPositions.title.height,
                 fontSize:
-                  titleFontSizePx != null
+                  titleFontResolvedFromLayout ??
+                  (titleFontSizePx != null
                     ? `${titleFontSizePx}px`
-                    : titleFontFromLayout,
+                    : titleFontFromLayout),
                 lineHeight: 0.9,
                 textAlign: isEnemie ? "left" : "center",
                 whiteSpace: "pre-line",
@@ -2537,225 +2658,503 @@ const CardPreview = ({
                 flexShrink: 1,
                 flexBasis: "auto",
                 flex: 1,
-                ...(!isEnemieLayout(card.layoutId) && {
-                  borderRadius: "15px",
-                  boxShadow:
-                    "inset 0 0 8px 2px rgba(0, 0, 0, 0.5), inset 2px -2px 12px 3px rgba(0, 0, 0, 0.5)",
-                }),
+                ...(card.layoutId === "equip4" &&
+                  (() => {
+                    const titleBg =
+                      card.tensionColor === "#067427"
+                        ? 'url("/models/layout/Title-Gren-A.png")'
+                        : card.tensionColor === "#A63E26"
+                          ? 'url("/models/layout/Title-Red-A.png")'
+                          : card.tensionColor === "#B26E29"
+                            ? 'url("/models/layout/Title-Ambar-A.png")'
+                            : 'url("/models/layout/Title-Gren-A.png")';
+                    const titleBgSize =
+                      layoutPositions.title.titleBgSize ?? "621px 134px";
+                    const titleBaseLeft = parseInt(
+                      String(layoutPositions.title.left).replace("px", ""),
+                      10,
+                    ) || 13;
+                    const titleLeftPx = parseInt(
+                      String(effectiveTitleLeft).replace("px", ""),
+                      10,
+                    ) || 13;
+                    const bgOffsetX = titleLeftPx - titleBaseLeft;
+                    return {
+                      backgroundImage: titleBg,
+                      backgroundSize: titleBgSize,
+                      backgroundPosition:
+                        bgOffsetX !== 0
+                          ? `${-bgOffsetX}px center`
+                          : "center",
+                      backgroundRepeat: "no-repeat",
+                      borderRadius: "15px",
+                      boxShadow:
+                        "inset 0 0 8px 2px rgba(0, 0, 0, 0.5), inset 2px -2px 12px 3px rgba(0, 0, 0, 0.5)",
+                      ...(card.icon2 && {
+                        filter:
+                          "drop-shadow(0 2px 4px rgba(0,0,0,0.4)) drop-shadow(0 4px 8px rgba(0,0,0,0.3))",
+                      }),
+                    };
+                  })()),
+                ...(!isEnemieLayout(card.layoutId) &&
+                  card.layoutId !== "equip4" && {
+                    borderRadius: "15px",
+                    boxShadow:
+                      "inset 0 0 8px 2px rgba(0, 0, 0, 0.5), inset 2px -2px 12px 3px rgba(0, 0, 0, 0.5)",
+                  }),
               }}
             >
               {card.title || ""}
             </h3>
             {isTensionLayout(card.layoutId) ? (
-              <div
-                className="absolute flex flex-col gap-3 text-black text-5xl drop-shadow-lg"
-                style={{
-                  top: layoutPositions.description.top,
-                  left: layoutPositions.description.left,
-                  width: layoutPositions.description.width || "570px",
-                  height: layoutPositions.description.height,
-                  fontFamily: ebGaramond.style.fontFamily,
-                  fontWeight: 590,
-                  lineHeight: 1,
-                  padding: "20px",
-                }}
-              >
-                <p
-                  className="m-0 w-full text-center whitespace-pre-line"
-                  style={{
-                    fontFamily: ebGaramond.style.fontFamily,
-                    fontWeight: 590,
-                    lineHeight: 1,
-                  }}
-                >
-                  {renderTextWithBoldAndIcons(card.description || "")}
-                </p>
-                {(card.tension1Icon || card.tension2Icon) && (
-                  <div className="flex flex-col gap-3">
-                    {card.tension2Icon && tensionIconOptions[1] && (
-                      <div className="flex items-center gap-3">
-                        <img
-                          src={tensionIconOptions[1].src}
-                          alt={tensionIconOptions[1].label}
-                          className="h-26 w-30 shrink-0 object-contain"
-                        />
-                        <span
-                          className="flex-1 text-left whitespace-pre-line"
-                          style={{
-                            fontFamily: ebGaramond.style.fontFamily,
-                            fontWeight: 590,
-                          }}
-                        >
-                          {renderTextWithInlineIcons(card.tension2Text || "")}
-                        </span>
-                      </div>
-                    )}
-                    {card.tension1Icon && tensionIconOptions[0] && (
-                      <div className="flex items-center gap-3">
-                        <img
-                          src={tensionIconOptions[0].src}
-                          alt={tensionIconOptions[0].label}
-                          className="h-26 w-30 shrink-0 object-contain"
-                        />
-                        <span
-                          className="flex-1 text-left whitespace-pre-line"
-                          style={{
-                            fontFamily: ebGaramond.style.fontFamily,
-                            fontWeight: 590,
-                          }}
-                        >
-                          {renderTextWithInlineIcons(card.tension1Text || "")}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            ) : isEquip3EquipLayout(card.layoutId) ? (() => {
-              const hasSelectedSkill = (card.selectedSkills ?? []).some(
-                (id) =>
-                  EQUIP3_EQUIP_SELECTABLE_SKILL_IDS.includes(
-                    String(id).padStart(2, "0"),
-                  ) ||
-                  EQUIP3_EQUIP_SELECTABLE_SKILL_IDS.includes(String(id)),
-              );
-              return hasSelectedSkill ? (
+              <>
+                {card.layoutId === "equip4" &&
+                  card.icon &&
+                  layoutPositions.icon1BeforeTitle && (
+                    <div
+                      className="absolute flex items-center justify-center overflow-hidden"
+                      style={{
+                        top: layoutPositions.icon1BeforeTitle.top,
+                        left: layoutPositions.icon1BeforeTitle.left,
+                        width:
+                          layoutPositions.icon1BeforeTitle.width ?? "134px",
+                        height:
+                          layoutPositions.icon1BeforeTitle.height ?? "134px",
+                        backgroundImage:
+                          card.tensionColor === "#067427"
+                            ? 'url("/models/layout/Title-Gren-A.png")'
+                            : card.tensionColor === "#A63E26"
+                              ? 'url("/models/layout/Title-Red-A.png")'
+                              : card.tensionColor === "#B26E29"
+                                ? 'url("/models/layout/Title-Ambar-A.png")'
+                                : 'url("/models/layout/Title-Gren-A.png")',
+                        backgroundSize:
+                          layoutPositions.title.titleBgSize ?? "621px 134px",
+                        backgroundPosition: "left center",
+                        backgroundRepeat: "no-repeat",
+                        borderRadius: "15px",
+                        boxShadow:
+                          "inset 0 0 8px 2px rgba(0, 0, 0, 0.5), inset 2px -2px 12px 3px rgba(0, 0, 0, 0.5)",
+                      }}
+                    >
+                      <img
+                        src={card.icon}
+                        alt="Ícone"
+                        className="object-contain"
+                        style={
+                          layoutPositions.icon1BeforeTitle?.iconWidth ||
+                          layoutPositions.icon1BeforeTitle?.iconHeight
+                            ? {
+                                width:
+                                  layoutPositions.icon1BeforeTitle.iconWidth,
+                                height:
+                                  layoutPositions.icon1BeforeTitle.iconHeight,
+                              }
+                            : { width: "100%", height: "100%" }
+                        }
+                      />
+                    </div>
+                  )}
+                {card.layoutId === "equip4" &&
+                  card.icon2 &&
+                  layoutPositions.icon2 && (
+                    <div
+                      className="absolute flex items-center justify-center overflow-hidden"
+                      style={{
+                        top: layoutPositions.icon2.top,
+                        left: layoutPositions.icon2.left,
+                        width: layoutPositions.icon2.width ?? "128px",
+                        height: layoutPositions.icon2.height ?? "128px",
+                        backgroundImage:
+                          card.tensionColor === "#067427"
+                            ? 'url("/models/layout/Title-Gren-A.png")'
+                            : card.tensionColor === "#A63E26"
+                              ? 'url("/models/layout/Title-Red-A.png")'
+                              : card.tensionColor === "#B26E29"
+                                ? 'url("/models/layout/Title-Ambar-A.png")'
+                                : 'url("/models/layout/Title-Gren-A.png")',
+                        backgroundSize:
+                          layoutPositions.title.titleBgSize ?? "621px 134px",
+                        backgroundPosition: "right center",
+                        backgroundRepeat: "no-repeat",
+                        borderRadius: "15px",
+                        boxShadow:
+                          "inset 0 0 8px 2px rgba(0, 0, 0, 0.5), inset 2px -2px 12px 3px rgba(0, 0, 0, 0.5)",
+                      }}
+                    >
+                      <img
+                        src={card.icon2}
+                        alt="Ícone"
+                        className="object-contain"
+                        style={
+                          layoutPositions.icon2?.iconWidth ||
+                          layoutPositions.icon2?.iconHeight
+                            ? {
+                                width: layoutPositions.icon2.iconWidth,
+                                height: layoutPositions.icon2.iconHeight,
+                              }
+                            : { width: "100%", height: "100%" }
+                        }
+                      />
+                    </div>
+                  )}
                 <div
-                  className="absolute flex flex-wrap justify-center items-center content-center gap-4 text-4xl text-black drop-shadow-lg"
+                  className="absolute flex flex-col gap-3 text-black drop-shadow-lg"
                   style={{
                     top: layoutPositions.description.top,
                     left: layoutPositions.description.left,
                     width: layoutPositions.description.width || "570px",
-                    height: layoutPositions.description.height || "420px",
+                    height: layoutPositions.description.height,
                     fontFamily: ebGaramond.style.fontFamily,
                     fontWeight: 590,
+                    fontSize:
+                      layoutPositions.description.fontSize ??
+                      UNIFIED_DESCRIPTION_FONT_SIZE,
                     lineHeight: 1,
-                    padding: "0 40px 40px 40px",
-                    borderRadius: "15px",
-                    boxShadow:
-                      "inset 0 0 8px 2px rgba(0, 0, 0, 0.5), inset 2px -2px 12px 3px rgba(0, 0, 0, 0.5)",
+                    padding: "20px",
+                    ...(card.layoutId === "equip4" && {
+                      borderRadius: "15px",
+                      boxShadow:
+                        "inset 0 0 8px 2px rgba(0, 0, 0, 0.5), inset 2px -2px 12px 3px rgba(0, 0, 0, 0.5)",
+                    }),
                   }}
                 >
-                  <div
-                    className="flex shrink-0 items-center justify-center gap-3 mt-[35px] ml-[-20px] "
-                    style={{
-                      width:
-                        layoutPositions.descriptionSkillsBox?.width ?? "200px",
-                      height:
-                        layoutPositions.descriptionSkillsBox?.height ?? "80px",
-                      minHeight:
-                        layoutPositions.descriptionSkillsBox?.minHeight ?? "60px",
-                      borderRadius:
-                        layoutPositions.descriptionSkillsBox?.borderRadius ??
-                        "25px",
-                      boxShadow:
-                        layoutPositions.descriptionSkillsBox?.boxShadow ??
-                        "inset 0 0 8px 2px rgba(0, 0, 0, 0.5), inset 2px -2px 12px 3px rgba(0, 0, 0, 0.5)",
-                      backgroundColor:
-                        layoutPositions.descriptionSkillsBox?.backgroundColor ??
-                        "#ef4444",
-                    }}
-                  >
-                    <img
-                      src={EQUIP3_EQUIP_FIXED_ICON}
-                      alt=""
-                      className="object-contain"
-                      style={{
-                        width: "75px",
-                        height: "75px",
-                      }}
-                    />
-                    {(() => {
-                      const selectableId = (card.selectedSkills ?? []).find(
-                        (id) =>
-                          EQUIP3_EQUIP_SELECTABLE_SKILL_IDS.includes(
-                            String(id).padStart(2, "0"),
-                          ) ||
-                          EQUIP3_EQUIP_SELECTABLE_SKILL_IDS.includes(String(id)),
-                      );
-                      const skill = selectableId
-                        ? effectIconOptions04.find(
-                            (o) =>
-                              o.id === selectableId ||
-                              String(o.id) === String(selectableId),
-                          )
-                        : null;
-                      if (!skill) return null;
-                      const skillId = skill.id;
-                      const normalizedId = String(skillId).padStart(2, "0");
-                      const is07Or08 =
-                        normalizedId === "07" || normalizedId === "08";
-                      const numberInFront = (
-                        card.skillNumbers?.[skillId] ??
-                        (selectableId
-                          ? card.skillNumbers?.[selectableId]
-                          : undefined)
-                      )?.trim();
-                      return (
-                        <div className="relative flex items-center justify-center">
-                          <img
-                            src={skill.src}
-                            alt={skill.label}
-                            className="object-contain"
-                            style={{ width: "75px", height: "75px" }}
-                          />
-                          {numberInFront ? (
-                            <div
-                              className="absolute inset-0 z-10 flex items-center justify-center font-semibold drop-shadow-lg"
-                              style={{
-                                color: "#F9EBD0",
-                                fontSize: is07Or08 ? "25px" : "45px",
-                                fontFamily: bebasNeue.style.fontFamily,
-                                ...(is07Or08 && {
-                                  transform: "translate(-19px, -13px)",
-                                }),
-                              }}
-                            >
-                              {numberInFront}
-                            </div>
-                          ) : null}
-                        </div>
-                      );
-                    })()}
-                  </div>
                   <p
-                    className="min-w-0 flex-1 text-xl whitespace-pre-line text-justify mt-[40px] h-[105px] "
+                    className="m-0 w-full text-center whitespace-pre-line"
                     style={{
-                      textAlignLast: "center",
-                      letterSpacing: "-0.03em",
-                      lineHeight: 1.1,
+                      fontFamily: ebGaramond.style.fontFamily,
+                      fontWeight: 590,
+                      lineHeight: 1,
                     }}
                   >
                     {renderTextWithBoldAndIcons(card.description || "")}
                   </p>
+                  {(card.tension1Icon || card.tension2Icon) && (
+                    <div className="flex flex-col gap-3">
+                      {card.tension2Icon && tensionIconOptions[1] && (
+                        <div className="flex items-center gap-3">
+                          <img
+                            src={tensionIconOptions[1].src}
+                            alt={tensionIconOptions[1].label}
+                            className="h-26 w-30 shrink-0 object-contain"
+                          />
+                          <span
+                            className="flex-1 text-left whitespace-pre-line"
+                            style={{
+                              fontFamily: ebGaramond.style.fontFamily,
+                              fontWeight: 590,
+                            }}
+                          >
+                            {renderTextWithInlineIcons(card.tension2Text || "")}
+                          </span>
+                        </div>
+                      )}
+                      {card.tension1Icon && tensionIconOptions[0] && (
+                        <div className="flex items-center gap-3">
+                          <img
+                            src={tensionIconOptions[0].src}
+                            alt={tensionIconOptions[0].label}
+                            className="h-26 w-30 shrink-0 object-contain"
+                          />
+                          <span
+                            className="flex-1 text-left whitespace-pre-line"
+                            style={{
+                              fontFamily: ebGaramond.style.fontFamily,
+                              fontWeight: 590,
+                            }}
+                          >
+                            {renderTextWithInlineIcons(card.tension1Text || "")}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
-              ) : (
-                <p
-                  className="absolute text-xl text-black drop-shadow-lg text-center flex flex-wrap justify-center items-center content-center"
-                  style={{
-                    top: layoutPositions.description.top,
-                    left: layoutPositions.description.left,
-                    width: layoutPositions.description.width || "570px",
-                    height: layoutPositions.description.height || "420px",
-                    fontFamily: ebGaramond.style.fontFamily,
-                    fontWeight: 590,
-                    lineHeight: 1.1,
-                    letterSpacing: "-0.03em",
-                    padding: "0 40px 40px 40px",
-                    borderRadius: "15px",
-                    boxShadow:
-                      "inset 0 0 8px 2px rgba(0, 0, 0, 0.5), inset 2px -2px 12px 3px rgba(0, 0, 0, 0.5)",
-                    whiteSpace: "pre-line",
-                    textAlign: "center",
-                    textAlignLast: "center",
-                  }}
-                >
-                  {renderTextWithBoldAndIcons(card.description || "")}
-                </p>
-              );
-            })() : card.layoutId === "equip3" ? null : (
+                {card.layoutId === "equip4" &&
+                  layoutPositions.bottomBar1 &&
+                  layoutPositions.bottomBar2 &&
+                  layoutPositions.bottomBar3 && (
+                    <>
+                      <div
+                        className="absolute"
+                        style={{
+                          top: layoutPositions.bottomBar1.top,
+                          left: layoutPositions.bottomBar1.left,
+                          width: layoutPositions.bottomBar1.width,
+                          height: layoutPositions.bottomBar1.height,
+                          borderRadius:
+                            layoutPositions.bottomBar1.borderRadius ?? "0",
+                          ...(card.bottomBarColor === "#39558E"
+                            ? {
+                                backgroundImage:
+                                  'url("/models/layout/Bottom-Icon-A.png")',
+                                backgroundSize: "100% 100%",
+                                backgroundPosition: "center",
+                                backgroundRepeat: "no-repeat",
+                              }
+                            : card.bottomBarColor === "#512D71"
+                              ? {
+                                  backgroundImage:
+                                    'url("/models/layout/Bottom-Icon-B.png")',
+                                  backgroundSize: "100% 100%",
+                                  backgroundPosition: "center",
+                                  backgroundRepeat: "no-repeat",
+                                }
+                              : card.bottomBarColor === "#C7C554"
+                                ? {
+                                    backgroundImage:
+                                      'url("/models/layout/Bottom-Icon-C.png")',
+                                    backgroundSize: "100% 100%",
+                                    backgroundPosition: "center",
+                                    backgroundRepeat: "no-repeat",
+                                  }
+                                : {
+                                    backgroundColor:
+                                      card.bottomBarColor ?? "#39558E",
+                                    opacity: 0.5,
+                                  }),
+                        }}
+                      />
+                      <div
+                        className="absolute"
+                        style={{
+                          top: layoutPositions.bottomBar2.top,
+                          left: layoutPositions.bottomBar2.left,
+                          width: layoutPositions.bottomBar2.width,
+                          height: layoutPositions.bottomBar2.height,
+                          borderRadius:
+                            layoutPositions.bottomBar2.borderRadius ?? "0",
+                          ...(card.bottomBarColor === "#512D71"
+                            ? {
+                                backgroundImage:
+                                  'url("/models/layout/Bottom-B.png")',
+                                backgroundSize: "100% 100%",
+                                backgroundPosition: "center",
+                                backgroundRepeat: "no-repeat",
+                              }
+                            : card.bottomBarColor === "#39558E"
+                              ? {
+                                  backgroundImage:
+                                    'url("/models/layout/Bottom-A.png")',
+                                  backgroundSize: "100% 100%",
+                                  backgroundPosition: "center",
+                                  backgroundRepeat: "no-repeat",
+                                }
+                              : card.bottomBarColor === "#C7C554"
+                                ? {
+                                    backgroundImage:
+                                      'url("/models/layout/Bottom-C.png")',
+                                    backgroundSize: "100% 100%",
+                                    backgroundPosition: "center",
+                                    backgroundRepeat: "no-repeat",
+                                  }
+                                : {
+                                    backgroundColor:
+                                      card.bottomBarColor ?? "#39558E",
+                                    opacity: 0.5,
+                                  }),
+                        }}
+                      />
+                      <div
+                        className="absolute"
+                        style={{
+                          top: layoutPositions.bottomBar3.top,
+                          left: layoutPositions.bottomBar3.left,
+                          width: layoutPositions.bottomBar3.width,
+                          height: layoutPositions.bottomBar3.height,
+                          borderRadius:
+                            layoutPositions.bottomBar3.borderRadius ?? "0",
+                          ...(card.bottomBarColor === "#39558E"
+                            ? {
+                                backgroundImage:
+                                  'url("/models/layout/Bottom-Icon-A.png")',
+                                backgroundSize: "100% 100%",
+                                backgroundPosition: "center",
+                                backgroundRepeat: "no-repeat",
+                              }
+                            : card.bottomBarColor === "#512D71"
+                              ? {
+                                  backgroundImage:
+                                    'url("/models/layout/Bottom-Icon-B.png")',
+                                  backgroundSize: "100% 100%",
+                                  backgroundPosition: "center",
+                                  backgroundRepeat: "no-repeat",
+                                }
+                              : card.bottomBarColor === "#C7C554"
+                                ? {
+                                    backgroundImage:
+                                      'url("/models/layout/Bottom-Icon-C.png")',
+                                    backgroundSize: "100% 100%",
+                                    backgroundPosition: "center",
+                                    backgroundRepeat: "no-repeat",
+                                  }
+                                : {
+                                    backgroundColor:
+                                      card.bottomBarColor ?? "#39558E",
+                                    opacity: 0.5,
+                                  }),
+                        }}
+                      />
+                    </>
+                  )}
+              </>
+            ) : isEquip3EquipLayout(card.layoutId) ? (
+              (() => {
+                const hasSelectedSkill = (card.selectedSkills ?? []).some(
+                  (id) =>
+                    EQUIP3_EQUIP_SELECTABLE_SKILL_IDS.includes(
+                      String(id).padStart(2, "0"),
+                    ) || EQUIP3_EQUIP_SELECTABLE_SKILL_IDS.includes(String(id)),
+                );
+                return hasSelectedSkill ? (
+                  <div
+                    className="absolute flex flex-wrap justify-center items-center content-center gap-4 text-black drop-shadow-lg"
+                    style={{
+                      top: layoutPositions.description.top,
+                      left: layoutPositions.description.left,
+                      width: layoutPositions.description.width || "570px",
+                      height: layoutPositions.description.height || "420px",
+                      fontFamily: ebGaramond.style.fontFamily,
+                      fontWeight: 590,
+                      fontSize:
+                        layoutPositions.description.fontSize ??
+                        UNIFIED_DESCRIPTION_FONT_SIZE,
+                      lineHeight: 1,
+                      padding: "0 40px 40px 40px",
+                      borderRadius: "15px",
+                      boxShadow:
+                        "inset 0 0 8px 2px rgba(0, 0, 0, 0.5), inset 2px -2px 12px 3px rgba(0, 0, 0, 0.5)",
+                    }}
+                  >
+                    <div
+                      className="flex shrink-0 items-center justify-center gap-3 mt-[35px] ml-[-20px] "
+                      style={{
+                        width:
+                          layoutPositions.descriptionSkillsBox?.width ??
+                          "200px",
+                        height:
+                          layoutPositions.descriptionSkillsBox?.height ??
+                          "80px",
+                        minHeight:
+                          layoutPositions.descriptionSkillsBox?.minHeight ??
+                          "60px",
+                        borderRadius:
+                          layoutPositions.descriptionSkillsBox?.borderRadius ??
+                          "25px",
+                        boxShadow:
+                          layoutPositions.descriptionSkillsBox?.boxShadow ??
+                          "inset 0 0 8px 2px rgba(0, 0, 0, 0.5), inset 2px -2px 12px 3px rgba(0, 0, 0, 0.5)",
+                        backgroundColor:
+                          layoutPositions.descriptionSkillsBox
+                            ?.backgroundColor ?? "#ef4444",
+                      }}
+                    >
+                      <img
+                        src={EQUIP3_EQUIP_FIXED_ICON}
+                        alt=""
+                        className="object-contain"
+                        style={{
+                          width: "75px",
+                          height: "75px",
+                        }}
+                      />
+                      {(() => {
+                        const selectableId = (card.selectedSkills ?? []).find(
+                          (id) =>
+                            EQUIP3_EQUIP_SELECTABLE_SKILL_IDS.includes(
+                              String(id).padStart(2, "0"),
+                            ) ||
+                            EQUIP3_EQUIP_SELECTABLE_SKILL_IDS.includes(
+                              String(id),
+                            ),
+                        );
+                        const skill = selectableId
+                          ? effectIconOptions04.find(
+                              (o) =>
+                                o.id === selectableId ||
+                                String(o.id) === String(selectableId),
+                            )
+                          : null;
+                        if (!skill) return null;
+                        const skillId = skill.id;
+                        const normalizedId = String(skillId).padStart(2, "0");
+                        const is07Or08 =
+                          normalizedId === "07" || normalizedId === "08";
+                        const numberInFront = (
+                          card.skillNumbers?.[skillId] ??
+                          (selectableId
+                            ? card.skillNumbers?.[selectableId]
+                            : undefined)
+                        )?.trim();
+                        return (
+                          <div className="relative flex items-center justify-center">
+                            <img
+                              src={skill.src}
+                              alt={skill.label}
+                              className="object-contain"
+                              style={{ width: "75px", height: "75px" }}
+                            />
+                            {numberInFront ? (
+                              <div
+                                className="absolute inset-0 z-10 flex items-center justify-center font-semibold drop-shadow-lg"
+                                style={{
+                                  color: "#F9EBD0",
+                                  fontSize: is07Or08 ? "25px" : "45px",
+                                  fontFamily: bebasNeue.style.fontFamily,
+                                  ...(is07Or08 && {
+                                    transform: "translate(-19px, -13px)",
+                                  }),
+                                }}
+                              >
+                                {numberInFront}
+                              </div>
+                            ) : null}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                    <p
+                      className="min-w-0 flex-1 text-xl whitespace-pre-line text-justify mt-[40px] h-[105px] "
+                      style={{
+                        textAlignLast: "center",
+                        letterSpacing: "-0.03em",
+                        lineHeight: 1.1,
+                      }}
+                    >
+                      {renderTextWithBoldAndIcons(card.description || "")}
+                    </p>
+                  </div>
+                ) : (
+                  <p
+                    className="absolute text-black drop-shadow-lg text-center flex flex-wrap justify-center items-center content-center"
+                    style={{
+                      top: layoutPositions.description.top,
+                      left: layoutPositions.description.left,
+                      width: layoutPositions.description.width || "570px",
+                      height: layoutPositions.description.height || "420px",
+                      fontFamily: ebGaramond.style.fontFamily,
+                      fontWeight: 590,
+                      fontSize:
+                        layoutPositions.description.fontSize ??
+                        UNIFIED_DESCRIPTION_FONT_SIZE,
+                      lineHeight: 1.1,
+                      letterSpacing: "-0.03em",
+                      padding: "0 40px 40px 40px",
+                      borderRadius: "15px",
+                      boxShadow:
+                        "inset 0 0 8px 2px rgba(0, 0, 0, 0.5), inset 2px -2px 12px 3px rgba(0, 0, 0, 0.5)",
+                      whiteSpace: "pre-line",
+                      textAlign: "center",
+                      textAlignLast: "center",
+                    }}
+                  >
+                    {renderTextWithBoldAndIcons(card.description || "")}
+                  </p>
+                );
+              })()
+            ) : card.layoutId === "equip3" ? null : (
               <p
-                className={`absolute text-4xl text-black drop-shadow-lg ${
+                className={`absolute text-black drop-shadow-lg ${
                   isEnemie ? "text-left" : "text-center"
                 }`}
                 style={{
@@ -2763,6 +3162,9 @@ const CardPreview = ({
                   left: layoutPositions.description.left,
                   fontFamily: ebGaramond.style.fontFamily,
                   fontWeight: 590,
+                  fontSize:
+                    layoutPositions.description.fontSize ??
+                    UNIFIED_DESCRIPTION_FONT_SIZE,
                   lineHeight: 1,
                   width: layoutPositions.description.width || "570px",
                   height: layoutPositions.description.height || "420px",
@@ -2814,6 +3216,7 @@ export default function Home() {
   const [storageWarning, setStorageWarning] = useState<string | null>(null);
   const [iconOptionsA, setIconOptionsA] = useState<IconOption[]>([]);
   const [iconOptionsB, setIconOptionsB] = useState<IconOption[]>([]);
+  const [iconOptionsD, setIconOptionsD] = useState<IconOption[]>([]);
   const [skillIconOptions, setSkillIconOptions] = useState<IconOption[]>([]);
   const [effect2IconOptions, setEffect2IconOptions] = useState<IconOption[]>(
     [],
@@ -2853,6 +3256,7 @@ export default function Home() {
       "A",
       "B",
       "C",
+      "D",
       "Effects/01",
       "Effects/02",
       "Effects/03",
@@ -2865,6 +3269,7 @@ export default function Home() {
       setIconOptionsA,
       setIconOptionsB,
       setSkillIconOptions,
+      setIconOptionsD,
       setEffect2IconOptions,
       setEffect3IconOptions,
       setEffect4IconOptions,
@@ -2891,7 +3296,11 @@ export default function Home() {
       form.icon !== "/models/icons/A/03.png"
     ) {
       setForm((prev) => ({ ...prev, icon: "/models/icons/A/03.png" }));
-    } else if (form.icon === "" && iconOptionsA.length > 0) {
+    } else if (
+      form.icon === "" &&
+      iconOptionsA.length > 0 &&
+      form.layout !== "equip4"
+    ) {
       setForm((prev) => ({ ...prev, icon: iconOptionsA[0].src }));
     }
   }, [iconOptionsA.length, form.layout, form.icon]);
@@ -2965,6 +3374,8 @@ export default function Home() {
       tension1Text: card.tension1Text ?? "",
       tension2Icon: card.tension2Icon ?? "",
       tension2Text: card.tension2Text ?? "",
+      tensionColor: card.tensionColor ?? "#067427",
+      bottomBarColor: card.bottomBarColor ?? "#39558E",
       enemieRedNumber: card.enemieRedNumber ?? "0",
       enemieGreenNumber: card.enemieGreenNumber ?? "0",
       enemieBlueNumber: card.enemieBlueNumber ?? "0",
@@ -3033,6 +3444,8 @@ export default function Home() {
           tension1Text: card.tension1Text ?? "",
           tension2Icon: card.tension2Icon ?? "",
           tension2Text: card.tension2Text ?? "",
+          tensionColor: card.tensionColor ?? "#067427",
+          bottomBarColor: card.bottomBarColor ?? "#39558E",
           enemieRedNumber: card.enemieRedNumber ?? "0",
           enemieGreenNumber: card.enemieGreenNumber ?? "0",
           enemieBlueNumber: card.enemieBlueNumber ?? "0",
@@ -3122,6 +3535,8 @@ export default function Home() {
     tension1Text: form.tension1Text,
     tension2Icon: form.tension2Icon,
     tension2Text: form.tension2Text,
+    tensionColor: form.tensionColor,
+    bottomBarColor: form.bottomBarColor,
     enemieRedNumber: form.enemieRedNumber,
     enemieGreenNumber: form.enemieGreenNumber,
     enemieBlueNumber: form.enemieBlueNumber,
@@ -3237,6 +3652,8 @@ export default function Home() {
         tension1Text,
         tension2Icon,
         tension2Text,
+        tensionColor,
+        bottomBarColor,
         enemieRedNumber,
         enemieGreenNumber,
         enemieBlueNumber,
@@ -3272,6 +3689,8 @@ export default function Home() {
         tension1Text,
         tension2Icon,
         tension2Text,
+        tensionColor,
+        bottomBarColor,
         enemieRedNumber,
         enemieGreenNumber,
         enemieBlueNumber,
@@ -3399,6 +3818,8 @@ export default function Home() {
           tension1Text?: string | null;
           tension2Icon?: string | null;
           tension2Text?: string | null;
+          tensionColor?: string | null;
+          bottomBarColor?: string | null;
           enemieRedNumber?: string | null;
           enemieGreenNumber?: string | null;
           enemieBlueNumber?: string | null;
@@ -3444,6 +3865,8 @@ export default function Home() {
             tension1Text: item.tension1Text ?? "",
             tension2Icon: item.tension2Icon ?? "",
             tension2Text: item.tension2Text ?? "",
+            tensionColor: item.tensionColor ?? "#067427",
+            bottomBarColor: item.bottomBarColor ?? "#39558E",
             enemieRedNumber: item.enemieRedNumber ?? "0",
             enemieGreenNumber: item.enemieGreenNumber ?? "0",
             enemieBlueNumber: item.enemieBlueNumber ?? "0",
@@ -3714,7 +4137,9 @@ export default function Home() {
                           ? "/models/icons/A/03.png"
                           : isEquip3 || isEnemie
                             ? ""
-                            : (iconOptionsA[0]?.src ?? form.icon),
+                            : option.id === "equip4"
+                              ? form.icon
+                              : (iconOptionsA[0]?.src ?? form.icon),
                       icon2: layoutConfig.positions.icon2
                         ? (iconOptionsB[0]?.src ?? form.icon2)
                         : null,
@@ -3749,7 +4174,7 @@ export default function Home() {
                             image: selected.image,
                             icon: isEquip3EquipClick
                               ? "/models/icons/A/03.png"
-                              : isEquip3Click
+                              : isEquip3Click || selected.id === "equip4"
                                 ? ""
                                 : prev.icon || (iconOptionsA[0]?.src ?? ""),
                             icon2: selected.positions.icon2 ? prev.icon2 : "",
@@ -3799,6 +4224,150 @@ export default function Home() {
                   })}
                 </div>
               </div>
+              {form.layout === "equip4" && (
+                <>
+                  <div className="flex flex-col gap-2">
+                    <span className="text-sm font-medium text-slate-300">
+                      Tension Color
+                    </span>
+                    <div className="flex justify-around">
+                      {[
+                        { value: "#067427", label: "1" },
+                        { value: "#B26E29", label: "2" },
+                        { value: "#A63E26", label: "3" },
+                      ].map((opt) => (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() =>
+                            setForm((prev) => ({
+                              ...prev,
+                              tensionColor: opt.value,
+                            }))
+                          }
+                          className={`h-10 w-10 shrink-0 rounded-xl border-2 transition ${
+                            form.tensionColor === opt.value
+                              ? "border-amber-400 ring-2 ring-amber-400/50"
+                              : "border-white/20 hover:border-white/50"
+                          }`}
+                          style={{ backgroundColor: opt.value }}
+                          title={opt.value}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <span className="text-sm font-medium text-slate-300">
+                      Cor das barras inferiores
+                    </span>
+                    <div className="flex justify-around">
+                      {[
+                        {
+                          value: "#39558E",
+                          label: "1",
+                          bgImage: "/models/layout/Bottom-Icon-A.png",
+                        },
+                        {
+                          value: "#C7C554",
+                          label: "2",
+                          bgImage: "/models/layout/Bottom-Icon-B.png",
+                        },
+                        {
+                          value: "#512D71",
+                          label: "3",
+                          bgImage: "/models/layout/Bottom-Icon-C.png",
+                        },
+                      ].map((opt) => (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() =>
+                            setForm((prev) => ({
+                              ...prev,
+                              bottomBarColor: opt.value,
+                            }))
+                          }
+                          className={`h-10 w-10 shrink-0 rounded-xl border-2 transition ${
+                            form.bottomBarColor === opt.value
+                              ? "border-amber-400 ring-2 ring-amber-400/50"
+                              : "border-white/20 hover:border-white/50"
+                          }`}
+                          style={{
+                            backgroundImage: `url("${opt.bgImage}")`,
+                            backgroundSize: "100% 100%",
+                            backgroundPosition: "center",
+                            backgroundRepeat: "no-repeat",
+                          }}
+                          title={opt.value}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <span className="text-sm font-medium text-slate-300">
+                      Ícone
+                    </span>
+                    <div className="flex flex-wrap gap-2">
+                      {iconOptionsD.map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() =>
+                            setForm((prev) => ({
+                              ...prev,
+                              icon:
+                                prev.icon === item.src ? "" : item.src,
+                            }))
+                          }
+                          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 transition overflow-hidden ${
+                            form.icon === item.src
+                              ? "border-amber-400 ring-2 ring-amber-400/50"
+                              : "border-white/20 hover:border-white/50"
+                          }`}
+                          style={{ backgroundColor: "#E3C590" }}
+                        >
+                          <img
+                            src={item.src}
+                            alt={item.label}
+                            className="h-6 w-6 object-contain"
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <span className="text-sm font-medium text-slate-300">
+                      Ícone adicional
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setForm((prev) => ({
+                          ...prev,
+                          icon2:
+                            prev.icon2 === "/models/icons/B/04.png"
+                              ? ""
+                              : "/models/icons/B/04.png",
+                          icon2Id:
+                            prev.icon2 === "/models/icons/B/04.png" ? "" : "04",
+                        }))
+                      }
+                      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 transition ${
+                        form.icon2 === "/models/icons/B/04.png"
+                          ? "border-amber-400 ring-2 ring-amber-400/50"
+                          : "border-white/20 hover:border-white/50"
+                      }`}
+                      style={{ backgroundColor: "#E3C590" }}
+                    >
+                      <img
+                        src="/models/icons/B/04.png"
+                        alt="Ícone 04"
+                        className="h-6 w-6 object-contain"
+                      />
+                    </button>
+                  </div>
+                </>
+              )}
               <label className="flex flex-col gap-2 text-sm text-slate-300">
                 Título (Enter quebra a linha)
                 <textarea
@@ -5007,7 +5576,7 @@ export default function Home() {
                 onClick={() => void handleSaveCard()}
                 className="rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 px-5 py-3 font-semibold text-black shadow-lg shadow-amber-500/40 transition hover:translate-y-0.5 hover:shadow-2xl"
               >
-                Salvar card
+                Salvar
               </button>
               <button
                 type="button"
@@ -5019,7 +5588,7 @@ export default function Home() {
                 }
                 className="rounded-2xl border border-white/30 px-5 py-3 font-semibold text-white transition hover:border-white"
               >
-                Baixar visualização
+                Baixar
               </button>
             </div>
 
