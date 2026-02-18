@@ -17,14 +17,16 @@
         "height": "125px",
         "fontSize": "__UNIFIED_TITLE_FONT_SIZE__",
         "fontSizeLine2": "__UNIFIED_TITLE_FONT_SIZE_LINE2__",
-        "fontSizeLine3": "__UNIFIED_TITLE_FONT_SIZE_LINE3__"
+        "fontSizeLine3": "__UNIFIED_TITLE_FONT_SIZE_LINE3__",
+        "lineHeight": "__UNIFIED_TITLE_LINE_HEIGHT__"
       },
       "description": {
         "top": "480px",
         "left": "20px",
         "width": "610px",
         "height": "440px",
-        "fontSize": "__UNIFIED_DESCRIPTION_FONT_SIZE__"
+        "fontSize": "__UNIFIED_DESCRIPTION_FONT_SIZE__",
+        "lineHeight": "__UNIFIED_DESCRIPTION_LINE_HEIGHT__"
       },
       "overlay": {
         "top": "165px",
@@ -76,14 +78,16 @@
         "height": "125px",
         "fontSize": "__UNIFIED_TITLE_FONT_SIZE__",
         "fontSizeLine2": "__UNIFIED_TITLE_FONT_SIZE_LINE2__",
-        "fontSizeLine3": "__UNIFIED_TITLE_FONT_SIZE_LINE3__"
+        "fontSizeLine3": "__UNIFIED_TITLE_FONT_SIZE_LINE3__",
+        "lineHeight": "__UNIFIED_TITLE_LINE_HEIGHT__"
       },
       "description": {
         "top": "480px",
         "left": "20px",
         "width": "610px",
         "height": "440px",
-        "fontSize": "__UNIFIED_DESCRIPTION_FONT_SIZE__"
+        "fontSize": "__UNIFIED_DESCRIPTION_FONT_SIZE__",
+        "lineHeight": "__UNIFIED_DESCRIPTION_LINE_HEIGHT__"
       },
       "overlay": {
         "top": "165px",
@@ -117,14 +121,16 @@
         "height": "100px",
         "fontSize": "__UNIFIED_TITLE_FONT_SIZE__",
         "fontSizeLine2": "__UNIFIED_TITLE_FONT_SIZE_LINE2__",
-        "fontSizeLine3": "__UNIFIED_TITLE_FONT_SIZE_LINE3__"
+        "fontSizeLine3": "__UNIFIED_TITLE_FONT_SIZE_LINE3__",
+        "lineHeight": "__UNIFIED_TITLE_LINE_HEIGHT__"
       },
       "description": {
         "top": "330px",
         "left": "20px",
         "width": "610px",
         "height": "120px",
-        "fontSize": "__UNIFIED_DESCRIPTION_FONT_SIZE__"
+        "fontSize": "__UNIFIED_DESCRIPTION_FONT_SIZE__",
+        "lineHeight": "__UNIFIED_DESCRIPTION_LINE_HEIGHT__"
       },
       "overlay": {
         "top": "460px",
@@ -246,14 +252,16 @@
         "height": "120px",
         "fontSize": "__UNIFIED_TITLE_FONT_SIZE__",
         "fontSizeLine2": "__UNIFIED_TITLE_FONT_SIZE_LINE2__",
-        "fontSizeLine3": "__UNIFIED_TITLE_FONT_SIZE_LINE3__"
+        "fontSizeLine3": "__UNIFIED_TITLE_FONT_SIZE_LINE3__",
+        "lineHeight": "__UNIFIED_TITLE_LINE_HEIGHT__"
       },
       "description": {
         "top": "560px",
         "left": "40px",
         "width": "570px",
         "height": "420px",
-        "fontSize": "__UNIFIED_DESCRIPTION_FONT_SIZE__"
+        "fontSize": "__UNIFIED_DESCRIPTION_FONT_SIZE__",
+        "lineHeight": "__UNIFIED_DESCRIPTION_LINE_HEIGHT__"
       },
       "overlay": {
         "top": "175px",
@@ -373,21 +381,25 @@
         "left": "13px",
         "width": "621px",
         "height": "134px",
-        "fontSize": "__UNIFIED_TITLE_FONT_SIZE__",
-        "fontSizeLine2": "__UNIFIED_TITLE_FONT_SIZE_LINE2__",
-        "fontSizeLine3": "__UNIFIED_TITLE_FONT_SIZE_LINE3__",
+        "fontSize": "64px",
+        "fontSizeLine2": "48px",
+        "fontSizeLine3": "32px",
         "widthtWith1Icon": "477px",
         "widthtWithOnlyIcon1": "460px",
         "widthtWith2Icons": "333px",
         "titleLeftWith1Icon": "157px",
-        "titleBgSize": "621px 134px"
+        "titleBgSize": "621px 134px",
+        "lineHeight": "__UNIFIED_TITLE_LINE_HEIGHT__"
       },
       "description": {
         "top": "160px",
         "left": "13px",
         "width": "622px",
         "height": "690px",
-        "fontSize": "2rem"
+        "fontSize": "1.8rem",
+        "lineHeight": "1.1",
+        "lineWidth": "580px",
+        "paddingTop": "40px"
       },
       "overlay": {
         "top": "215px",
@@ -485,14 +497,16 @@
         "height": "120px",
         "fontSize": "__UNIFIED_TITLE_FONT_SIZE__",
         "fontSizeLine2": "__UNIFIED_TITLE_FONT_SIZE_LINE2__",
-        "fontSizeLine3": "__UNIFIED_TITLE_FONT_SIZE_LINE3__"
+        "fontSizeLine3": "__UNIFIED_TITLE_FONT_SIZE_LINE3__",
+        "lineHeight": "__UNIFIED_TITLE_LINE_HEIGHT__"
       },
       "description": {
         "top": "200px",
         "left": "40px",
         "width": "570px",
         "height": "420px",
-        "fontSize": "__UNIFIED_DESCRIPTION_FONT_SIZE__"
+        "fontSize": "__UNIFIED_DESCRIPTION_FONT_SIZE__",
+        "lineHeight": "__UNIFIED_DESCRIPTION_LINE_HEIGHT__"
       },
       "overlay": {
         "top": "215px",
@@ -566,13 +580,15 @@
         "left": "17px",
         "width": "594px",
         "height": "120px",
-        "fontSize": "__UNIFIED_TITLE_FONT_SIZE__"
+        "fontSize": "__UNIFIED_TITLE_FONT_SIZE__",
+        "lineHeight": "__UNIFIED_TITLE_LINE_HEIGHT__"
       },
       "description": {
         "top": "200px",
         "left": "40px",
         "width": "570px",
-        "height": "420px"
+        "height": "420px",
+        "lineHeight": "__UNIFIED_DESCRIPTION_LINE_HEIGHT__"
       },
       "overlay": {
         "top": "215px",
@@ -648,14 +664,16 @@
         "height": "120px",
         "fontSize": "__UNIFIED_TITLE_FONT_SIZE__",
         "fontSizeLine2": "__UNIFIED_TITLE_FONT_SIZE_LINE2__",
-        "fontSizeLine3": "__UNIFIED_TITLE_FONT_SIZE_LINE3__"
+        "fontSizeLine3": "__UNIFIED_TITLE_FONT_SIZE_LINE3__",
+        "lineHeight": "__UNIFIED_TITLE_LINE_HEIGHT__"
       },
       "description": {
         "top": "200px",
         "left": "40px",
         "width": "570px",
         "height": "420px",
-        "fontSize": "__UNIFIED_DESCRIPTION_FONT_SIZE__"
+        "fontSize": "__UNIFIED_DESCRIPTION_FONT_SIZE__",
+        "lineHeight": "__UNIFIED_DESCRIPTION_LINE_HEIGHT__"
       },
       "overlay": {
         "top": "215px",
@@ -731,14 +749,16 @@
         "height": "120px",
         "fontSize": "__UNIFIED_TITLE_FONT_SIZE__",
         "fontSizeLine2": "__UNIFIED_TITLE_FONT_SIZE_LINE2__",
-        "fontSizeLine3": "__UNIFIED_TITLE_FONT_SIZE_LINE3__"
+        "fontSizeLine3": "__UNIFIED_TITLE_FONT_SIZE_LINE3__",
+        "lineHeight": "__UNIFIED_TITLE_LINE_HEIGHT__"
       },
       "description": {
         "top": "200px",
         "left": "40px",
         "width": "570px",
         "height": "420px",
-        "fontSize": "__UNIFIED_DESCRIPTION_FONT_SIZE__"
+        "fontSize": "__UNIFIED_DESCRIPTION_FONT_SIZE__",
+        "lineHeight": "__UNIFIED_DESCRIPTION_LINE_HEIGHT__"
       },
       "overlay": {
         "top": "215px",
@@ -814,13 +834,15 @@
         "height": "120px",
         "fontSize": "__UNIFIED_TITLE_FONT_SIZE__",
         "fontSizeLine2": "__UNIFIED_TITLE_FONT_SIZE_LINE2__",
-        "fontSizeLine3": "__UNIFIED_TITLE_FONT_SIZE_LINE3__"
+        "fontSizeLine3": "__UNIFIED_TITLE_FONT_SIZE_LINE3__",
+        "lineHeight": "__UNIFIED_TITLE_LINE_HEIGHT__"
       },
       "description": {
         "top": "165px",
         "left": "630px",
         "width": "340px",
-        "height": "508px"
+        "height": "508px",
+        "lineHeight": "__UNIFIED_DESCRIPTION_LINE_HEIGHT__"
       },
       "overlay": {
         "top": "165px",
@@ -878,14 +900,16 @@
         "height": "120px",
         "fontSize": "__UNIFIED_TITLE_FONT_SIZE__",
         "fontSizeLine2": "__UNIFIED_TITLE_FONT_SIZE_LINE2__",
-        "fontSizeLine3": "__UNIFIED_TITLE_FONT_SIZE_LINE3__"
+        "fontSizeLine3": "__UNIFIED_TITLE_FONT_SIZE_LINE3__",
+        "lineHeight": "__UNIFIED_TITLE_LINE_HEIGHT__"
       },
       "description": {
         "top": "165px",
         "left": "331px",
         "width": "630px",
         "height": "508px",
-        "fontSize": "__UNIFIED_DESCRIPTION_FONT_SIZE__"
+        "fontSize": "__UNIFIED_DESCRIPTION_FONT_SIZE__",
+        "lineHeight": "__UNIFIED_DESCRIPTION_LINE_HEIGHT__"
       },
       "overlay": {
         "top": "165px",

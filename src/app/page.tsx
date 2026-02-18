@@ -5,7 +5,6 @@ import {
   Fragment,
   useCallback,
   useEffect,
-  useLayoutEffect,
   useRef,
   useState,
   type ReactNode,
@@ -15,6 +14,7 @@ import { Bebas_Neue, EB_Garamond } from "next/font/google";
 import JSZip from "jszip";
 import Cropper from "react-easy-crop";
 import type { Area } from "react-easy-crop";
+import { FaDownload, FaSave } from "react-icons/fa";
 
 /** Gera imagem recortada a partir de croppedAreaPixels (coordenadas na imagem original) */
 async function createCroppedImage(
@@ -332,6 +332,8 @@ type LayoutPositions = {
     titleLeftWith1Icon?: string;
     /** Tamanho fixo do bg nas 3 divs (título, icon1, icon2) - mesmo em todas, sem esticar */
     titleBgSize?: string;
+    /** Espaçamento entre linhas do título */
+    lineHeight?: number | string;
   };
   description: {
     top: string;
@@ -339,6 +341,12 @@ type LayoutPositions = {
     width?: string;
     height?: string;
     fontSize?: string;
+    /** Espaçamento entre linhas da descrição */
+    lineHeight?: number | string;
+    /** Largura máxima de cada linha (ex.: "580px") - controla onde o texto quebra */
+    lineWidth?: string;
+    /** Padding superior do texto da descrição */
+    paddingTop?: string;
   };
   overlay: {
     top: string;
@@ -445,12 +453,12 @@ const UNIFIED_TITLE_FONT_SIZE = "clamp(5rem, 4vw, 4rem)";
 const UNIFIED_TITLE_FONT_SIZE_LINE2 = "clamp(4.1rem, 3.2vw, 3.2rem)";
 /** Fonte do título quando quebra em 3+ linhas (~64% da base). */
 const UNIFIED_TITLE_FONT_SIZE_LINE3 = "clamp(3.2rem, 2.5vw, 2.5rem)";
-/** Quanto reduzir a fonte a cada linha extra do título (0.1 = 10% por linha) - fallback quando fontSizeLine2/3 não definidos. */
-const TITLE_FONT_REDUCTION_PER_LINE = 0.18;
-/** Tamanho mínimo da fonte do título em px (após redução por quebras). */
-const TITLE_FONT_MIN_PX = 8;
 /** Fonte padrão da descrição dos cards. */
 const UNIFIED_DESCRIPTION_FONT_SIZE = "clamp(1.5rem, 2vw, 1.75rem)";
+/** Espaçamento entre linhas do título (distância de uma linha para outra). */
+const UNIFIED_TITLE_LINE_HEIGHT = 0.9;
+/** Espaçamento entre linhas da descrição. */
+const UNIFIED_DESCRIPTION_LINE_HEIGHT = 1.1;
 
 // Carrega layouts do arquivo JSON e substitui placeholders
 import layoutsData from "../../layouts.json";
@@ -476,6 +484,10 @@ const layoutOptions: LayoutOption[] = (layoutsData as LayoutOption[]).map(
           "__UNIFIED_TITLE_FONT_SIZE_LINE3__"
             ? UNIFIED_TITLE_FONT_SIZE_LINE3
             : layout.positions.title.fontSizeLine3,
+        lineHeight:
+          layout.positions.title.lineHeight === "__UNIFIED_TITLE_LINE_HEIGHT__"
+            ? UNIFIED_TITLE_LINE_HEIGHT
+            : (layout.positions.title.lineHeight ?? UNIFIED_TITLE_LINE_HEIGHT),
       },
       description: layout.positions.description
         ? {
@@ -484,8 +496,14 @@ const layoutOptions: LayoutOption[] = (layoutsData as LayoutOption[]).map(
               layout.positions.description.fontSize ===
               "__UNIFIED_DESCRIPTION_FONT_SIZE__"
                 ? UNIFIED_DESCRIPTION_FONT_SIZE
-                : layout.positions.description.fontSize ??
-                  UNIFIED_DESCRIPTION_FONT_SIZE,
+                : (layout.positions.description.fontSize ??
+                  UNIFIED_DESCRIPTION_FONT_SIZE),
+            lineHeight:
+              layout.positions.description.lineHeight ===
+              "__UNIFIED_DESCRIPTION_LINE_HEIGHT__"
+                ? UNIFIED_DESCRIPTION_LINE_HEIGHT
+                : (layout.positions.description.lineHeight ??
+                  UNIFIED_DESCRIPTION_LINE_HEIGHT),
           }
         : layout.positions.description,
     },
@@ -805,6 +823,25 @@ const capitalizeLongWords = (text: string) =>
     (_, first, rest) => `${first.toUpperCase()}${rest}`,
   );
 
+/** Formata descrição: capitalizeLongWords + primeiro parágrafo em negrito (**) */
+const formatDescription = (text: string): string => {
+  const capped = capitalizeLongWords(text);
+  const paras = capped.split(/\n\n+/);
+  if (paras[0]?.trim()) {
+    let content = paras[0].trim();
+    // Remove ** já existentes para evitar empilhar a cada nova edição
+    while (
+      content.startsWith("**") &&
+      content.endsWith("**") &&
+      content.length > 4
+    ) {
+      content = content.slice(2, -2);
+    }
+    paras[0] = "**" + content + "**";
+  }
+  return paras.join("\n\n");
+};
+
 const getLayoutConfig = (layoutId: string) =>
   layoutOptions.find((option) => option.id === layoutId) ?? DEFAULT_LAYOUT;
 
@@ -843,6 +880,8 @@ type FormState = {
   tensionColor: string;
   /** Layout equip4: cor das 3 divs de baixo (#39558E, #C7C554, #512D71) */
   bottomBarColor: string;
+  /** Título: 1= fonte maior, 2= média, 3= menor (controlado pelo botão Linhas) */
+  titleLines?: 1 | 2 | 3;
   /** Layout Enemie: campos numéricos coloridos */
   enemieRedNumber: string;
   enemieGreenNumber: string;
@@ -860,46 +899,74 @@ type FormState = {
   enemieYellowExtraNumber: string;
 };
 
-const createInitialFormState = (): FormState => ({
-  title: "",
-  description: "",
-  layout: DEFAULT_LAYOUT.id,
-  image: DEFAULT_LAYOUT.image,
-  icon: "",
-  icon2: "",
-  icon2Id: "",
-  accent: DEFAULT_ACCENT,
-  selectedSkills: [],
-  skillNumbers: {},
-  enemieBlueSkills: [],
-  enemieYellowSkills: [],
-  enemiePurpleSkills: [],
-  equip3Number: "",
-  linhaDeTiro: "LOS",
-  effect2Icon: "",
-  effect2Number: "1",
-  effect3Icon: "",
-  effect3Number: "",
-  effect4Icon: "",
-  effect4Number: "1",
-  tension1Icon: "",
-  tension1Text: "",
-  tension2Icon: "",
-  tension2Text: "",
-  tensionColor: "#067427",
-  bottomBarColor: "#39558E",
-  enemieRedNumber: "0",
-  enemieGreenNumber: "0",
-  enemieBlueNumber: "0",
-  enemieBlueColor: false,
-  enemieYellowColor: false,
-  enemiePurpleColor: false,
-  enemieMainIcon: "",
-  enemieMainIconNumber: "",
-  enemieBlueExtraNumber: "",
-  enemiePurpleExtraNumber: "",
-  enemieYellowExtraNumber: "",
-});
+const createInitialFormState = (layoutId?: string): FormState => {
+  const layout = layoutId
+    ? (layoutOptions.find((o) => o.id === layoutId) ?? DEFAULT_LAYOUT)
+    : DEFAULT_LAYOUT;
+  return {
+    title: layout.id === "equip4" ? "TUDO LIMPO" : "",
+    description: "",
+    layout: layout.id,
+    image: layout.image,
+    icon: "",
+    icon2: "",
+    icon2Id: "",
+    accent: DEFAULT_ACCENT,
+    selectedSkills: [],
+    skillNumbers: {},
+    enemieBlueSkills: [],
+    enemieYellowSkills: [],
+    enemiePurpleSkills: [],
+    equip3Number: "",
+    linhaDeTiro: "LOS",
+    effect2Icon: "",
+    effect2Number: "1",
+    effect3Icon: "",
+    effect3Number: "",
+    effect4Icon: "",
+    effect4Number: "1",
+    tension1Icon: "",
+    tension1Text: "",
+    tension2Icon: "",
+    tension2Text: "",
+    tensionColor: "#067427",
+    bottomBarColor: "#39558E",
+    titleLines: 1,
+    enemieRedNumber: "0",
+    enemieGreenNumber: "0",
+    enemieBlueNumber: "0",
+    enemieBlueColor: false,
+    enemieYellowColor: false,
+    enemiePurpleColor: false,
+    enemieMainIcon: "",
+    enemieMainIconNumber: "",
+    enemieBlueExtraNumber: "",
+    enemiePurpleExtraNumber: "",
+    enemieYellowExtraNumber: "",
+  };
+};
+
+/** Para equip4: novo card preservando ícones e cores, resetando título, descrição e textos de tensão */
+const createEquip4FormStateWithPreservedConfig = (
+  card: CardDesign,
+): FormState => {
+  const base = createInitialFormState(card.layoutId);
+  return {
+    ...base,
+    title: "TUDO LIMPO",
+    description: "",
+    icon: card.icon ?? "",
+    icon2: card.icon2 ?? "",
+    icon2Id: card.icon2Id ?? "",
+    tension1Icon: card.tension1Icon ?? "",
+    tension1Text: "",
+    tension2Icon: card.tension2Icon ?? "",
+    tension2Text: "",
+    tensionColor: card.tensionColor ?? base.tensionColor,
+    bottomBarColor: card.bottomBarColor ?? base.bottomBarColor,
+    titleLines: 1,
+  };
+};
 
 type CardDesign = {
   id: string;
@@ -932,6 +999,7 @@ type CardDesign = {
   tension2Text: string;
   tensionColor: string;
   bottomBarColor: string;
+  titleLines?: 1 | 2 | 3;
   enemieRedNumber: string;
   enemieGreenNumber: string;
   enemieBlueNumber: string;
@@ -980,13 +1048,12 @@ const CardPreview = ({
   isLayoutPreview = false,
 }: CardPreviewProps) => {
   const titleRef = useRef<HTMLHeadingElement>(null);
-  const titleMeasureRef = useRef<HTMLDivElement>(null);
-  const [titleFontSizePx, setTitleFontSizePx] = useState<number | null>(null);
-  const [titleFontResolvedFromLayout, setTitleFontResolvedFromLayout] =
-    useState<string | null>(null);
-  const heroImage = isBgLayout(card.layoutId)
-    ? card.image || BG_LAYOUT_IMAGE
-    : card.image || CARD_TEMPLATE_IMAGE;
+  const heroImage = (() => {
+    if (isBgLayout(card.layoutId)) return card.image || BG_LAYOUT_IMAGE;
+    if (card.layoutId === "equip4" && card.tensionColor === "#A63E26")
+      return "/models/cards/bg_com_sangue.png";
+    return card.image || CARD_TEMPLATE_IMAGE;
+  })();
   const layoutPositions = card.layoutPositions || DEFAULT_LAYOUT.positions;
 
   const titleFontFromLayout =
@@ -1012,48 +1079,15 @@ const CardPreview = ({
     layoutPositions.title.titleLeftWith1Icon
       ? layoutPositions.title.titleLeftWith1Icon
       : layoutPositions.title.left;
-  const titleMeasureKey = `${card.layoutId ?? ""}-${card.title ?? ""}-${titleFontFromLayout}-${effectiveTitleWidth}-${layoutPositions.title.height}`;
-  const prevTitleMeasureKeyRef = useRef<string | undefined>(undefined);
-
-  useEffect(() => {
-    const keyChanged =
-      prevTitleMeasureKeyRef.current !== undefined &&
-      prevTitleMeasureKeyRef.current !== titleMeasureKey;
-    prevTitleMeasureKeyRef.current = titleMeasureKey;
-    if (keyChanged) {
-      queueMicrotask(() => {
-        setTitleFontSizePx(null);
-        setTitleFontResolvedFromLayout(null);
-      });
-    }
-  }, [titleMeasureKey]);
-
-  useLayoutEffect(() => {
-    if (titleFontSizePx !== null || titleFontResolvedFromLayout !== null) return;
-    const measureEl = titleMeasureRef.current;
-    if (!measureEl) return;
-    const style = getComputedStyle(measureEl);
-    const fontSizePx = parseFloat(style.fontSize);
-    const lineHeight = 0.9;
-    const lineHeightPx = fontSizePx * lineHeight;
-    const contentHeight = measureEl.offsetHeight;
-    const lineCount = Math.ceil(contentHeight / lineHeightPx);
-    if (lineCount <= 1) return;
-    const t = layoutPositions.title;
-    if (lineCount === 2 && t.fontSizeLine2) {
-      queueMicrotask(() => setTitleFontResolvedFromLayout(t.fontSizeLine2!));
-      return;
-    }
-    if (lineCount >= 3 && t.fontSizeLine3) {
-      queueMicrotask(() => setTitleFontResolvedFromLayout(t.fontSizeLine3!));
-      return;
-    }
-    const level = lineCount - 1;
-    const newSize = fontSizePx * (1 - level * TITLE_FONT_REDUCTION_PER_LINE);
-    queueMicrotask(() =>
-      setTitleFontSizePx(Math.max(newSize, TITLE_FONT_MIN_PX)),
-    );
-  }, [titleMeasureKey, titleFontSizePx, titleFontResolvedFromLayout, layoutPositions.title]);
+  const titleLinesVal = (card.titleLines ?? 1) as 1 | 2 | 3;
+  const effectiveTitleFontSize =
+    titleLinesVal === 1
+      ? titleFontFromLayout
+      : titleLinesVal === 2
+        ? (layoutPositions.title?.fontSizeLine2 ?? titleFontFromLayout)
+        : (layoutPositions.title?.fontSizeLine3 ??
+            layoutPositions.title?.fontSizeLine2 ??
+            titleFontFromLayout);
 
   const isEnemie = isEnemieLayout(card.layoutId);
   /** Resolve ícone de inimigo (skills por cor) a partir de enemieIconOptions. */
@@ -1144,6 +1178,17 @@ const CardPreview = ({
       }}
     >
       <div className="relative overflow-hidden" style={innerCardStyle}>
+        {card.layoutId === "equip4" && card.tensionColor === "#A63E26" && (
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0"
+            style={{
+              background: "rgba(166, 62, 38, 0.25)",
+              mixBlendMode: "multiply",
+              borderRadius: 16,
+            }}
+          />
+        )}
         {hasEnemieIconLayout(card.layoutId) && (
           <>
             {(card.enemieRedNumber || card.enemieRedNumber === "0") &&
@@ -2612,24 +2657,6 @@ const CardPreview = ({
                   })}
               </div>
             )}
-            {/* Elemento oculto só para medir quantas linhas o título ocupa (altura natural) */}
-            <div
-              ref={titleMeasureRef}
-              aria-hidden
-              className="pointer-events-none whitespace-pre-line text-center"
-              style={{
-                position: "fixed",
-                left: 0,
-                top: 0,
-                visibility: "hidden",
-                width: effectiveTitleWidth,
-                fontSize: titleFontFromLayout,
-                lineHeight: 0.9,
-                fontFamily: bebasNeue.style.fontFamily,
-              }}
-            >
-              {card.title || ""}
-            </div>
             <h3
               ref={titleRef}
               className={`leading-tight text-black drop-shadow-lg ${
@@ -2641,12 +2668,10 @@ const CardPreview = ({
                 left: effectiveTitleLeft,
                 width: effectiveTitleWidth,
                 height: layoutPositions.title.height,
-                fontSize:
-                  titleFontResolvedFromLayout ??
-                  (titleFontSizePx != null
-                    ? `${titleFontSizePx}px`
-                    : titleFontFromLayout),
-                lineHeight: 0.9,
+                fontSize: effectiveTitleFontSize,
+                lineHeight:
+                  layoutPositions.title?.lineHeight ??
+                  UNIFIED_TITLE_LINE_HEIGHT,
                 textAlign: isEnemie ? "left" : "center",
                 whiteSpace: "pre-line",
                 display: "flex",
@@ -2670,22 +2695,22 @@ const CardPreview = ({
                             : 'url("/models/layout/Title-Gren-A.png")';
                     const titleBgSize =
                       layoutPositions.title.titleBgSize ?? "621px 134px";
-                    const titleBaseLeft = parseInt(
-                      String(layoutPositions.title.left).replace("px", ""),
-                      10,
-                    ) || 13;
-                    const titleLeftPx = parseInt(
-                      String(effectiveTitleLeft).replace("px", ""),
-                      10,
-                    ) || 13;
+                    const titleBaseLeft =
+                      parseInt(
+                        String(layoutPositions.title.left).replace("px", ""),
+                        10,
+                      ) || 13;
+                    const titleLeftPx =
+                      parseInt(
+                        String(effectiveTitleLeft).replace("px", ""),
+                        10,
+                      ) || 13;
                     const bgOffsetX = titleLeftPx - titleBaseLeft;
                     return {
                       backgroundImage: titleBg,
                       backgroundSize: titleBgSize,
                       backgroundPosition:
-                        bgOffsetX !== 0
-                          ? `${-bgOffsetX}px center`
-                          : "center",
+                        bgOffsetX !== 0 ? `${-bgOffsetX}px center` : "center",
                       backgroundRepeat: "no-repeat",
                       borderRadius: "15px",
                       boxShadow:
@@ -2810,8 +2835,13 @@ const CardPreview = ({
                     fontSize:
                       layoutPositions.description.fontSize ??
                       UNIFIED_DESCRIPTION_FONT_SIZE,
-                    lineHeight: 1,
+                    lineHeight:
+                      layoutPositions.description.lineHeight ??
+                      UNIFIED_DESCRIPTION_LINE_HEIGHT,
                     padding: "20px",
+                    ...(layoutPositions.description?.paddingTop && {
+                      paddingTop: layoutPositions.description.paddingTop,
+                    }),
                     ...(card.layoutId === "equip4" && {
                       borderRadius: "15px",
                       boxShadow:
@@ -2824,7 +2854,14 @@ const CardPreview = ({
                     style={{
                       fontFamily: ebGaramond.style.fontFamily,
                       fontWeight: 590,
-                      lineHeight: 1,
+                      lineHeight:
+                        layoutPositions.description?.lineHeight ??
+                        UNIFIED_DESCRIPTION_LINE_HEIGHT,
+                      ...(layoutPositions.description?.lineWidth && {
+                        maxWidth: layoutPositions.description.lineWidth,
+                        marginLeft: "auto",
+                        marginRight: "auto",
+                      }),
                     }}
                   >
                     {renderTextWithBoldAndIcons(card.description || "")}
@@ -2895,7 +2932,7 @@ const CardPreview = ({
                             : card.bottomBarColor === "#512D71"
                               ? {
                                   backgroundImage:
-                                    'url("/models/layout/Bottom-Icon-B.png")',
+                                    'url("/models/layout/Bottom-Icon-C.png")',
                                   backgroundSize: "100% 100%",
                                   backgroundPosition: "center",
                                   backgroundRepeat: "no-repeat",
@@ -2903,7 +2940,7 @@ const CardPreview = ({
                               : card.bottomBarColor === "#C7C554"
                                 ? {
                                     backgroundImage:
-                                      'url("/models/layout/Bottom-Icon-C.png")',
+                                      'url("/models/layout/Bottom-Icon-B.png")',
                                     backgroundSize: "100% 100%",
                                     backgroundPosition: "center",
                                     backgroundRepeat: "no-repeat",
@@ -2927,7 +2964,7 @@ const CardPreview = ({
                           ...(card.bottomBarColor === "#512D71"
                             ? {
                                 backgroundImage:
-                                  'url("/models/layout/Bottom-B.png")',
+                                  'url("/models/layout/Bottom-C.png")',
                                 backgroundSize: "100% 100%",
                                 backgroundPosition: "center",
                                 backgroundRepeat: "no-repeat",
@@ -2943,7 +2980,7 @@ const CardPreview = ({
                               : card.bottomBarColor === "#C7C554"
                                 ? {
                                     backgroundImage:
-                                      'url("/models/layout/Bottom-C.png")',
+                                      'url("/models/layout/Bottom-B.png")',
                                     backgroundSize: "100% 100%",
                                     backgroundPosition: "center",
                                     backgroundRepeat: "no-repeat",
@@ -2975,7 +3012,7 @@ const CardPreview = ({
                             : card.bottomBarColor === "#512D71"
                               ? {
                                   backgroundImage:
-                                    'url("/models/layout/Bottom-Icon-B.png")',
+                                    'url("/models/layout/Bottom-Icon-C.png")',
                                   backgroundSize: "100% 100%",
                                   backgroundPosition: "center",
                                   backgroundRepeat: "no-repeat",
@@ -2983,7 +3020,7 @@ const CardPreview = ({
                               : card.bottomBarColor === "#C7C554"
                                 ? {
                                     backgroundImage:
-                                      'url("/models/layout/Bottom-Icon-C.png")',
+                                      'url("/models/layout/Bottom-Icon-B.png")',
                                     backgroundSize: "100% 100%",
                                     backgroundPosition: "center",
                                     backgroundRepeat: "no-repeat",
@@ -3019,7 +3056,9 @@ const CardPreview = ({
                       fontSize:
                         layoutPositions.description.fontSize ??
                         UNIFIED_DESCRIPTION_FONT_SIZE,
-                      lineHeight: 1,
+                      lineHeight:
+                        layoutPositions.description.lineHeight ??
+                        UNIFIED_DESCRIPTION_LINE_HEIGHT,
                       padding: "0 40px 40px 40px",
                       borderRadius: "15px",
                       boxShadow:
@@ -3118,7 +3157,9 @@ const CardPreview = ({
                       style={{
                         textAlignLast: "center",
                         letterSpacing: "-0.03em",
-                        lineHeight: 1.1,
+                        lineHeight:
+                          layoutPositions.description?.lineHeight ??
+                          UNIFIED_DESCRIPTION_LINE_HEIGHT,
                       }}
                     >
                       {renderTextWithBoldAndIcons(card.description || "")}
@@ -3137,7 +3178,9 @@ const CardPreview = ({
                       fontSize:
                         layoutPositions.description.fontSize ??
                         UNIFIED_DESCRIPTION_FONT_SIZE,
-                      lineHeight: 1.1,
+                      lineHeight:
+                        layoutPositions.description.lineHeight ??
+                        UNIFIED_DESCRIPTION_LINE_HEIGHT,
                       letterSpacing: "-0.03em",
                       padding: "0 40px 40px 40px",
                       borderRadius: "15px",
@@ -3165,7 +3208,9 @@ const CardPreview = ({
                   fontSize:
                     layoutPositions.description.fontSize ??
                     UNIFIED_DESCRIPTION_FONT_SIZE,
-                  lineHeight: 1,
+                  lineHeight:
+                    layoutPositions.description?.lineHeight ??
+                    UNIFIED_DESCRIPTION_LINE_HEIGHT,
                   width: layoutPositions.description.width || "570px",
                   height: layoutPositions.description.height || "420px",
                   whiteSpace: "pre-line",
@@ -3242,7 +3287,20 @@ export default function Home() {
   );
   const importFileRef = useRef<HTMLInputElement | null>(null);
   const descriptionTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const descriptionRef = useRef<string>("");
+  const descriptionFormatTimeoutRef = useRef<
+    ReturnType<typeof setTimeout> | null
+  >(null);
   const selectedCardRef = useRef<HTMLDivElement | null>(null);
+  const lastSavedLayoutIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (descriptionFormatTimeoutRef.current) {
+        clearTimeout(descriptionFormatTimeoutRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const el = descriptionTextareaRef.current;
@@ -3351,6 +3409,11 @@ export default function Home() {
   }, []);
 
   const handleLoadCard = async (card: CardDesign) => {
+    if (descriptionFormatTimeoutRef.current) {
+      clearTimeout(descriptionFormatTimeoutRef.current);
+      descriptionFormatTimeoutRef.current = null;
+    }
+    descriptionRef.current = card.description ?? "";
     setForm({
       title: card.title,
       description: card.description,
@@ -3376,6 +3439,7 @@ export default function Home() {
       tension2Text: card.tension2Text ?? "",
       tensionColor: card.tensionColor ?? "#067427",
       bottomBarColor: card.bottomBarColor ?? "#39558E",
+      titleLines: (card.titleLines ?? 1) as 1 | 2 | 3,
       enemieRedNumber: card.enemieRedNumber ?? "0",
       enemieGreenNumber: card.enemieGreenNumber ?? "0",
       enemieBlueNumber: card.enemieBlueNumber ?? "0",
@@ -3397,7 +3461,12 @@ export default function Home() {
   };
 
   const handleNewCard = () => {
-    setForm(createInitialFormState());
+    if (descriptionFormatTimeoutRef.current) {
+      clearTimeout(descriptionFormatTimeoutRef.current);
+      descriptionFormatTimeoutRef.current = null;
+    }
+    descriptionRef.current = "";
+    setForm(createInitialFormState(lastSavedLayoutIdRef.current ?? undefined));
     setOverlayImage(null);
     setEditingId(null);
   };
@@ -3537,6 +3606,7 @@ export default function Home() {
     tension2Text: form.tension2Text,
     tensionColor: form.tensionColor,
     bottomBarColor: form.bottomBarColor,
+    titleLines: form.titleLines ?? 1,
     enemieRedNumber: form.enemieRedNumber,
     enemieGreenNumber: form.enemieGreenNumber,
     enemieBlueNumber: form.enemieBlueNumber,
@@ -3584,22 +3654,70 @@ export default function Home() {
       return next;
     });
 
+    lastSavedLayoutIdRef.current = cardToSave.layoutId;
+
     const nextList = editingId
       ? cards.map((c) => (c.id === cardId ? cardToSave : c))
       : [cardToSave, ...cards];
     const currentIndex = nextList.findIndex((c) => c.id === cardId);
-    const nextCardWithoutArt = nextList
-      .slice(currentIndex + 1)
-      .find((c) => !overlayCache[c.id]);
+    const remaining = nextList.slice(currentIndex + 1);
 
-    if (nextCardWithoutArt) {
-      await handleLoadCard(nextCardWithoutArt);
+    const isTension = isTensionLayout(cardToSave.layoutId);
+    const hasTitleAndDesc =
+      (cardToSave.title ?? "").trim() !== "" &&
+      (cardToSave.description ?? "").trim() !== "";
+
+    // Layout de tensão (equip4 etc): não tem imagem; se título e descrição preenchidos → novo card
+    if (isTension && hasTitleAndDesc) {
+      if (descriptionFormatTimeoutRef.current) {
+        clearTimeout(descriptionFormatTimeoutRef.current);
+        descriptionFormatTimeoutRef.current = null;
+      }
+      descriptionRef.current = "";
+      setForm(createEquip4FormStateWithPreservedConfig(cardToSave));
+      setOverlayImage(null);
+      setEditingId(null);
       setStatusMessage(
-        'Card salvo! Indo para o próximo sem arte. Clique em "Novo card" para criar outro do zero.',
+        "Card salvo! Novo card criado. Preencha título e descrição.",
+      );
+      return;
+    }
+
+    // Equipamento/arma: próximo sem título E sem imagem (overlay)
+    // Tensão: próximo sem título E sem descrição
+    const nextCard = remaining.find((c) => {
+      if (isTensionLayout(c.layoutId)) {
+        return (
+          (c.title ?? "").trim() === "" && (c.description ?? "").trim() === ""
+        );
+      }
+      if (!isEnemieLayout(c.layoutId) && !isTensionLayout(c.layoutId)) {
+        return (c.title ?? "").trim() === "" && !overlayCache[c.id];
+      }
+      return false;
+    });
+
+    if (nextCard) {
+      await handleLoadCard(nextCard);
+      setStatusMessage(
+        'Card salvo! Indo para o próximo sem preenchimento. Clique em "Novo card" para criar outro do zero.',
       );
     } else {
-      setEditingId(cardId);
-      setStatusMessage("Card salvo! Você pode baixá-lo no painel abaixo.");
+      if (descriptionFormatTimeoutRef.current) {
+        clearTimeout(descriptionFormatTimeoutRef.current);
+        descriptionFormatTimeoutRef.current = null;
+      }
+      descriptionRef.current = "";
+      setForm(
+        isTension
+          ? createEquip4FormStateWithPreservedConfig(cardToSave)
+          : createInitialFormState(cardToSave.layoutId),
+      );
+      setOverlayImage(null);
+      setEditingId(null);
+      setStatusMessage(
+        "Card salvo! Novo card criado com o mesmo layout. Preencha para continuar.",
+      );
     }
   };
 
@@ -4096,11 +4214,7 @@ export default function Home() {
               : "lg:grid-cols-[1.1fr_0.9fr]"
           }`}
         >
-          <div
-            className={`space-y-6 rounded-3xl border-white/10 bg-black/40 p-6 shadow-xl ${
-              isEnemieLayout(form.layout) ? "order-1" : ""
-            }`}
-          >
+          <div className="order-1 space-y-6 rounded-3xl border-white/10 bg-black/40 p-6 shadow-xl">
             <div className="flex flex-col gap-3">
               <h2 className="text-2xl font-semibold">Conteúdo do card</h2>
             </div>
@@ -4109,7 +4223,7 @@ export default function Home() {
               <div className="flex w-full min-w-0 flex-col gap-2 text-sm text-slate-300">
                 <span>Layout</span>
                 <div
-                  className="grid w-full min-w-0 gap-2 overflow-x-auto overflow-y-auto rounded-2xl border border-white/10 bg-black/50 p-2"
+                  className="grid w-full min-w-[220px] gap-2 overflow-x-auto overflow-y-auto rounded-2xl border border-white/10 bg-black/50 p-2"
                   style={{
                     maxHeight: 220,
                     gridTemplateColumns:
@@ -4181,6 +4295,10 @@ export default function Home() {
                             icon2Id: selected.positions.icon2
                               ? prev.icon2Id
                               : "",
+                            ...(selected.id === "equip4" &&
+                              !(prev.title ?? "").trim() && {
+                                title: "TUDO LIMPO",
+                              }),
                           }));
                         }}
                         className={`shrink-0 overflow-hidden rounded-xl border-2 transition ${
@@ -4307,7 +4425,7 @@ export default function Home() {
                     <span className="text-sm font-medium text-slate-300">
                       Ícone
                     </span>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap justify-around items-center gap-2">
                       {iconOptionsD.map((item) => (
                         <button
                           key={item.id}
@@ -4315,8 +4433,7 @@ export default function Home() {
                           onClick={() =>
                             setForm((prev) => ({
                               ...prev,
-                              icon:
-                                prev.icon === item.src ? "" : item.src,
+                              icon: prev.icon === item.src ? "" : item.src,
                             }))
                           }
                           className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 transition overflow-hidden ${
@@ -4369,12 +4486,31 @@ export default function Home() {
                 </>
               )}
               <label className="flex flex-col gap-2 text-sm text-slate-300">
-                Título (Enter quebra a linha)
+                <div className="flex items-center justify-between gap-2">
+                  <span>Título (Enter quebra a linha)</span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setForm((prev) => ({
+                        ...prev,
+                        titleLines: ((prev.titleLines ?? 1) % 3) + 1 as 1 | 2 | 3,
+                      }))
+                    }
+                    className="shrink-0 rounded-lg border border-white/20 bg-white/5 px-3 py-1.5 text-xs text-slate-300 transition hover:bg-white/10"
+                  >
+                    Linhas {(form.titleLines ?? 1)}
+                  </button>
+                </div>
                 <textarea
                   rows={1}
                   placeholder="Lançamento imperdível"
                   value={form.title || ""}
                   className="rounded-2xl border border-white/10 bg-transparent px-4 py-3 text-base text-white outline-none transition focus:border-slate-300 resize-none"
+                  onFocus={(e) => {
+                    if (form.title === "TUDO LIMPO") {
+                      (e.target as HTMLTextAreaElement).select();
+                    }
+                  }}
                   onChange={(event) =>
                     setForm((prev) => ({
                       ...prev,
@@ -4393,12 +4529,20 @@ export default function Home() {
                     value={form.description || ""}
                     className="rounded-2xl border border-white/10 bg-transparent px-4 py-3 text-sm leading-relaxed text-white outline-none transition focus:border-slate-300 overflow-hidden resize-y min-h-[80px]"
                     style={{ minHeight: 80 }}
-                    onChange={(event) =>
-                      setForm((prev) => ({
-                        ...prev,
-                        description: capitalizeLongWords(event.target.value),
-                      }))
-                    }
+                    onChange={(event) => {
+                      const v = event.target.value;
+                      descriptionRef.current = v;
+                      if (descriptionFormatTimeoutRef.current) {
+                        clearTimeout(descriptionFormatTimeoutRef.current);
+                      }
+                      setForm((prev) => ({ ...prev, description: v }));
+                      descriptionFormatTimeoutRef.current = setTimeout(() => {
+                        setForm((prev) => ({
+                          ...prev,
+                          description: formatDescription(descriptionRef.current),
+                        }));
+                      }, 3000);
+                    }}
                   />
                 </label>
               )}
@@ -4457,23 +4601,25 @@ export default function Home() {
                   </label>
                 </div>
               )}
-              <div className="flex flex-col gap-2 text-sm text-slate-300">
-                <span>Arte própria?</span>
-                <button
-                  type="button"
-                  className="rounded-2xl border border-white/10 bg-gradient-to-r from-slate-700 to-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:border-white/60"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  Enviar arte
-                </button>
-                <input
-                  type="file"
-                  accept="image/*"
-                  ref={fileInputRef}
-                  className="hidden"
-                  onChange={handleArtUpload}
-                />
-              </div>
+              {form.layout !== "equip4" && (
+                <div className="flex flex-col gap-2 text-sm text-slate-300">
+                  <span>Arte própria?</span>
+                  <button
+                    type="button"
+                    className="rounded-2xl border border-white/10 bg-gradient-to-r from-slate-700 to-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:border-white/60"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    Enviar arte
+                  </button>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    ref={fileInputRef}
+                    className="hidden"
+                    onChange={handleArtUpload}
+                  />
+                </div>
+              )}
             </div>
 
             {form.layout !== "equip3" &&
@@ -4483,7 +4629,7 @@ export default function Home() {
                 <>
                   <div className="space-y-3">
                     <h3 className="text-xl font-semibold">Ícone 1</h3>
-                    <div className="flex gap-3">
+                    <div className="flex flex-wrap justify-around items-center gap-3">
                       {iconOptionsA.map((item) => (
                         <button
                           key={item.id}
@@ -4509,7 +4655,7 @@ export default function Home() {
                   {showExtraIcons && (
                     <div className="space-y-3">
                       <h3 className="text-xl font-semibold">Dados</h3>
-                      <div className="flex gap-3">
+                      <div className="flex flex-wrap justify-around items-center gap-3">
                         {iconOptionsB.map((item) => (
                           <button
                             key={item.id}
@@ -4546,7 +4692,7 @@ export default function Home() {
               !isEnemieLayout(form.layout) && (
                 <div className="space-y-3">
                   <h3 className="text-xl font-semibold">Skills</h3>
-                  <div className="flex flex-wrap gap-4">
+                  <div className="flex flex-wrap justify-around items-center gap-4">
                     {skillIconOptions.map((skill) => {
                       const selected = form.selectedSkills.includes(skill.id);
                       return (
@@ -4608,7 +4754,7 @@ export default function Home() {
                       );
                     })}
                   </div>
-                  <div className="flex flex-wrap items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 p-2 text-xs uppercase tracking-[0.3em] text-slate-300">
+                  <div className="flex flex-wrap justify-around items-center gap-2 rounded-2xl border border-white/10 bg-white/5 p-2 text-xs uppercase tracking-[0.3em] text-slate-300">
                     {form.selectedSkills.length === 0 ? (
                       <span className="w-full text-center text-[0.55rem]">
                         Nenhuma skill selecionada
@@ -4837,7 +4983,7 @@ export default function Home() {
                 <div className="space-y-3 border-t border-white/10 pt-4">
                   <h3 className="text-xl font-semibold">Skills</h3>
 
-                  <div className="flex flex-wrap gap-4 justify-center items-start">
+                  <div className="flex flex-wrap justify-around items-center gap-4">
                     {(form.layout === "equip3-equip"
                       ? effectIconOptions04.filter(
                           (o) =>
@@ -5097,7 +5243,7 @@ export default function Home() {
                     <p className="text-xs text-slate-400">
                       Ícones da pasta Enemies/Icons
                     </p>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap justify-around items-center gap-2">
                       {enemieMainIconOptions.map((icon) => {
                         const src = icon.src ?? "";
                         const isSelected =
@@ -5140,10 +5286,10 @@ export default function Home() {
                       Clique no ícone para adicionar à cor. O número digitado
                       abaixo do ícone 06 será exibido na frente dele no card.
                     </p>
-                    <div className="flex flex-wrap gap-4">
+                    <div className="flex flex-wrap justify-around items-center gap-4">
                       {/* Azul */}
                       <div className="flex-1 min-w-[320px] space-y-2 rounded-lg border border-blue-500/30 bg-blue-500/5 p-3">
-                        <div className="grid grid-cols-6 gap-2">
+                        <div className="grid grid-cols-6 place-items-center gap-2">
                           {enemieIconOptions
                             .filter((icon) => !isIcon02(icon))
                             .map((icon) => {
@@ -5284,7 +5430,7 @@ export default function Home() {
                       </div>
                       {/* Roxo */}
                       <div className="flex-1 min-w-[320px] space-y-2 rounded-lg border border-purple-500/30 bg-purple-500/5 p-3">
-                        <div className="grid grid-cols-6 gap-2">
+                        <div className="grid grid-cols-6 place-items-center gap-2">
                           {enemieIconOptions
                             .filter((icon) => !isIcon02(icon))
                             .map((icon) => {
@@ -5425,7 +5571,7 @@ export default function Home() {
                       </div>
                       {/* Amarelo */}
                       <div className="flex-1 min-w-[320px] space-y-2 rounded-lg border border-yellow-500/30 bg-yellow-500/5 p-3">
-                        <div className="grid grid-cols-6 gap-2">
+                        <div className="grid grid-cols-6 place-items-center gap-2">
                           {enemieIconOptions
                             .filter((icon) => !isIcon02(icon))
                             .map((icon) => {
@@ -5570,39 +5716,13 @@ export default function Home() {
               </div>
             )}
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <button
-                type="button"
-                onClick={() => void handleSaveCard()}
-                className="rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 px-5 py-3 font-semibold text-black shadow-lg shadow-amber-500/40 transition hover:translate-y-0.5 hover:shadow-2xl"
-              >
-                Salvar
-              </button>
-              <button
-                type="button"
-                onClick={() =>
-                  handleDownload(
-                    "preview-card",
-                    `card-${form.title || "sem-titulo"}.png`,
-                  )
-                }
-                className="rounded-2xl border border-white/30 px-5 py-3 font-semibold text-white transition hover:border-white"
-              >
-                Baixar
-              </button>
-            </div>
-
             {statusMessage && (
               <div className="rounded-2xl border border-white/20 bg-white/5 px-4 py-3 text-sm text-slate-200">
                 {statusMessage}
               </div>
             )}
           </div>
-          <div
-            className={`flex flex-col items-center gap-5 rounded-3xl border border-white/10 bg-slate-900/70 p-6 shadow-xl self-start ${
-              isEnemieLayout(form.layout) ? "order-2" : ""
-            }`}
-          >
+          <div className="order-2 flex flex-col items-center gap-5 rounded-3xl border border-white/10 bg-slate-900/70 p-6 shadow-xl self-start">
             <div className="overflow-x-auto" style={{ width: "100%" }}>
               <CardPreview
                 card={previewCard}
@@ -5620,6 +5740,35 @@ export default function Home() {
             </div>
           </div>
         </section>
+
+        {/* Botões flutuantes Salvar e Baixar */}
+        <div
+          className="fixed bottom-6 right-6 z-50 flex flex-col gap-3"
+          aria-label="Ações do card"
+        >
+          <button
+            type="button"
+            onClick={() => void handleSaveCard()}
+            className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-black shadow-lg shadow-amber-500/40 transition hover:scale-110 hover:shadow-xl"
+            title="Salvar card"
+          >
+            <FaSave className="h-6 w-6" />
+          </button>
+          <button
+            type="button"
+            onClick={() =>
+              handleDownload(
+                "preview-card",
+                `card-${form.title || "sem-titulo"}.png`,
+              )
+            }
+            className="flex h-14 w-14 items-center justify-center rounded-full border-2 border-white/30 bg-slate-800/95 text-white backdrop-blur-sm transition hover:scale-110 hover:border-white"
+            title="Baixar PNG"
+          >
+            <FaDownload className="h-6 w-6" />
+          </button>
+        </div>
+
         <div
           aria-hidden="true"
           style={{
@@ -5643,6 +5792,7 @@ export default function Home() {
               effect3IconOptions={effect3IconOptions}
               effect4IconOptions={effect4IconOptions}
               effectIconOptions04={effectIconOptions04}
+              tensionIconOptions={tensionIconOptions}
               showDebugBackground={false}
             />
           ))}
