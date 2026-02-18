@@ -10,12 +10,6 @@
         "width": "128px",
         "height": "128px"
       },
-      "icon2": {
-        "top": "-154px",
-        "left": "499px",
-        "width": "128px",
-        "height": "128px"
-      },
       "title": {
         "top": "30px",
         "left": "160px",
@@ -40,6 +34,18 @@
         "left": "45px",
         "width": "560px",
         "height": "100px"
+      },
+      "effect3NumberPositionByIcon": {
+        "03": { "top": "0px", "left": "44px" },
+        "04": { "top": "0px", "left": "44px" },
+        "06": { "top": "5px", "left": "39px" },
+        "07": { "top": "5px", "left": "39px" }
+      },
+      "effect4NumberPositionByIcon": {
+        "03": { "top": "0px", "left": "44px" },
+        "04": { "top": "0px", "left": "44px" },
+        "06": { "top": "5px", "left": "39px" },
+        "07": { "top": "5px", "left": "39px" }
       }
     }
   },
@@ -88,6 +94,126 @@
     }
   },
   {
+    "id": "equip3-equip",
+    "label": "Equipamento 3",
+    "image": "/models/cards/02.png",
+    "positions": {
+      "icon": {
+        "top": "670px",
+        "left": "40px",
+        "width": "128px",
+        "height": "128px"
+      },
+      "title": {
+        "top": "820px",
+        "left": "175px",
+        "width": "450px",
+        "height": "100px",
+        "fontSize": "__UNIFIED_TITLE_FONT_SIZE__"
+      },
+      "description": {
+        "top": "330px",
+        "left": "20px",
+        "width": "610px",
+        "height": "120px"
+      },
+      "overlay": {
+        "top": "460px",
+        "left": "160px",
+        "width": "467px",
+        "height": "320px"
+      },
+      "skills": {
+        "top": "780px",
+        "left": "20px",
+        "width": "610px",
+        "height": "100px"
+      },
+      "effect1": {
+        "top": "175px",
+        "left": "20px",
+        "width": "145px",
+        "height": "145px"
+      },
+      "effect2": {
+        "top": "175px",
+        "left": "175px",
+        "width": "145px",
+        "height": "145px"
+      },
+      "effect3": {
+        "top": "175px",
+        "left": "330px",
+        "width": "145px",
+        "height": "145px"
+      },
+      "effect4": {
+        "top": "175px",
+        "left": "485px",
+        "width": "145px",
+        "height": "145px"
+      },
+      "effect1a": {
+        "top": "20px",
+        "left": "20px",
+        "width": "145px",
+        "height": "145px"
+      },
+      "effect2a": {
+        "top": "20px",
+        "left": "175px",
+        "width": "145px",
+        "height": "145px"
+      },
+      "effect3a": {
+        "top": "20px",
+        "left": "330px",
+        "width": "145px",
+        "height": "145px"
+      },
+      "effect4a": {
+        "top": "20px",
+        "left": "485px",
+        "width": "145px",
+        "height": "145px"
+      },
+      "effect2NumberPosition": {
+        "top": "0",
+        "left": "50%"
+      },
+      "effect3NumberPosition": {
+        "top": "0",
+        "left": "50%"
+      },
+      "effect4NumberPosition": {
+        "top": "0",
+        "left": "50%"
+      },
+      "effect3NumberPositionByIcon": {
+        "03": { "top": "0px", "left": "44px" },
+        "04": { "top": "0px", "left": "44px" },
+        "06": { "top": "5px", "left": "39px" },
+        "07": { "top": "5px", "left": "39px" }
+      },
+      "effect4NumberPositionByIcon": {
+        "03": { "top": "0px", "left": "44px" },
+        "04": { "top": "0px", "left": "44px" },
+        "06": { "top": "5px", "left": "39px" },
+        "07": { "top": "5px", "left": "39px" }
+      },
+      "descriptionSkillsBox": {
+        "left": "15px",
+        "bottom": "-40px",
+        "width": "180px",
+        "height": "95px",
+        "minHeight": "60px",
+        "borderRadius": "50px",
+        "boxShadow": "inset 0 0 8px 2px rgba(0, 0, 0, 0.5), inset 2px -2px 12px 3px rgba(0, 0, 0, 0.5)",
+        "backgroundColor": ""
+      }
+    }
+  },
+  {
     "id": "equip3",
     "label": "Arma",
     "image": "/models/cards/03.png",
@@ -106,8 +232,8 @@
       },
       "title": {
         "top": "30px",
-        "left": "188px",
-        "width": "280px",
+        "left": "170px",
+        "width": "310px",
         "height": "120px",
         "fontSize": "__UNIFIED_TITLE_FONT_SIZE__"
       },
@@ -125,33 +251,57 @@
       },
       "skills": {
         "top": "780px",
-        "left": "45px",
-        "width": "560px",
+        "left": "20px",
+        "width": "610px",
         "height": "120px"
       },
       "effect1": {
-        "top": "630px",
-        "left": "30px",
-        "width": "130px",
-        "height": "115px"
+        "top": "625px",
+        "left": "20px",
+        "width": "145px",
+        "height": "145px"
       },
       "effect2": {
-        "top": "620px",
-        "left": "185px",
-        "width": "130px",
-        "height": "115px"
+        "top": "625px",
+        "left": "175px",
+        "width": "145px",
+        "height": "145px"
       },
       "effect3": {
-        "top": "620px",
-        "left": "337px",
-        "width": "130px",
-        "height": "115px"
+        "top": "625px",
+        "left": "330px",
+        "width": "145px",
+        "height": "145px"
       },
       "effect4": {
-        "top": "620px",
-        "left": "490px",
-        "width": "130px",
-        "height": "115px"
+        "top": "625px",
+        "left": "485px",
+        "width": "145px",
+        "height": "145px"
+      },
+      "effect1a": {
+        "top": "470px",
+        "left": "20px",
+        "width": "145px",
+        "height": "145px"
+      },
+      "effect2a": {
+        "top": "470px",
+        "left": "175px",
+        "width": "145px",
+        "height": "145px"
+      },
+      "effect3a": {
+        "top": "470px",
+        "left": "330px",
+        "width": "145px",
+        "height": "145px"
+      },
+      "effect4a": {
+        "top": "470px",
+        "left": "485px",
+        "width": "145px",
+        "height": "145px"
       },
       "effect2NumberPosition": {
         "top": "0",
@@ -164,6 +314,18 @@
       "effect4NumberPosition": {
         "top": "0",
         "left": "50%"
+      },
+      "effect3NumberPositionByIcon": {
+        "03": { "top": "0px", "left": "44px" },
+        "04": { "top": "0px", "left": "44px" },
+        "06": { "top": "5px", "left": "39px" },
+        "07": { "top": "5px", "left": "39px" }
+      },
+      "effect4NumberPositionByIcon": {
+        "03": { "top": "0px", "left": "44px" },
+        "04": { "top": "0px", "left": "44px" },
+        "06": { "top": "5px", "left": "39px" },
+        "07": { "top": "5px", "left": "39px" }
       }
     }
   },
@@ -1330,7 +1492,7 @@
         "height": "120px"
       },
       "effect1": {
-        "top": "675px",
+        "top": "6750wpx",
         "left": "59px",
         "width": "130px",
         "height": "115px"

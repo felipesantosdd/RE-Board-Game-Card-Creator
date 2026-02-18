@@ -328,10 +328,25 @@ type LayoutPositions = {
   effect2?: { top: string; left: string; width?: string; height?: string };
   effect3?: { top: string; left: string; width?: string; height?: string };
   effect4?: { top: string; left: string; width?: string; height?: string };
+  /** Layout 3: linha acima dos effects (para ícones fixos) */
+  effect1a?: { top: string; left: string; width?: string; height?: string };
+  effect2a?: { top: string; left: string; width?: string; height?: string };
+  effect3a?: { top: string; left: string; width?: string; height?: string };
+  effect4a?: { top: string; left: string; width?: string; height?: string };
   /** Posição do número sobre cada ícone (relativo ao bloco do ícone). Ajuste top/left aqui. */
   effect2NumberPosition?: { top: string; left: string };
   effect3NumberPosition?: { top: string; left: string };
   effect4NumberPosition?: { top: string; left: string };
+  /** Effects/03: posição do número por ícone (03, 04, 06, 07) - permite ajuste individual */
+  effect3NumberPositionByIcon?: Record<
+    string,
+    { top: string; left: string }
+  >;
+  /** Effects/03 (efeito primário): posição por ícone - central (01,02), dupla (03,04), dupla-cópia (06,07) */
+  effect4NumberPositionByIcon?: Record<
+    string,
+    { top: string; left: string }
+  >;
   /** Layout Enemie: posições dos campos numéricos (perigo, movimentação, vida) */
   enemieRedNumberPosition?: {
     top: string;
@@ -357,6 +372,18 @@ type LayoutPositions = {
     left: string;
     width: string;
     height: string;
+  };
+  /** Layout equip3-equip: box de skills dentro da descrição (posição absoluta) */
+  descriptionSkillsBox?: {
+    top?: string;
+    left?: string;
+    bottom?: string;
+    width?: string;
+    height?: string;
+    minHeight?: string;
+    borderRadius?: string;
+    boxShadow?: string;
+    backgroundColor?: string;
   };
 };
 
@@ -397,10 +424,38 @@ const layoutOptions: LayoutOption[] = (layoutsData as LayoutOption[]).map(
 const BG_LAYOUT_IDS = ["bg", "bg-deck-a", "bg-deck-b", "bg-deck-c"];
 const isBgLayout = (layoutId: string) => BG_LAYOUT_IDS.includes(layoutId);
 
-/** Layouts que usam efeitos (equip3): linha de tiro, blocos de efeito, skills Effects/04 */
-const EQUIP_LAYOUTS_WITH_EFFECTS = ["equip3"];
+/** Layouts que usam efeitos (equip3, equip3-equip): linha de tiro, blocos de efeito, skills Effects/04 */
+const EQUIP_LAYOUTS_WITH_EFFECTS = ["equip3", "equip3-equip"];
+/** Layout equip3-equip: estrutura diferente (efeitos no topo, título+ícone no final) */
+const isEquip3EquipLayout = (layoutId: string) => layoutId === "equip3-equip";
+/** Ícone fixo na descriptionSkillsBox do equip3-equip */
+const EQUIP3_EQUIP_FIXED_ICON = "/models/icons/Effects/04/02.png";
+/** IDs dos ícones selecionáveis na descriptionSkillsBox (04, 07, 08) */
+const EQUIP3_EQUIP_SELECTABLE_SKILL_IDS = ["04", "07", "08"];
+/** Effects/03: ícones que usam posição do número igual ao 03 (top: 5px, left: 39px) */
+const EFFECT3_ICONS_SAME_POS_AS_03 = ["03", "04", "06", "07"];
+/** Effects/03 (efeito primário): 3 posições - central (01,02), dupla (03,04), dupla-cópia (06,07) */
+const EFFECT4_ICONS_CENTRAL = ["01", "02"];
+const EFFECT4_ICONS_DUPLA = ["03", "04"];
+const EFFECT4_ICONS_DUPLA_COPY = ["06", "07"];
 const isEquipWithEffectsLayout = (layoutId: string) =>
   EQUIP_LAYOUTS_WITH_EFFECTS.includes(layoutId);
+
+/** Posições dos ícones do layout equip2 (usadas também no equip3 para icon1 e icon2) */
+const EQUIP2_LAYOUT_POSITIONS = {
+  icon: {
+    top: "195px",
+    left: "40px",
+    width: "128px",
+    height: "128px",
+  },
+  icon2: {
+    top: "-165px",
+    left: "460px",
+    width: "128px",
+    height: "128px",
+  },
+};
 
 /** Layouts de tensão (equip4–equip16): só título, descrição e ícones de tensão */
 const TENSION_LAYOUT_IDS = [
@@ -446,12 +501,22 @@ const mergeLayoutPositions = (
   effect2: candidate.effect2 ?? fallback.effect2,
   effect3: candidate.effect3 ?? fallback.effect3,
   effect4: candidate.effect4 ?? fallback.effect4,
+  effect1a: candidate.effect1a ?? fallback.effect1a,
+  effect2a: candidate.effect2a ?? fallback.effect2a,
+  effect3a: candidate.effect3a ?? fallback.effect3a,
+  effect4a: candidate.effect4a ?? fallback.effect4a,
   effect2NumberPosition:
     candidate.effect2NumberPosition ?? fallback.effect2NumberPosition,
   effect3NumberPosition:
     candidate.effect3NumberPosition ?? fallback.effect3NumberPosition,
   effect4NumberPosition:
     candidate.effect4NumberPosition ?? fallback.effect4NumberPosition,
+  effect3NumberPositionByIcon:
+    candidate.effect3NumberPositionByIcon ??
+    fallback.effect3NumberPositionByIcon,
+  effect4NumberPositionByIcon:
+    candidate.effect4NumberPositionByIcon ??
+    fallback.effect4NumberPositionByIcon,
   enemieRedNumberPosition:
     candidate.enemieRedNumberPosition ?? fallback.enemieRedNumberPosition,
   enemieGreenNumberPosition:
@@ -459,6 +524,8 @@ const mergeLayoutPositions = (
   enemieBlueNumberPosition:
     candidate.enemieBlueNumberPosition ?? fallback.enemieBlueNumberPosition,
   enemieIcon: candidate.enemieIcon ?? fallback.enemieIcon,
+  descriptionSkillsBox:
+    candidate.descriptionSkillsBox ?? fallback.descriptionSkillsBox,
 });
 
 const DEFAULT_LAYOUT = layoutOptions[0];
@@ -549,8 +616,6 @@ const INNER_OFFSET = {
 const DEFAULT_ACCENT = "#f97316";
 const ICON_DROP_SHADOW = "0 10px 25px rgba(0,0,0,0.15)";
 const CARD_TYPE_LABEL = "EQUIP";
-const CARD_BORDER_COLOR = "#1f1f1f";
-
 const OVERLAY_DB_NAME = "re-card-creator-overlays";
 const OVERLAY_STORE_NAME = "overlays";
 const OVERLAY_DB_VERSION = 1;
@@ -809,6 +874,8 @@ type CardPreviewProps = {
   tensionIconOptions?: IconOption[];
   enemieIconOptions?: IconOption[];
   showDebugBackground?: boolean;
+  /** Quando true, a área de overlay não é exibida (para miniaturas de layout) */
+  isLayoutPreview?: boolean;
 };
 
 const BG_LAYOUT_IMAGE = "/models/cards/Back-S.png";
@@ -826,6 +893,7 @@ const CardPreview = ({
   tensionIconOptions = [],
   enemieIconOptions = [],
   showDebugBackground = true,
+  isLayoutPreview = false,
 }: CardPreviewProps) => {
   const titleRef = useRef<HTMLHeadingElement>(null);
   const titleMeasureRef = useRef<HTMLDivElement>(null);
@@ -835,7 +903,9 @@ const CardPreview = ({
     : card.image || CARD_TEMPLATE_IMAGE;
   const layoutPositions = card.layoutPositions || DEFAULT_LAYOUT.positions;
 
-  const titleMeasureKey = `${card.title ?? ""}-${UNIFIED_TITLE_FONT_SIZE}-${layoutPositions.title.width}-${layoutPositions.title.height}`;
+  const titleFontFromLayout =
+    layoutPositions.title?.fontSize ?? UNIFIED_TITLE_FONT_SIZE;
+  const titleMeasureKey = `${card.layoutId ?? ""}-${card.title ?? ""}-${titleFontFromLayout}-${layoutPositions.title.width}-${layoutPositions.title.height}`;
   const prevTitleMeasureKeyRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
@@ -929,7 +999,6 @@ const CardPreview = ({
     top: `${cardInnerOffset.top}px`,
     width: cardInnerDimensions.width,
     height: cardInnerDimensions.height,
-    borderColor: CARD_BORDER_COLOR,
     backgroundImage: `url("${heroImage}")`,
     backgroundSize: "100% 100%",
     backgroundPosition: "center",
@@ -943,7 +1012,7 @@ const CardPreview = ({
   return (
     <div
       id={htmlId}
-      className="relative overflow-hidden rounded-3xl border-2 border-white/30 transition"
+      className="relative overflow-hidden rounded-3xl transition"
       style={{
         width: cardOuterDimensions.width,
         height: cardOuterDimensions.height,
@@ -1011,7 +1080,7 @@ const CardPreview = ({
         )}
         {!isBgLayout(card.layoutId) &&
           !isTensionLayout(card.layoutId) &&
-          overlayImage && (
+          (overlayImage || isLayoutPreview) && (
             <div
               className="absolute flex items-center justify-center overflow-hidden"
               style={{
@@ -1030,13 +1099,15 @@ const CardPreview = ({
                 }),
               }}
             >
-              <img
-                src={overlayImage}
-                alt="Arte personalizada do card"
-                className={`h-full w-full object-center ${
-                  isEnemie ? "object-cover" : "object-contain"
-                }`}
-              />
+              {overlayImage && !isLayoutPreview && (
+                <img
+                  src={overlayImage}
+                  alt="Arte personalizada do card"
+                  className={`h-full w-full object-center ${
+                    isEnemie ? "object-cover" : "object-contain"
+                  }`}
+                />
+              )}
             </div>
           )}
         {(hasEnemieIconLayout(card.layoutId) || card.layoutId === "enemie2") &&
@@ -1063,6 +1134,7 @@ const CardPreview = ({
           )}
         {!isBgLayout(card.layoutId) &&
           !isTensionLayout(card.layoutId) &&
+          !isEquip3EquipLayout(card.layoutId) &&
           (isEnemie
             ? hasEnemieIconLayout(card.layoutId)
             : (card.selectedSkills?.length ?? 0) > 0) && (
@@ -1080,11 +1152,15 @@ const CardPreview = ({
                 height: isEnemie
                   ? `${ENEMIE_SKILLS_CONTAINER_HEIGHT_PX}px`
                   : layoutPositions.skills.height,
-                ...(showDebugBackground &&
-                  !isEnemie &&
-                  card.layoutId !== "equip1" && {
-                    backgroundColor: "rgba(0, 0, 255, 0.3)",
-                  }),
+                ...(!isEnemie && {
+                  borderRadius: "15px",
+                  padding: 8,
+                  ...(card.layoutId !== "equip1" &&
+                    card.layoutId !== "equip2" && {
+                      boxShadow:
+                        "inset 0 0 8px 2px rgba(0, 0, 0, 0.5), inset 2px -2px 12px 3px rgba(0, 0, 0, 0.5)",
+                    }),
+                }),
               }}
             >
               {isEnemie &&
@@ -1820,7 +1896,7 @@ const CardPreview = ({
                     )}
                 </>
               ) : (
-                card.selectedSkills.map((skillId) => {
+                card.selectedSkills.map((skillId, skillIndex) => {
                   const skill = isEquipWithEffectsLayout(card.layoutId)
                     ? effectIconOptions04.find((o) => o.id === skillId)
                     : skillIconOptions.find((o) => o.id === skillId);
@@ -1853,8 +1929,8 @@ const CardPreview = ({
                         <div
                           className="absolute inset-0 z-10 flex items-center justify-center font-semibold drop-shadow-lg"
                           style={{
-                            color: "#E3DBD2",
-                            fontSize: isEffectSkill ? "40px" : "55px",
+                            color: "#F9EBD0",
+                            fontSize: isEffectSkill ? "45px" : "60px",
                             fontFamily: bebasNeue.style.fontFamily,
                           }}
                         >
@@ -1875,25 +1951,59 @@ const CardPreview = ({
                   className="relative flex h-24 w-24 flex-col items-center justify-center"
                   style={{
                     position: "absolute",
-                    top: layoutPositions.icon.top,
-                    left: layoutPositions.icon.left,
+                    ...(isEquip3EquipLayout(card.layoutId) && {
+                      flexDirection: "column-reverse",
+                    }),
+                    top: (isEquip3EquipLayout(card.layoutId)
+                      ? layoutPositions
+                      : isEquipWithEffectsLayout(card.layoutId)
+                        ? EQUIP2_LAYOUT_POSITIONS
+                        : layoutPositions
+                    ).icon.top,
+                    left: (isEquip3EquipLayout(card.layoutId)
+                      ? layoutPositions
+                      : isEquipWithEffectsLayout(card.layoutId)
+                        ? EQUIP2_LAYOUT_POSITIONS
+                        : layoutPositions
+                    ).icon.left,
                   }}
                 >
-                  {isEquipWithEffectsLayout(card.layoutId) ? null : (
+                  {(isEquip3EquipLayout(card.layoutId)
+                    ? layoutPositions
+                    : isEquipWithEffectsLayout(card.layoutId)
+                      ? EQUIP2_LAYOUT_POSITIONS
+                      : layoutPositions
+                  ).icon && (
                     <>
                       <div
                         className="relative flex shrink-0 flex-col items-center justify-center"
                         style={
                           !isEnemieLayout(card.layoutId)
                             ? {
-                                width:
-                                  layoutPositions.icon?.width != null
-                                    ? parsePx(layoutPositions.icon.width)
-                                    : 128,
-                                height:
-                                  layoutPositions.icon?.height != null
-                                    ? parsePx(layoutPositions.icon.height)
-                                    : 128,
+                                width: (() => {
+                                  const icon = isEquip3EquipLayout(
+                                    card.layoutId,
+                                  )
+                                    ? layoutPositions.icon
+                                    : isEquipWithEffectsLayout(card.layoutId)
+                                      ? EQUIP2_LAYOUT_POSITIONS.icon
+                                      : layoutPositions.icon;
+                                  return icon?.width != null
+                                    ? parsePx(icon.width)
+                                    : 128;
+                                })(),
+                                height: (() => {
+                                  const icon = isEquip3EquipLayout(
+                                    card.layoutId,
+                                  )
+                                    ? layoutPositions.icon
+                                    : isEquipWithEffectsLayout(card.layoutId)
+                                      ? EQUIP2_LAYOUT_POSITIONS.icon
+                                      : layoutPositions.icon;
+                                  return icon?.height != null
+                                    ? parsePx(icon.height)
+                                    : 128;
+                                })(),
                                 borderRadius: "50%",
                                 padding: 20,
                                 boxShadow:
@@ -1905,48 +2015,82 @@ const CardPreview = ({
                       >
                         <img
                           src={
-                            card.icon ||
-                            iconOptionsA[0]?.src ||
-                            DEFAULT_ICON_FALLBACK
+                            isEquip3EquipLayout(card.layoutId)
+                              ? "/models/icons/A/03.png"
+                              : card.icon ||
+                                iconOptionsA[0]?.src ||
+                                DEFAULT_ICON_FALLBACK
                           }
                           alt="Ícone do card"
                           className="h-32 w-32 shrink-0 object-contain"
                         />
                       </div>
-                      {card.icon2 && layoutPositions.icon2 && (
-                        <div
-                          className="absolute flex items-center justify-center overflow-hidden"
-                          style={{
-                            top: layoutPositions.icon2.top,
-                            left: layoutPositions.icon2.left,
-                            width:
-                              layoutPositions.icon2?.width != null
-                                ? parsePx(layoutPositions.icon2.width)
-                                : 128,
-                            height:
-                              layoutPositions.icon2?.height != null
-                                ? parsePx(layoutPositions.icon2.height)
-                                : 128,
-                            borderRadius: "50%",
-                            padding: 20,
-                            ...(!isEnemieLayout(card.layoutId) && {
-                              boxShadow:
-                                "inset 0 0 8px 2px rgba(0, 0, 0, 0.5), inset 2px -2px 12px 3px rgba(0, 0, 0, 0.5)",
-                            }),
-                          }}
-                        >
-                          <img
-                            src={card.icon2}
-                            alt="Segundo ícone"
-                            className="h-full w-full object-contain"
-                          />
-                        </div>
-                      )}
+                      {!isEquip3EquipLayout(card.layoutId) &&
+                        (isEquipWithEffectsLayout(card.layoutId) ||
+                          card.icon2) &&
+                        (isEquipWithEffectsLayout(card.layoutId)
+                          ? EQUIP2_LAYOUT_POSITIONS.icon2
+                          : layoutPositions.icon2) && (
+                          <div
+                            className="absolute flex items-center justify-center overflow-hidden"
+                            style={{
+                              top: (isEquipWithEffectsLayout(card.layoutId)
+                                ? EQUIP2_LAYOUT_POSITIONS.icon2
+                                : layoutPositions.icon2)!.top,
+                              left: (isEquipWithEffectsLayout(card.layoutId)
+                                ? EQUIP2_LAYOUT_POSITIONS.icon2
+                                : layoutPositions.icon2)!.left,
+                              width: (() => {
+                                const icon2 = isEquipWithEffectsLayout(
+                                  card.layoutId,
+                                )
+                                  ? EQUIP2_LAYOUT_POSITIONS.icon2
+                                  : layoutPositions.icon2;
+                                return icon2?.width != null
+                                  ? parsePx(icon2.width)
+                                  : 128;
+                              })(),
+                              height: (() => {
+                                const icon2 = isEquipWithEffectsLayout(
+                                  card.layoutId,
+                                )
+                                  ? EQUIP2_LAYOUT_POSITIONS.icon2
+                                  : layoutPositions.icon2;
+                                return icon2?.height != null
+                                  ? parsePx(icon2.height)
+                                  : 128;
+                              })(),
+                              borderRadius: "50%",
+                              padding: 20,
+                              ...(!isEnemieLayout(card.layoutId) && {
+                                boxShadow:
+                                  "inset 0 0 8px 2px rgba(0, 0, 0, 0.5), inset 2px -2px 12px 3px rgba(0, 0, 0, 0.5)",
+                              }),
+                            }}
+                          >
+                            <img
+                              src={
+                                isEquipWithEffectsLayout(card.layoutId)
+                                  ? "/models/icons/A/03.png"
+                                  : (card.icon2 ?? "")
+                              }
+                              alt="Segundo ícone"
+                              className="h-full w-full object-contain"
+                              style={
+                                isEquipWithEffectsLayout(card.layoutId)
+                                  ? { transform: "translateY(-20px)" }
+                                  : undefined
+                              }
+                            />
+                          </div>
+                        )}
                     </>
                   )}
 
                   <p
-                    className="mt-8 ml-5 text-black uppercase text-center font-extrabold "
+                    className={`ml-5 text-black uppercase text-center font-extrabold ${
+                      isEquip3EquipLayout(card.layoutId) ? "mb-8" : "mt-8"
+                    }`}
                     style={{
                       fontSize: "clamp(7.5em, 2vw, 3rem)",
                       letterSpacing: "0.1em",
@@ -1990,6 +2134,48 @@ const CardPreview = ({
                     </div>
                   )}
                 {isEquipWithEffectsLayout(card.layoutId) &&
+                  layoutPositions.effect1a &&
+                  layoutPositions.effect2a &&
+                  layoutPositions.effect3a &&
+                  layoutPositions.effect4a && (
+                    <>
+                      {[
+                        layoutPositions.effect1a,
+                        layoutPositions.effect2a,
+                        layoutPositions.effect3a,
+                        layoutPositions.effect4a,
+                      ].map((pos, index) => {
+                        const iconSrc = `/models/icons/effects/0${index + 1}.png`;
+                        return (
+                          <div
+                            key={`effect-a-${index + 1}`}
+                            className="relative flex items-center justify-center text-center overflow-hidden"
+                            style={{
+                              position: "absolute",
+                              top: pos.top,
+                              left: pos.left,
+                              width: pos.width ?? "130px",
+                              height: pos.height ?? "115px",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              borderRadius: "15px",
+                              padding: 8,
+                              boxShadow:
+                                "inset 0 0 8px 2px rgba(0, 0, 0, 0.5), inset 2px -2px 12px 3px rgba(0, 0, 0, 0.5)",
+                            }}
+                          >
+                            <img
+                              src={iconSrc}
+                              alt=""
+                              className="h-full w-full object-contain"
+                            />
+                          </div>
+                        );
+                      })}
+                    </>
+                  )}
+                {isEquipWithEffectsLayout(card.layoutId) &&
                   layoutPositions.effect1 &&
                   layoutPositions.effect2 &&
                   layoutPositions.effect3 &&
@@ -2029,13 +2215,13 @@ const CardPreview = ({
                     return (
                       <div
                         key={`effect-${index + 1}`}
-                        className="relative flex items-center justify-center text-center"
+                        className="relative flex items-center justify-center text-center overflow-hidden"
                         style={{
                           position: "absolute",
                           top: pos.top,
                           left: pos.left,
-                          width: "130px",
-                          height: "115px",
+                          width: pos.width ?? "130px",
+                          height: pos.height ?? "115px",
                           textAlign: "justify",
                           display: "flex",
                           alignItems: "center",
@@ -2046,6 +2232,14 @@ const CardPreview = ({
                           flexShrink: 1,
                           flexBasis: "auto",
                           flex: 1,
+                          ...(index >= 0
+                            ? {
+                                borderRadius: "15px",
+                                padding: 8,
+                                boxShadow:
+                                  "inset 0 0 8px 2px rgba(0, 0, 0, 0.5), inset 2px -2px 12px 3px rgba(0, 0, 0, 0.5)",
+                              }
+                            : {}),
                         }}
                       >
                         {index === 0 && card.linhaDeTiro && (
@@ -2064,6 +2258,7 @@ const CardPreview = ({
                               flex: 1,
                               fontSize: "6rem",
                               fontFamily: bebasNeue.style.fontFamily,
+                              transform: "translateY(10px)",
                             }}
                           >
                             {card.linhaDeTiro}
@@ -2102,7 +2297,7 @@ const CardPreview = ({
                                   textAlign: "center" as const,
                                   fontFamily: bebasNeue.style.fontFamily,
                                   fontWeight: 600,
-                                  color: "#E3DBD2",
+                                  color: "#F9EBD0",
                                   fontSize: "0.5em",
                                   width: "60px",
                                   height: "60px",
@@ -2125,8 +2320,8 @@ const CardPreview = ({
                                           top: "5px",
                                           left: "39px",
                                           transform: isCenterX
-                                            ? "translateX(-50%)"
-                                            : undefined,
+                                            ? "translateX(-50%) translateY(15px)"
+                                            : "translateY(15px)",
                                           fontSize: numFontSize,
                                         }}
                                         title={tip0 ?? undefined}
@@ -2154,8 +2349,8 @@ const CardPreview = ({
                                           top: "50px",
                                           left: "90px",
                                           transform: isCenterX
-                                            ? "translateX(-50%)"
-                                            : undefined,
+                                            ? "translateX(-50%) translateY(15px)"
+                                            : "translateY(15px)",
                                           fontSize: "45px",
                                         }}
                                         title={tip1 ?? undefined}
@@ -2179,10 +2374,40 @@ const CardPreview = ({
                                     </>
                                   );
                                 }
-                                const isEffect3Or4Icon3 =
-                                  (index === 2 || index === 3) &&
-                                  effectData.icon === "03";
-                                if (isEffect3Or4Icon3) {
+                                const iconIdNorm =
+                                  String(effectData.icon).padStart(2, "0");
+                                const isEffect3SpecialPos =
+                                  index === 2 &&
+                                  EFFECT3_ICONS_SAME_POS_AS_03.includes(
+                                    iconIdNorm,
+                                  );
+                                const isEffect4DuplaOrCopy =
+                                  index === 3 &&
+                                  (EFFECT4_ICONS_DUPLA.includes(iconIdNorm) ||
+                                    EFFECT4_ICONS_DUPLA_COPY.includes(
+                                      iconIdNorm,
+                                    ));
+                                const isEffect3Or4SpecialPos =
+                                  isEffect3SpecialPos || isEffect4DuplaOrCopy;
+                                if (isEffect3Or4SpecialPos) {
+                                  const posByIcon =
+                                    index === 2
+                                      ? layoutPositions.effect3NumberPositionByIcon
+                                      : layoutPositions.effect4NumberPositionByIcon;
+                                  const iconPos =
+                                    posByIcon?.[iconIdNorm] ??
+                                    (index === 3 &&
+                                    EFFECT4_ICONS_DUPLA_COPY.includes(
+                                      iconIdNorm,
+                                    )
+                                      ? (posByIcon?.["03"] ?? posByIcon?.["04"] ?? {
+                                          top: "5px",
+                                          left: "39px",
+                                        })
+                                      : {
+                                          top: "5px",
+                                          left: "39px",
+                                        });
                                   const tooltipEffect3Or4 =
                                     index === 2
                                       ? TOOLTIP_EFFECT3[effectData.number]
@@ -2192,11 +2417,11 @@ const CardPreview = ({
                                       className="group absolute z-10 flex items-center justify-center text-center font-semibold drop-shadow-lg"
                                       style={{
                                         ...baseNumStyle,
-                                        top: "5px",
-                                        left: "39px",
+                                        top: iconPos.top,
+                                        left: iconPos.left,
                                         transform: isCenterX
-                                          ? "translateX(-50%)"
-                                          : undefined,
+                                          ? "translateX(-50%) translateY(15px)"
+                                          : "translateY(15px)",
                                         fontSize: "45px",
                                         width: "60px",
                                         height: "60px",
@@ -2230,12 +2455,13 @@ const CardPreview = ({
                                       top: pos.top,
                                       left: pos.left,
                                       transform: isCenterX
-                                        ? "translateX(-50%)"
-                                        : undefined,
+                                        ? "translateX(-50%) translateY(15px)"
+                                        : "translateY(15px)",
                                       width: "120px",
                                       height: "120px",
                                       fontSize: "65px",
                                       fontFamily: bebasNeue.style.fontFamily,
+                                      color: "#F9EBD0",
                                     }}
                                     title={tooltipDefault ?? undefined}
                                   >
@@ -2267,13 +2493,17 @@ const CardPreview = ({
             <div
               ref={titleMeasureRef}
               aria-hidden
-              className="pointer-events-none absolute left-[-9999px] top-0 whitespace-pre-line text-center"
+              className="pointer-events-none whitespace-pre-line text-center"
               style={{
+                position: "fixed",
+                left: 0,
+                top: 0,
+                visibility: "hidden",
                 width: layoutPositions.title.width,
                 fontSize:
                   titleFontSizePx != null
                     ? `${titleFontSizePx}px`
-                    : UNIFIED_TITLE_FONT_SIZE,
+                    : titleFontFromLayout,
                 lineHeight: 0.9,
                 fontFamily: bebasNeue.style.fontFamily,
               }}
@@ -2294,7 +2524,7 @@ const CardPreview = ({
                 fontSize:
                   titleFontSizePx != null
                     ? `${titleFontSizePx}px`
-                    : UNIFIED_TITLE_FONT_SIZE,
+                    : titleFontFromLayout,
                 lineHeight: 0.9,
                 textAlign: isEnemie ? "left" : "center",
                 whiteSpace: "pre-line",
@@ -2381,7 +2611,149 @@ const CardPreview = ({
                   </div>
                 )}
               </div>
-            ) : (
+            ) : isEquip3EquipLayout(card.layoutId) ? (() => {
+              const hasSelectedSkill = (card.selectedSkills ?? []).some(
+                (id) =>
+                  EQUIP3_EQUIP_SELECTABLE_SKILL_IDS.includes(
+                    String(id).padStart(2, "0"),
+                  ) ||
+                  EQUIP3_EQUIP_SELECTABLE_SKILL_IDS.includes(String(id)),
+              );
+              return hasSelectedSkill ? (
+                <div
+                  className="absolute flex flex-wrap justify-center items-center content-center gap-4 text-4xl text-black drop-shadow-lg"
+                  style={{
+                    top: layoutPositions.description.top,
+                    left: layoutPositions.description.left,
+                    width: layoutPositions.description.width || "570px",
+                    height: layoutPositions.description.height || "420px",
+                    fontFamily: ebGaramond.style.fontFamily,
+                    fontWeight: 590,
+                    lineHeight: 1,
+                    padding: "0 40px 40px 40px",
+                    borderRadius: "15px",
+                    boxShadow:
+                      "inset 0 0 8px 2px rgba(0, 0, 0, 0.5), inset 2px -2px 12px 3px rgba(0, 0, 0, 0.5)",
+                  }}
+                >
+                  <div
+                    className="flex shrink-0 items-center justify-center gap-3 mt-[35px] ml-[-20px] "
+                    style={{
+                      width:
+                        layoutPositions.descriptionSkillsBox?.width ?? "200px",
+                      height:
+                        layoutPositions.descriptionSkillsBox?.height ?? "80px",
+                      minHeight:
+                        layoutPositions.descriptionSkillsBox?.minHeight ?? "60px",
+                      borderRadius:
+                        layoutPositions.descriptionSkillsBox?.borderRadius ??
+                        "25px",
+                      boxShadow:
+                        layoutPositions.descriptionSkillsBox?.boxShadow ??
+                        "inset 0 0 8px 2px rgba(0, 0, 0, 0.5), inset 2px -2px 12px 3px rgba(0, 0, 0, 0.5)",
+                      backgroundColor:
+                        layoutPositions.descriptionSkillsBox?.backgroundColor ??
+                        "#ef4444",
+                    }}
+                  >
+                    <img
+                      src={EQUIP3_EQUIP_FIXED_ICON}
+                      alt=""
+                      className="object-contain"
+                      style={{
+                        width: "75px",
+                        height: "75px",
+                      }}
+                    />
+                    {(() => {
+                      const selectableId = (card.selectedSkills ?? []).find(
+                        (id) =>
+                          EQUIP3_EQUIP_SELECTABLE_SKILL_IDS.includes(
+                            String(id).padStart(2, "0"),
+                          ) ||
+                          EQUIP3_EQUIP_SELECTABLE_SKILL_IDS.includes(String(id)),
+                      );
+                      const skill = selectableId
+                        ? effectIconOptions04.find(
+                            (o) =>
+                              o.id === selectableId ||
+                              String(o.id) === String(selectableId),
+                          )
+                        : null;
+                      if (!skill) return null;
+                      const skillId = skill.id;
+                      const normalizedId = String(skillId).padStart(2, "0");
+                      const is07Or08 =
+                        normalizedId === "07" || normalizedId === "08";
+                      const numberInFront = (
+                        card.skillNumbers?.[skillId] ??
+                        (selectableId
+                          ? card.skillNumbers?.[selectableId]
+                          : undefined)
+                      )?.trim();
+                      return (
+                        <div className="relative flex items-center justify-center">
+                          <img
+                            src={skill.src}
+                            alt={skill.label}
+                            className="object-contain"
+                            style={{ width: "75px", height: "75px" }}
+                          />
+                          {numberInFront ? (
+                            <div
+                              className="absolute inset-0 z-10 flex items-center justify-center font-semibold drop-shadow-lg"
+                              style={{
+                                color: "#F9EBD0",
+                                fontSize: is07Or08 ? "25px" : "45px",
+                                fontFamily: bebasNeue.style.fontFamily,
+                                ...(is07Or08 && {
+                                  transform: "translate(-19px, -13px)",
+                                }),
+                              }}
+                            >
+                              {numberInFront}
+                            </div>
+                          ) : null}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                  <p
+                    className="min-w-0 flex-1 text-xl whitespace-pre-line text-justify mt-[40px] h-[105px] "
+                    style={{
+                      textAlignLast: "center",
+                      letterSpacing: "-0.03em",
+                      lineHeight: 1.1,
+                    }}
+                  >
+                    {renderTextWithBoldAndIcons(card.description || "")}
+                  </p>
+                </div>
+              ) : (
+                <p
+                  className="absolute text-xl text-black drop-shadow-lg text-center flex flex-wrap justify-center items-center content-center"
+                  style={{
+                    top: layoutPositions.description.top,
+                    left: layoutPositions.description.left,
+                    width: layoutPositions.description.width || "570px",
+                    height: layoutPositions.description.height || "420px",
+                    fontFamily: ebGaramond.style.fontFamily,
+                    fontWeight: 590,
+                    lineHeight: 1.1,
+                    letterSpacing: "-0.03em",
+                    padding: "0 40px 40px 40px",
+                    borderRadius: "15px",
+                    boxShadow:
+                      "inset 0 0 8px 2px rgba(0, 0, 0, 0.5), inset 2px -2px 12px 3px rgba(0, 0, 0, 0.5)",
+                    whiteSpace: "pre-line",
+                    textAlign: "center",
+                    textAlignLast: "center",
+                  }}
+                >
+                  {renderTextWithBoldAndIcons(card.description || "")}
+                </p>
+              );
+            })() : card.layoutId === "equip3" ? null : (
               <p
                 className={`absolute text-4xl text-black drop-shadow-lg ${
                   isEnemie ? "text-left" : "text-center"
@@ -2406,11 +2778,12 @@ const CardPreview = ({
                   ...(isEnemie && {
                     padding: "2%",
                   }),
-                  ...(!isEnemieLayout(card.layoutId) && {
-                    borderRadius: "15px",
-                    boxShadow:
-                      "inset 0 0 8px 2px rgba(0, 0, 0, 0.5), inset 2px -2px 12px 3px rgba(0, 0, 0, 0.5)",
-                  }),
+                  ...(!isEnemieLayout(card.layoutId) &&
+                    !isEquipWithEffectsLayout(card.layoutId) && {
+                      borderRadius: "15px",
+                      boxShadow:
+                        "inset 0 0 8px 2px rgba(0, 0, 0, 0.5), inset 2px -2px 12px 3px rgba(0, 0, 0, 0.5)",
+                    }),
                 }}
               >
                 {renderTextWithBoldAndIcons(card.description || "")}
@@ -2513,10 +2886,15 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    if (form.icon === "" && iconOptionsA.length > 0) {
+    if (
+      form.layout === "equip3-equip" &&
+      form.icon !== "/models/icons/A/03.png"
+    ) {
+      setForm((prev) => ({ ...prev, icon: "/models/icons/A/03.png" }));
+    } else if (form.icon === "" && iconOptionsA.length > 0) {
       setForm((prev) => ({ ...prev, icon: iconOptionsA[0].src }));
     }
-  }, [iconOptionsA.length]);
+  }, [iconOptionsA.length, form.layout, form.icon]);
 
   const handleArtUpload = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -3316,28 +3694,64 @@ export default function Home() {
                   }}
                 >
                   {layoutOptions.map((option) => {
-                    const layoutScale = 100 / OUTER_DIMENSIONS.width;
+                    const layoutConfig = getLayoutConfig(option.id);
+                    const isEnemie = isEnemieLayout(option.id);
+                    const dims = isEnemie
+                      ? ENEMIE_OUTER_DIMENSIONS
+                      : OUTER_DIMENSIONS;
+                    const layoutScale = 100 / dims.width;
                     const thumbW = 100;
-                    const thumbH = Math.round(
-                      OUTER_DIMENSIONS.height * layoutScale,
-                    );
+                    const thumbH = Math.round(dims.height * layoutScale);
                     const isSelected = form.layout === option.id;
+                    const isEquip3 = isEquipWithEffectsLayout(option.id);
+                    const layoutPreviewCard: Omit<CardDesign, "id"> = {
+                      ...previewCard,
+                      layoutId: option.id,
+                      layoutPositions: layoutConfig.positions,
+                      image: option.image,
+                      icon:
+                        option.id === "equip3-equip"
+                          ? "/models/icons/A/03.png"
+                          : isEquip3 || isEnemie
+                            ? ""
+                            : (iconOptionsA[0]?.src ?? form.icon),
+                      icon2: layoutConfig.positions.icon2
+                        ? (iconOptionsB[0]?.src ?? form.icon2)
+                        : null,
+                      icon2Id: layoutConfig.positions.icon2
+                        ? (iconOptionsB[0]?.id ?? form.icon2Id)
+                        : null,
+                      linhaDeTiro: isEquip3 ? "LOS" : form.linhaDeTiro,
+                      effect2Icon:
+                        effect2IconOptions[0]?.id ?? form.effect2Icon,
+                      effect2Number: "1",
+                      effect3Icon:
+                        effect3IconOptions[0]?.id ?? form.effect3Icon,
+                      effect3Number: "",
+                      effect4Icon:
+                        effect4IconOptions[0]?.id ?? form.effect4Icon,
+                      effect4Number: "1",
+                    };
                     return (
                       <button
                         key={option.id}
                         type="button"
                         onClick={() => {
                           const selected = getLayoutConfig(option.id);
-                          const isEquip3 = isEquipWithEffectsLayout(
+                          const isEquip3Click = isEquipWithEffectsLayout(
                             selected.id,
                           );
+                          const isEquip3EquipClick =
+                            selected.id === "equip3-equip";
                           setForm((prev) => ({
                             ...prev,
                             layout: selected.id,
                             image: selected.image,
-                            icon: isEquip3
-                              ? ""
-                              : prev.icon || (iconOptionsA[0]?.src ?? ""),
+                            icon: isEquip3EquipClick
+                              ? "/models/icons/A/03.png"
+                              : isEquip3Click
+                                ? ""
+                                : prev.icon || (iconOptionsA[0]?.src ?? ""),
                             icon2: selected.positions.icon2 ? prev.icon2 : "",
                             icon2Id: selected.positions.icon2
                               ? prev.icon2Id
@@ -3352,14 +3766,34 @@ export default function Home() {
                         style={{
                           width: thumbW,
                           height: thumbH,
+                          position: "relative",
                         }}
                         title={option.label}
                       >
-                        <img
-                          src={option.image}
-                          alt={option.label}
-                          className="h-full w-full object-cover object-top"
-                        />
+                        <div
+                          className="absolute left-0 top-0 origin-top-left"
+                          style={{
+                            width: dims.width,
+                            height: dims.height,
+                            transform: `scale(${layoutScale})`,
+                          }}
+                        >
+                          <CardPreview
+                            card={layoutPreviewCard}
+                            overlayImage={null}
+                            isLayoutPreview
+                            htmlId={`layout-preview-${option.id}`}
+                            iconOptionsA={iconOptionsA}
+                            skillIconOptions={skillIconOptions}
+                            effect2IconOptions={effect2IconOptions}
+                            effect3IconOptions={effect3IconOptions}
+                            effect4IconOptions={effect4IconOptions}
+                            effectIconOptions04={effectIconOptions04}
+                            tensionIconOptions={tensionIconOptions}
+                            enemieIconOptions={enemieIconOptions}
+                            showDebugBackground={false}
+                          />
+                        </div>
                       </button>
                     );
                   })}
@@ -3380,23 +3814,25 @@ export default function Home() {
                   }
                 />
               </label>
-              <label className="flex flex-col gap-2 text-sm text-slate-300">
-                Descrição (Enter quebra a linha)
-                <textarea
-                  ref={descriptionTextareaRef}
-                  rows={3}
-                  placeholder="Conte um pouco mais sobre a campanha..."
-                  value={form.description || ""}
-                  className="rounded-2xl border border-white/10 bg-transparent px-4 py-3 text-sm leading-relaxed text-white outline-none transition focus:border-slate-300 overflow-hidden resize-y min-h-[80px]"
-                  style={{ minHeight: 80 }}
-                  onChange={(event) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      description: capitalizeLongWords(event.target.value),
-                    }))
-                  }
-                />
-              </label>
+              {form.layout !== "equip3" && (
+                <label className="flex flex-col gap-2 text-sm text-slate-300">
+                  Descrição (Enter quebra a linha)
+                  <textarea
+                    ref={descriptionTextareaRef}
+                    rows={3}
+                    placeholder="Conte um pouco mais sobre a campanha..."
+                    value={form.description || ""}
+                    className="rounded-2xl border border-white/10 bg-transparent px-4 py-3 text-sm leading-relaxed text-white outline-none transition focus:border-slate-300 overflow-hidden resize-y min-h-[80px]"
+                    style={{ minHeight: 80 }}
+                    onChange={(event) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        description: capitalizeLongWords(event.target.value),
+                      }))
+                    }
+                  />
+                </label>
+              )}
               {hasEnemieIconLayout(form.layout) && (
                 <div className="flex gap-4">
                   <label className="flex flex-col gap-2 text-sm text-slate-300 flex-1">
@@ -3472,6 +3908,7 @@ export default function Home() {
             </div>
 
             {form.layout !== "equip3" &&
+              form.layout !== "equip3-equip" &&
               !isTensionLayout(form.layout) &&
               !isEnemieLayout(form.layout) && (
                 <>
@@ -3535,6 +3972,7 @@ export default function Home() {
               )}
 
             {form.layout !== "equip3" &&
+              form.layout !== "equip3-equip" &&
               !isTensionLayout(form.layout) &&
               !isEnemieLayout(form.layout) && (
                 <div className="space-y-3">
@@ -3630,25 +4068,27 @@ export default function Home() {
                   </div>
                 </div>
               )}
-            {form.layout === "equip3" && (
+            {(form.layout === "equip3" || form.layout === "equip3-equip") && (
               <>
-                <label className="flex flex-col gap-2 text-sm text-slate-300">
-                  Marcador de Munição
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    value={form.equip3Number || ""}
-                    maxLength={3}
-                    className="rounded-2xl border border-white/10 bg-transparent px-4 py-3 text-sm text-white outline-none transition focus:border-slate-300"
-                    placeholder="ex: 09"
-                    onChange={(event) =>
-                      setForm((prev) => ({
-                        ...prev,
-                        equip3Number: event.target.value,
-                      }))
-                    }
-                  />
-                </label>
+                {form.layout === "equip3" && (
+                  <label className="flex flex-col gap-2 text-sm text-slate-300">
+                    Marcador de Munição
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={form.equip3Number || ""}
+                      maxLength={3}
+                      className="rounded-2xl border border-white/10 bg-transparent px-4 py-3 text-sm text-white outline-none transition focus:border-slate-300"
+                      placeholder="ex: 09"
+                      onChange={(event) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          equip3Number: event.target.value,
+                        }))
+                      }
+                    />
+                  </label>
+                )}
 
                 <div className="space-y-4 border-t border-white/10 pt-4">
                   <div className="space-y-2">
@@ -3829,7 +4269,18 @@ export default function Home() {
                   <h3 className="text-xl font-semibold">Skills</h3>
 
                   <div className="flex flex-wrap gap-4 justify-center items-start">
-                    {effectIconOptions04.map((item) => {
+                    {(form.layout === "equip3-equip"
+                      ? effectIconOptions04.filter(
+                          (o) =>
+                            EQUIP3_EQUIP_SELECTABLE_SKILL_IDS.includes(
+                              String(o.id).padStart(2, "0"),
+                            ) ||
+                            EQUIP3_EQUIP_SELECTABLE_SKILL_IDS.includes(
+                              String(o.id),
+                            ),
+                        )
+                      : effectIconOptions04
+                    ).map((item) => {
                       const selected = form.selectedSkills.includes(item.id);
                       return (
                         <div
@@ -3843,11 +4294,33 @@ export default function Home() {
                                 const exists = prev.selectedSkills.includes(
                                   item.id,
                                 );
-                                const next = exists
-                                  ? prev.selectedSkills.filter(
+                                let next: string[];
+                                if (form.layout === "equip3-equip") {
+                                  if (exists) {
+                                    next = prev.selectedSkills.filter(
                                       (id) => id !== item.id,
-                                    )
-                                  : [...prev.selectedSkills, item.id];
+                                    );
+                                  } else {
+                                    next = [
+                                      ...prev.selectedSkills.filter(
+                                        (id) =>
+                                          !EQUIP3_EQUIP_SELECTABLE_SKILL_IDS.includes(
+                                            String(id).padStart(2, "0"),
+                                          ) &&
+                                          !EQUIP3_EQUIP_SELECTABLE_SKILL_IDS.includes(
+                                            String(id),
+                                          ),
+                                      ),
+                                      item.id,
+                                    ];
+                                  }
+                                } else {
+                                  next = exists
+                                    ? prev.selectedSkills.filter(
+                                        (id) => id !== item.id,
+                                      )
+                                    : [...prev.selectedSkills, item.id];
+                                }
                                 return { ...prev, selectedSkills: next };
                               })
                             }
@@ -3896,9 +4369,31 @@ export default function Home() {
                     })}
                   </div>
                   <div className="flex flex-wrap items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 p-2 text-xs uppercase tracking-[0.3em] text-slate-300">
-                    {form.selectedSkills.length === 0
+                    {(form.layout === "equip3-equip"
+                      ? form.selectedSkills.filter(
+                          (id) =>
+                            EQUIP3_EQUIP_SELECTABLE_SKILL_IDS.includes(
+                              String(id).padStart(2, "0"),
+                            ) ||
+                            EQUIP3_EQUIP_SELECTABLE_SKILL_IDS.includes(
+                              String(id),
+                            ),
+                        )
+                      : form.selectedSkills
+                    ).length === 0
                       ? ""
-                      : form.selectedSkills.map((skillId) => {
+                      : (form.layout === "equip3-equip"
+                          ? form.selectedSkills.filter(
+                              (id) =>
+                                EQUIP3_EQUIP_SELECTABLE_SKILL_IDS.includes(
+                                  String(id).padStart(2, "0"),
+                                ) ||
+                                EQUIP3_EQUIP_SELECTABLE_SKILL_IDS.includes(
+                                  String(id),
+                                ),
+                            )
+                          : form.selectedSkills
+                        ).map((skillId) => {
                           const skill = effectIconOptions04.find(
                             (o) => o.id === skillId,
                           );
@@ -4604,11 +5099,14 @@ export default function Home() {
               image={imageToCrop}
               crop={crop}
               zoom={zoom}
-              minZoom={1}
+              minZoom={0.2}
               maxZoom={4}
               aspect={cropAspect}
               onCropChange={setCrop}
-              onZoomChange={setZoom}
+              onZoomChange={(z) => {
+                setZoom(z);
+                setCrop({ x: 0, y: 0 });
+              }}
               onCropAreaChange={(_area, croppedAreaPixels) => {
                 setCropCompleteArea(croppedAreaPixels);
               }}
@@ -4620,11 +5118,14 @@ export default function Home() {
               <span className="shrink-0 font-medium">Zoom</span>
               <input
                 type="range"
-                min={1}
+                min={0.2}
                 max={4}
                 step={0.1}
                 value={zoom}
-                onChange={(e) => setZoom(Number(e.target.value))}
+                onChange={(e) => {
+                  setZoom(Number(e.target.value));
+                  setCrop({ x: 0, y: 0 });
+                }}
                 className="h-2 flex-1 cursor-pointer appearance-none rounded-lg bg-white/20 accent-amber-500"
               />
               <span className="shrink-0 w-10 text-right tabular-nums text-slate-300">
