@@ -3,6 +3,11 @@
     "id": "equip1",
     "label": "Equipamento 1",
     "image": "/models/cards/01.png",
+    "categoryId": "resident",
+    "categoryLabel": "Resident Evil",
+    "backImage": "/models/cards/Back-S.png",
+    "allowedMainIconIds": ["01", "02", "03", "04"],
+    "allowedSecondaryIconIds": ["01", "02", "03", "04"],
     "positions": {
       "icon": {
         "top": "195px",
@@ -12,13 +17,15 @@
       },
       "title": {
         "top": "30px",
-        "left": "160px",
+        "left": "155px",
         "width": "468px",
         "height": "125px",
         "fontSize": "__UNIFIED_TITLE_FONT_SIZE__",
         "fontSizeLine2": "__UNIFIED_TITLE_FONT_SIZE_LINE2__",
         "fontSizeLine3": "__UNIFIED_TITLE_FONT_SIZE_LINE3__",
-        "lineHeight": "__UNIFIED_TITLE_LINE_HEIGHT__"
+        "lineHeight": "__UNIFIED_TITLE_LINE_HEIGHT__",
+        "boxShadow": true,
+        "label": "T?tulo"
       },
       "description": {
         "top": "480px",
@@ -26,7 +33,9 @@
         "width": "610px",
         "height": "440px",
         "fontSize": "__UNIFIED_DESCRIPTION_FONT_SIZE__",
-        "lineHeight": "__UNIFIED_DESCRIPTION_LINE_HEIGHT__"
+        "lineHeight": "__UNIFIED_DESCRIPTION_LINE_HEIGHT__",
+        "boxShadow": true,
+        "label": "Descri??o"
       },
       "overlay": {
         "top": "165px",
@@ -41,23 +50,71 @@
         "height": "100px"
       },
       "effect3NumberPositionByIcon": {
-        "03": { "top": "0px", "left": "44px" },
-        "04": { "top": "0px", "left": "44px" },
-        "06": { "top": "5px", "left": "39px" },
-        "07": { "top": "5px", "left": "39px" }
+        "03": {
+          "top": "0px",
+          "left": "44px"
+        },
+        "04": {
+          "top": "0px",
+          "left": "44px"
+        },
+        "06": {
+          "top": "5px",
+          "left": "39px"
+        },
+        "07": {
+          "top": "5px",
+          "left": "39px"
+        }
       },
       "effect4NumberPositionByIcon": {
-        "03": { "top": "0px", "left": "44px" },
-        "04": { "top": "0px", "left": "44px" },
-        "06": { "top": "5px", "left": "39px" },
-        "07": { "top": "5px", "left": "39px" }
+        "03": {
+          "top": "0px",
+          "left": "44px"
+        },
+        "04": {
+          "top": "0px",
+          "left": "44px"
+        },
+        "06": {
+          "top": "5px",
+          "left": "39px"
+        },
+        "07": {
+          "top": "5px",
+          "left": "39px"
+        }
       }
+    },
+    "icons": [
+      {
+        "path": "icon1",
+        "label": "Icone 1",
+        "allowedIds": ["01", "02", "03", "04"],
+        "positions": {
+          "top": "45px",
+          "left": "30px",
+          "width": "128px",
+          "height": "128px"
+        },
+        "boxShadow": true
+      }
+    ],
+    "skillsConfig": {
+      "path": "C",
+      "label": "Skills",
+      "allowedIds": []
     }
   },
   {
     "id": "equip2",
     "label": "Equipamento 2",
     "image": "/models/cards/02.png",
+    "categoryId": "resident",
+    "categoryLabel": "Resident Evil",
+    "backImage": "/models/cards/Back-S.png",
+    "allowedMainIconIds": ["01", "02", "03", "04"],
+    "allowedSecondaryIconIds": ["01", "02", "03", "04"],
     "positions": {
       "icon": {
         "top": "195px",
@@ -79,7 +136,9 @@
         "fontSize": "__UNIFIED_TITLE_FONT_SIZE__",
         "fontSizeLine2": "__UNIFIED_TITLE_FONT_SIZE_LINE2__",
         "fontSizeLine3": "__UNIFIED_TITLE_FONT_SIZE_LINE3__",
-        "lineHeight": "__UNIFIED_TITLE_LINE_HEIGHT__"
+        "lineHeight": "__UNIFIED_TITLE_LINE_HEIGHT__",
+        "boxShadow": true,
+        "label": "T?tulo"
       },
       "description": {
         "top": "480px",
@@ -87,7 +146,9 @@
         "width": "610px",
         "height": "440px",
         "fontSize": "__UNIFIED_DESCRIPTION_FONT_SIZE__",
-        "lineHeight": "__UNIFIED_DESCRIPTION_LINE_HEIGHT__"
+        "lineHeight": "__UNIFIED_DESCRIPTION_LINE_HEIGHT__",
+        "boxShadow": true,
+        "label": "Descri??o"
       },
       "overlay": {
         "top": "165px",
@@ -101,12 +162,48 @@
         "width": "560px",
         "height": "100px"
       }
+    },
+    "icons": [
+      {
+        "path": "A",
+        "label": "?cone 1",
+        "allowedIds": ["01", "02", "03", "04"],
+        "positions": {
+          "top": "195px",
+          "left": "40px",
+          "width": "128px",
+          "height": "128px"
+        },
+        "boxShadow": true
+      },
+      {
+        "path": "B",
+        "label": "Dados",
+        "allowedIds": ["01", "02", "03", "04"],
+        "positions": {
+          "top": "-165px",
+          "left": "460px",
+          "width": "128px",
+          "height": "128px"
+        },
+        "boxShadow": true
+      }
+    ],
+    "skillsConfig": {
+      "path": "C",
+      "label": "Skills",
+      "allowedIds": []
     }
   },
   {
     "id": "equip3-equip",
     "label": "Equipamento 3",
     "image": "/models/cards/02.png",
+    "categoryId": "resident",
+    "categoryLabel": "Resident Evil",
+    "backImage": "/models/cards/Back-S.png",
+    "allowedMainIconIds": ["01", "02", "03", "04"],
+    "allowedSecondaryIconIds": ["01", "02", "03", "04"],
     "positions": {
       "icon": {
         "top": "670px",
@@ -122,7 +219,9 @@
         "fontSize": "__UNIFIED_TITLE_FONT_SIZE__",
         "fontSizeLine2": "__UNIFIED_TITLE_FONT_SIZE_LINE2__",
         "fontSizeLine3": "__UNIFIED_TITLE_FONT_SIZE_LINE3__",
-        "lineHeight": "__UNIFIED_TITLE_LINE_HEIGHT__"
+        "lineHeight": "__UNIFIED_TITLE_LINE_HEIGHT__",
+        "boxShadow": true,
+        "label": "T?tulo"
       },
       "description": {
         "top": "330px",
@@ -130,7 +229,9 @@
         "width": "610px",
         "height": "120px",
         "fontSize": "__UNIFIED_DESCRIPTION_FONT_SIZE__",
-        "lineHeight": "__UNIFIED_DESCRIPTION_LINE_HEIGHT__"
+        "lineHeight": "__UNIFIED_DESCRIPTION_LINE_HEIGHT__",
+        "boxShadow": true,
+        "label": "Descri??o"
       },
       "overlay": {
         "top": "460px",
@@ -205,16 +306,40 @@
         "left": "50%"
       },
       "effect3NumberPositionByIcon": {
-        "03": { "top": "0px", "left": "44px" },
-        "04": { "top": "0px", "left": "44px" },
-        "06": { "top": "5px", "left": "39px" },
-        "07": { "top": "5px", "left": "39px" }
+        "03": {
+          "top": "0px",
+          "left": "44px"
+        },
+        "04": {
+          "top": "0px",
+          "left": "44px"
+        },
+        "06": {
+          "top": "5px",
+          "left": "39px"
+        },
+        "07": {
+          "top": "5px",
+          "left": "39px"
+        }
       },
       "effect4NumberPositionByIcon": {
-        "03": { "top": "0px", "left": "44px" },
-        "04": { "top": "0px", "left": "44px" },
-        "06": { "top": "5px", "left": "39px" },
-        "07": { "top": "5px", "left": "39px" }
+        "03": {
+          "top": "0px",
+          "left": "44px"
+        },
+        "04": {
+          "top": "0px",
+          "left": "44px"
+        },
+        "06": {
+          "top": "5px",
+          "left": "39px"
+        },
+        "07": {
+          "top": "5px",
+          "left": "39px"
+        }
       },
       "descriptionSkillsBox": {
         "left": "15px",
@@ -226,12 +351,36 @@
         "boxShadow": "inset 0 0 8px 2px rgba(0, 0, 0, 0.5), inset 2px -2px 12px 3px rgba(0, 0, 0, 0.5)",
         "backgroundColor": ""
       }
+    },
+    "icons": [
+      {
+        "path": "A",
+        "label": "?cone 1",
+        "allowedIds": ["01", "02", "03", "04"],
+        "positions": {
+          "top": "670px",
+          "left": "40px",
+          "width": "128px",
+          "height": "128px"
+        },
+        "boxShadow": true
+      }
+    ],
+    "skillsConfig": {
+      "path": "C",
+      "label": "Skills",
+      "allowedIds": []
     }
   },
   {
     "id": "equip3",
     "label": "Arma",
     "image": "/models/cards/03.png",
+    "categoryId": "resident",
+    "categoryLabel": "Resident Evil",
+    "backImage": "/models/cards/Back-S.png",
+    "allowedMainIconIds": ["01", "02", "03", "04"],
+    "allowedSecondaryIconIds": ["01", "02", "03", "04"],
     "positions": {
       "icon": {
         "top": "250px",
@@ -253,7 +402,9 @@
         "fontSize": "__UNIFIED_TITLE_FONT_SIZE__",
         "fontSizeLine2": "__UNIFIED_TITLE_FONT_SIZE_LINE2__",
         "fontSizeLine3": "__UNIFIED_TITLE_FONT_SIZE_LINE3__",
-        "lineHeight": "__UNIFIED_TITLE_LINE_HEIGHT__"
+        "lineHeight": "__UNIFIED_TITLE_LINE_HEIGHT__",
+        "boxShadow": true,
+        "label": "T?tulo"
       },
       "description": {
         "top": "560px",
@@ -261,7 +412,9 @@
         "width": "570px",
         "height": "420px",
         "fontSize": "__UNIFIED_DESCRIPTION_FONT_SIZE__",
-        "lineHeight": "__UNIFIED_DESCRIPTION_LINE_HEIGHT__"
+        "lineHeight": "__UNIFIED_DESCRIPTION_LINE_HEIGHT__",
+        "boxShadow": true,
+        "label": "Descri??o"
       },
       "overlay": {
         "top": "175px",
@@ -336,23 +489,83 @@
         "left": "50%"
       },
       "effect3NumberPositionByIcon": {
-        "03": { "top": "0px", "left": "44px" },
-        "04": { "top": "0px", "left": "44px" },
-        "06": { "top": "5px", "left": "39px" },
-        "07": { "top": "5px", "left": "39px" }
+        "03": {
+          "top": "0px",
+          "left": "44px"
+        },
+        "04": {
+          "top": "0px",
+          "left": "44px"
+        },
+        "06": {
+          "top": "5px",
+          "left": "39px"
+        },
+        "07": {
+          "top": "5px",
+          "left": "39px"
+        }
       },
       "effect4NumberPositionByIcon": {
-        "03": { "top": "0px", "left": "44px" },
-        "04": { "top": "0px", "left": "44px" },
-        "06": { "top": "5px", "left": "39px" },
-        "07": { "top": "5px", "left": "39px" }
+        "03": {
+          "top": "0px",
+          "left": "44px"
+        },
+        "04": {
+          "top": "0px",
+          "left": "44px"
+        },
+        "06": {
+          "top": "5px",
+          "left": "39px"
+        },
+        "07": {
+          "top": "5px",
+          "left": "39px"
+        }
       }
+    },
+    "icons": [
+      {
+        "path": "A",
+        "label": "?cone 1",
+        "allowedIds": ["01", "02", "03", "04"],
+        "positions": {
+          "top": "250px",
+          "left": "40px",
+          "width": "128px",
+          "height": "128px"
+        },
+        "boxShadow": true
+      },
+      {
+        "path": "B",
+        "label": "Dados",
+        "allowedIds": ["01", "02", "03", "04"],
+        "positions": {
+          "top": "82px",
+          "left": "530px",
+          "width": "128px",
+          "height": "128px"
+        },
+        "boxShadow": true
+      }
+    ],
+    "skillsConfig": {
+      "path": "C",
+      "label": "Skills",
+      "allowedIds": []
     }
   },
   {
     "id": "equip4",
     "label": "Tensão (verde/azul)",
     "image": "/models/cards/01.png",
+    "categoryId": "resident",
+    "categoryLabel": "Resident Evil",
+    "backImage": "/models/cards/Back-S.png",
+    "allowedMainIconIds": ["01", "02", "03", "04"],
+    "allowedSecondaryIconIds": ["01", "02", "03", "04"],
     "positions": {
       "icon": {
         "top": "292px",
@@ -389,7 +602,9 @@
         "widthtWith2Icons": "333px",
         "titleLeftWith1Icon": "157px",
         "titleBgSize": "621px 134px",
-        "lineHeight": "__UNIFIED_TITLE_LINE_HEIGHT__"
+        "lineHeight": "__UNIFIED_TITLE_LINE_HEIGHT__",
+        "boxShadow": true,
+        "label": "T?tulo"
       },
       "description": {
         "top": "160px",
@@ -399,7 +614,9 @@
         "fontSize": "1.8rem",
         "lineHeight": "1.1",
         "lineWidth": "580px",
-        "paddingTop": "40px"
+        "paddingTop": "40px",
+        "boxShadow": true,
+        "label": "Descri??o"
       },
       "overlay": {
         "top": "215px",
@@ -470,13 +687,50 @@
         "height": "70px",
         "borderRadius": "10px"
       }
+    },
+    "icons": [
+      {
+        "path": "A",
+        "label": "?cone 1",
+        "allowedIds": ["01", "02", "03", "04"],
+        "positions": {
+          "top": "292px",
+          "left": "72px",
+          "width": "134px",
+          "height": "134px"
+        },
+        "boxShadow": true
+      },
+      {
+        "path": "B",
+        "label": "Dados",
+        "allowedIds": ["01", "02", "03", "04"],
+        "positions": {
+          "top": "15px",
+          "left": "500px",
+          "width": "134px",
+          "height": "134px",
+          "iconWidth": "100px",
+          "iconHeight": "100px"
+        },
+        "boxShadow": true
+      }
+    ],
+    "skillsConfig": {
+      "path": "C",
+      "label": "Skills",
+      "allowedIds": []
     }
   },
-
   {
     "id": "bg",
     "label": "BG Deck-S",
     "image": "/models/cards/Back-S.png",
+    "categoryId": "resident",
+    "categoryLabel": "Resident Evil",
+    "backImage": "/models/cards/Back-S.png",
+    "allowedMainIconIds": ["01", "02", "03", "04"],
+    "allowedSecondaryIconIds": ["01", "02", "03", "04"],
     "positions": {
       "icon": {
         "top": "292px",
@@ -498,7 +752,9 @@
         "fontSize": "__UNIFIED_TITLE_FONT_SIZE__",
         "fontSizeLine2": "__UNIFIED_TITLE_FONT_SIZE_LINE2__",
         "fontSizeLine3": "__UNIFIED_TITLE_FONT_SIZE_LINE3__",
-        "lineHeight": "__UNIFIED_TITLE_LINE_HEIGHT__"
+        "lineHeight": "__UNIFIED_TITLE_LINE_HEIGHT__",
+        "boxShadow": true,
+        "label": "T?tulo"
       },
       "description": {
         "top": "200px",
@@ -506,7 +762,9 @@
         "width": "570px",
         "height": "420px",
         "fontSize": "__UNIFIED_DESCRIPTION_FONT_SIZE__",
-        "lineHeight": "__UNIFIED_DESCRIPTION_LINE_HEIGHT__"
+        "lineHeight": "__UNIFIED_DESCRIPTION_LINE_HEIGHT__",
+        "boxShadow": true,
+        "label": "Descri??o"
       },
       "overlay": {
         "top": "215px",
@@ -556,12 +814,48 @@
         "top": "0",
         "left": "50%"
       }
+    },
+    "icons": [
+      {
+        "path": "A",
+        "label": "?cone 1",
+        "allowedIds": ["01", "02", "03", "04"],
+        "positions": {
+          "top": "292px",
+          "left": "72px",
+          "width": "128px",
+          "height": "128px"
+        },
+        "boxShadow": true
+      },
+      {
+        "path": "B",
+        "label": "Dados",
+        "allowedIds": ["01", "02", "03", "04"],
+        "positions": {
+          "top": "120px",
+          "left": "545px",
+          "width": "128px",
+          "height": "128px"
+        },
+        "boxShadow": true
+      }
+    ],
+    "skillsConfig": {
+      "path": "C",
+      "label": "Skills",
+      "allowedIds": []
     }
   },
   {
     "id": "bg-deck-a",
     "label": "BG Deck-A",
     "image": "/models/cards/Deck-A.png",
+    "categoryId": "resident",
+    "categoryLabel": "Resident Evil",
+    "backImage": "/models/cards/Deck-A.png",
+    "allowedMainIconIds": ["01", "02", "03", "04"],
+    "allowedSecondaryIconIds": ["01", "02", "03", "04"],
     "positions": {
       "icon": {
         "top": "292px",
@@ -581,14 +875,18 @@
         "width": "594px",
         "height": "120px",
         "fontSize": "__UNIFIED_TITLE_FONT_SIZE__",
-        "lineHeight": "__UNIFIED_TITLE_LINE_HEIGHT__"
+        "lineHeight": "__UNIFIED_TITLE_LINE_HEIGHT__",
+        "boxShadow": true,
+        "label": "T?tulo"
       },
       "description": {
         "top": "200px",
         "left": "40px",
         "width": "570px",
         "height": "420px",
-        "lineHeight": "__UNIFIED_DESCRIPTION_LINE_HEIGHT__"
+        "lineHeight": "__UNIFIED_DESCRIPTION_LINE_HEIGHT__",
+        "boxShadow": true,
+        "label": "Descri??o"
       },
       "overlay": {
         "top": "215px",
@@ -638,12 +936,48 @@
         "top": "0",
         "left": "50%"
       }
+    },
+    "icons": [
+      {
+        "path": "A",
+        "label": "?cone 1",
+        "allowedIds": ["01", "02", "03", "04"],
+        "positions": {
+          "top": "292px",
+          "left": "72px",
+          "width": "128px",
+          "height": "128px"
+        },
+        "boxShadow": true
+      },
+      {
+        "path": "B",
+        "label": "Dados",
+        "allowedIds": ["01", "02", "03", "04"],
+        "positions": {
+          "top": "120px",
+          "left": "545px",
+          "width": "128px",
+          "height": "128px"
+        },
+        "boxShadow": true
+      }
+    ],
+    "skillsConfig": {
+      "path": "C",
+      "label": "Skills",
+      "allowedIds": []
     }
   },
   {
     "id": "bg-deck-b",
     "label": "BG Deck-B",
     "image": "/models/cards/Deck-B.png",
+    "categoryId": "resident",
+    "categoryLabel": "Resident Evil",
+    "backImage": "/models/cards/Deck-B.png",
+    "allowedMainIconIds": ["01", "02", "03", "04"],
+    "allowedSecondaryIconIds": ["01", "02", "03", "04"],
     "positions": {
       "icon": {
         "top": "292px",
@@ -665,7 +999,9 @@
         "fontSize": "__UNIFIED_TITLE_FONT_SIZE__",
         "fontSizeLine2": "__UNIFIED_TITLE_FONT_SIZE_LINE2__",
         "fontSizeLine3": "__UNIFIED_TITLE_FONT_SIZE_LINE3__",
-        "lineHeight": "__UNIFIED_TITLE_LINE_HEIGHT__"
+        "lineHeight": "__UNIFIED_TITLE_LINE_HEIGHT__",
+        "boxShadow": true,
+        "label": "T?tulo"
       },
       "description": {
         "top": "200px",
@@ -673,7 +1009,9 @@
         "width": "570px",
         "height": "420px",
         "fontSize": "__UNIFIED_DESCRIPTION_FONT_SIZE__",
-        "lineHeight": "__UNIFIED_DESCRIPTION_LINE_HEIGHT__"
+        "lineHeight": "__UNIFIED_DESCRIPTION_LINE_HEIGHT__",
+        "boxShadow": true,
+        "label": "Descri??o"
       },
       "overlay": {
         "top": "215px",
@@ -723,12 +1061,48 @@
         "top": "0",
         "left": "50%"
       }
+    },
+    "icons": [
+      {
+        "path": "A",
+        "label": "?cone 1",
+        "allowedIds": ["01", "02", "03", "04"],
+        "positions": {
+          "top": "292px",
+          "left": "72px",
+          "width": "128px",
+          "height": "128px"
+        },
+        "boxShadow": true
+      },
+      {
+        "path": "B",
+        "label": "Dados",
+        "allowedIds": ["01", "02", "03", "04"],
+        "positions": {
+          "top": "120px",
+          "left": "545px",
+          "width": "128px",
+          "height": "128px"
+        },
+        "boxShadow": true
+      }
+    ],
+    "skillsConfig": {
+      "path": "C",
+      "label": "Skills",
+      "allowedIds": []
     }
   },
   {
     "id": "bg-deck-c",
     "label": "BG Deck-C",
     "image": "/models/cards/Deck-C.png",
+    "categoryId": "resident",
+    "categoryLabel": "Resident Evil",
+    "backImage": "/models/cards/Deck-C.png",
+    "allowedMainIconIds": ["01", "02", "03", "04"],
+    "allowedSecondaryIconIds": ["01", "02", "03", "04"],
     "positions": {
       "icon": {
         "top": "292px",
@@ -750,7 +1124,9 @@
         "fontSize": "__UNIFIED_TITLE_FONT_SIZE__",
         "fontSizeLine2": "__UNIFIED_TITLE_FONT_SIZE_LINE2__",
         "fontSizeLine3": "__UNIFIED_TITLE_FONT_SIZE_LINE3__",
-        "lineHeight": "__UNIFIED_TITLE_LINE_HEIGHT__"
+        "lineHeight": "__UNIFIED_TITLE_LINE_HEIGHT__",
+        "boxShadow": true,
+        "label": "T?tulo"
       },
       "description": {
         "top": "200px",
@@ -758,7 +1134,9 @@
         "width": "570px",
         "height": "420px",
         "fontSize": "__UNIFIED_DESCRIPTION_FONT_SIZE__",
-        "lineHeight": "__UNIFIED_DESCRIPTION_LINE_HEIGHT__"
+        "lineHeight": "__UNIFIED_DESCRIPTION_LINE_HEIGHT__",
+        "boxShadow": true,
+        "label": "Descri??o"
       },
       "overlay": {
         "top": "215px",
@@ -808,12 +1186,367 @@
         "top": "0",
         "left": "50%"
       }
+    },
+    "icons": [
+      {
+        "path": "A",
+        "label": "?cone 1",
+        "allowedIds": ["01", "02", "03", "04"],
+        "positions": {
+          "top": "292px",
+          "left": "72px",
+          "width": "128px",
+          "height": "128px"
+        },
+        "boxShadow": true
+      },
+      {
+        "path": "B",
+        "label": "Dados",
+        "allowedIds": ["01", "02", "03", "04"],
+        "positions": {
+          "top": "120px",
+          "left": "545px",
+          "width": "128px",
+          "height": "128px"
+        },
+        "boxShadow": true
+      }
+    ],
+    "skillsConfig": {
+      "path": "C",
+      "label": "Skills",
+      "allowedIds": []
+    }
+  },
+  {
+    "id": "bg-deck-d",
+    "label": "BG Deck-D",
+    "image": "/models/cards/Deck-D.png",
+    "categoryId": "resident",
+    "categoryLabel": "Resident Evil",
+    "backImage": "/models/cards/Deck-D.png",
+    "allowedMainIconIds": ["01", "02", "03", "04"],
+    "allowedSecondaryIconIds": ["01", "02", "03", "04"],
+    "positions": {
+      "icon": {
+        "top": "292px",
+        "left": "72px",
+        "width": "128px",
+        "height": "128px"
+      },
+      "icon2": {
+        "top": "120px",
+        "left": "545px",
+        "width": "128px",
+        "height": "128px"
+      },
+      "title": {
+        "top": "27px",
+        "left": "17px",
+        "width": "594px",
+        "height": "120px",
+        "fontSize": "__UNIFIED_TITLE_FONT_SIZE__",
+        "fontSizeLine2": "__UNIFIED_TITLE_FONT_SIZE_LINE2__",
+        "fontSizeLine3": "__UNIFIED_TITLE_FONT_SIZE_LINE3__",
+        "lineHeight": "__UNIFIED_TITLE_LINE_HEIGHT__",
+        "boxShadow": true,
+        "label": "T?tulo"
+      },
+      "description": {
+        "top": "200px",
+        "left": "40px",
+        "width": "570px",
+        "height": "420px",
+        "fontSize": "__UNIFIED_DESCRIPTION_FONT_SIZE__",
+        "lineHeight": "__UNIFIED_DESCRIPTION_LINE_HEIGHT__",
+        "boxShadow": true,
+        "label": "Descrição"
+      },
+      "overlay": {
+        "top": "215px",
+        "left": "215px",
+        "width": "410px",
+        "height": "285px"
+      },
+      "skills": {
+        "top": "850px",
+        "left": "70px",
+        "width": "560px",
+        "height": "120px"
+      },
+      "effect1": {
+        "top": "675px",
+        "left": "59px",
+        "width": "130px",
+        "height": "115px"
+      },
+      "effect2": {
+        "top": "670px",
+        "left": "208px",
+        "width": "130px",
+        "height": "115px"
+      },
+      "effect3": {
+        "top": "670px",
+        "left": "357px",
+        "width": "130px",
+        "height": "115px"
+      },
+      "effect4": {
+        "top": "670px",
+        "left": "506px",
+        "width": "130px",
+        "height": "115px"
+      },
+      "effect2NumberPosition": {
+        "top": "0",
+        "left": "50%"
+      },
+      "effect3NumberPosition": {
+        "top": "0",
+        "left": "50%"
+      },
+      "effect4NumberPosition": {
+        "top": "0",
+        "left": "50%"
+      }
+    },
+    "icons": [
+      {
+        "path": "A",
+        "label": "?cone 1",
+        "allowedIds": ["01", "02", "03", "04"],
+        "positions": {
+          "top": "292px",
+          "left": "72px",
+          "width": "128px",
+          "height": "128px"
+        },
+        "boxShadow": true
+      },
+      {
+        "path": "B",
+        "label": "Dados",
+        "allowedIds": ["01", "02", "03", "04"],
+        "positions": {
+          "top": "120px",
+          "left": "545px",
+          "width": "128px",
+          "height": "128px"
+        },
+        "boxShadow": true
+      }
+    ],
+    "skillsConfig": {
+      "path": "C",
+      "label": "Skills",
+      "allowedIds": []
+    }
+  },
+  {
+    "id": "heroes",
+    "label": "Heroes",
+    "image": "/models/cards/hero-01.png",
+    "categoryId": "resident",
+    "categoryLabel": "Resident Evil",
+    "backImage": "/models/cards/Back-S.png",
+    "allowedMainIconIds": ["01", "02", "03", "04"],
+    "allowedSecondaryIconIds": ["01", "02", "03", "04"],
+    "positions": {
+      "icon": {
+        "top": "55px",
+        "left": "40px",
+        "width": "128px",
+        "height": "128px"
+      },
+      "enemieIcon": {
+        "top": "21px",
+        "left": "30px",
+        "width": "100px",
+        "height": "125px"
+      },
+      "title": {
+        "top": "26px",
+        "left": "150px",
+        "width": "610px",
+        "height": "120px",
+        "fontSize": "__UNIFIED_TITLE_FONT_SIZE__",
+        "fontSizeLine2": "__UNIFIED_TITLE_FONT_SIZE_LINE2__",
+        "fontSizeLine3": "__UNIFIED_TITLE_FONT_SIZE_LINE3__",
+        "lineHeight": "__UNIFIED_TITLE_LINE_HEIGHT__",
+        "boxShadow": true,
+        "label": "T?tulo"
+      },
+      "description": {
+        "top": "165px",
+        "left": "190px",
+        "width": "465px",
+        "height": "508px",
+        "lineHeight": "__UNIFIED_DESCRIPTION_LINE_HEIGHT__",
+        "boxShadow": true,
+        "label": "Descri??o"
+      },
+      "overlay": {
+        "top": "165px",
+        "left": "666px",
+        "width": "300px",
+        "height": "508px"
+      },
+      "skills": {
+        "top": "165px",
+        "left": "15px",
+        "width": "285px",
+        "height": "508px"
+      },
+      "heroRollPosition": {
+        "top": "10px",
+        "left": "680px",
+        "width": "140px",
+        "height": "140px",
+        "numberOffsetX": "0",
+        "numberOffsetY": "-25px"
+      },
+      "heroBagPosition": {
+        "top": "10px",
+        "left": "830px",
+        "width": "140px",
+        "height": "140px",
+        "numberOffsetX": "-30px",
+        "numberOffsetY": "6px"
+      },
+      "heroSkillImage1Position": {
+        "top": "170px",
+        "left": "20px",
+        "width": "160px",
+        "height": "160px"
+      },
+      "heroSkillImage2Position": {
+        "top": "339px",
+        "left": "20px",
+        "width": "160px",
+        "height": "160px"
+      },
+      "heroSkillImage3Position": {
+        "top": "508px",
+        "left": "20px",
+        "width": "160px",
+        "height": "160px"
+      }
+    },
+    "icons": [
+      {
+        "path": "A",
+        "label": "?cone 1",
+        "allowedIds": ["01", "02", "03", "04"],
+        "positions": {
+          "top": "55px",
+          "left": "40px",
+          "width": "128px",
+          "height": "128px"
+        },
+        "boxShadow": true
+      }
+    ],
+    "skillsConfig": {
+      "path": "C",
+      "label": "Skills",
+      "allowedIds": []
+    }
+  },
+  {
+    "id": "mh1",
+    "label": "MH1 - Monster Hunter",
+    "image": "/models/cards/MH-01.png",
+    "categoryId": "monster",
+    "categoryLabel": "Monster Hunter",
+    "backImage": null,
+    "allowedMainIconIds": ["01", "02"],
+    "allowedSecondaryIconIds": ["01", "02", "03", "04"],
+    "positions": {
+      "icon": {
+        "top": "0px",
+        "left": "0px",
+        "width": "0px",
+        "height": "0px"
+      },
+      "title": {
+        "top": "60px",
+        "left": "60px",
+        "width": "620px",
+        "height": "110px",
+        "fontSize": "42px",
+        "fontSizeLine2": "__UNIFIED_TITLE_FONT_SIZE_LINE2__",
+        "fontSizeLine3": "42px ",
+        "lineHeight": "__UNIFIED_TITLE_LINE_HEIGHT__",
+        "boxShadow": false,
+        "label": "T?tulo"
+      },
+
+      "overlay": {
+        "top": "0px",
+        "left": "0px",
+        "width": "0px",
+        "height": "0px"
+      },
+      "skills": {
+        "top": "580px",
+        "left": "80px",
+        "width": "580px",
+        "height": "260px"
+      },
+      "description1": {
+        "top": "180px",
+        "left": "80px",
+        "width": "580px",
+        "height": "290px",
+        "fontSize": "32px",
+        "lineHeight": "1",
+        "lineWidth": "540px",
+        "boxShadow": false,
+        "label": "Descrição 1"
+      },
+      "description2": {
+        "top": "520px",
+        "left": "80px",
+        "width": "580px",
+        "height": "430px",
+        "fontSize": "32px",
+        "lineHeight": "1",
+        "lineWidth": "540px",
+        "boxShadow": false,
+        "label": "Efeito"
+      }
+    },
+    "icons": [
+      {
+        "path": "icon10",
+        "label": "Icone 1",
+        "allowedIds": ["01", "02"],
+        "positions": {
+          "top": "865px",
+          "left": "590px",
+          "width": "160px",
+          "height": "150px"
+        },
+        "boxShadow": false
+      }
+    ],
+    "skillsConfig": {
+      "path": "C",
+      "label": "Skills",
+      "allowedIds": []
     }
   },
   {
     "id": "enemie",
     "label": "Enemie",
     "image": "/models/cards/Enemie.png",
+    "categoryId": "resident",
+    "categoryLabel": "Resident Evil",
+    "backImage": "/models/cards/Back-S.png",
+    "allowedMainIconIds": ["01", "02", "03", "04"],
+    "allowedSecondaryIconIds": ["01", "02", "03", "04"],
     "positions": {
       "icon": {
         "top": "55px",
@@ -828,21 +1561,25 @@
         "height": "125px"
       },
       "title": {
-        "top": "23px",
-        "left": "155px",
+        "top": "26px",
+        "left": "165px",
         "width": "410px",
         "height": "120px",
         "fontSize": "__UNIFIED_TITLE_FONT_SIZE__",
         "fontSizeLine2": "__UNIFIED_TITLE_FONT_SIZE_LINE2__",
         "fontSizeLine3": "__UNIFIED_TITLE_FONT_SIZE_LINE3__",
-        "lineHeight": "__UNIFIED_TITLE_LINE_HEIGHT__"
+        "lineHeight": "__UNIFIED_TITLE_LINE_HEIGHT__",
+        "boxShadow": true,
+        "label": "T?tulo"
       },
       "description": {
         "top": "165px",
         "left": "630px",
         "width": "340px",
         "height": "508px",
-        "lineHeight": "__UNIFIED_DESCRIPTION_LINE_HEIGHT__"
+        "lineHeight": "__UNIFIED_DESCRIPTION_LINE_HEIGHT__",
+        "boxShadow": true,
+        "label": "Descri??o"
       },
       "overlay": {
         "top": "165px",
@@ -874,12 +1611,36 @@
         "width": "80px",
         "height": "40px"
       }
+    },
+    "icons": [
+      {
+        "path": "A",
+        "label": "?cone 1",
+        "allowedIds": ["01", "02", "03", "04"],
+        "positions": {
+          "top": "55px",
+          "left": "40px",
+          "width": "128px",
+          "height": "128px"
+        },
+        "boxShadow": true
+      }
+    ],
+    "skillsConfig": {
+      "path": "C",
+      "label": "Skills",
+      "allowedIds": []
     }
   },
   {
     "id": "enemie2",
     "label": "Enemie 2",
     "image": "/models/cards/Enemie 01.png",
+    "categoryId": "resident",
+    "categoryLabel": "Resident Evil",
+    "backImage": "/models/cards/Back-S.png",
+    "allowedMainIconIds": ["01", "02", "03", "04"],
+    "allowedSecondaryIconIds": ["01", "02", "03", "04"],
     "positions": {
       "icon": {
         "top": "55px",
@@ -901,7 +1662,9 @@
         "fontSize": "__UNIFIED_TITLE_FONT_SIZE__",
         "fontSizeLine2": "__UNIFIED_TITLE_FONT_SIZE_LINE2__",
         "fontSizeLine3": "__UNIFIED_TITLE_FONT_SIZE_LINE3__",
-        "lineHeight": "__UNIFIED_TITLE_LINE_HEIGHT__"
+        "lineHeight": "__UNIFIED_TITLE_LINE_HEIGHT__",
+        "boxShadow": true,
+        "label": "T?tulo"
       },
       "description": {
         "top": "165px",
@@ -909,7 +1672,9 @@
         "width": "630px",
         "height": "508px",
         "fontSize": "__UNIFIED_DESCRIPTION_FONT_SIZE__",
-        "lineHeight": "__UNIFIED_DESCRIPTION_LINE_HEIGHT__"
+        "lineHeight": "__UNIFIED_DESCRIPTION_LINE_HEIGHT__",
+        "boxShadow": true,
+        "label": "Descri??o"
       },
       "overlay": {
         "top": "165px",
@@ -941,6 +1706,25 @@
         "width": "80px",
         "height": "40px"
       }
+    },
+    "icons": [
+      {
+        "path": "A",
+        "label": "?cone 1",
+        "allowedIds": ["01", "02", "03", "04"],
+        "positions": {
+          "top": "55px",
+          "left": "40px",
+          "width": "128px",
+          "height": "128px"
+        },
+        "boxShadow": true
+      }
+    ],
+    "skillsConfig": {
+      "path": "C",
+      "label": "Skills",
+      "allowedIds": []
     }
   }
 ]

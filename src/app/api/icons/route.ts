@@ -48,9 +48,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json([]);
     }
     const files = fs.readdirSync(dir);
-    const pngs = files.filter(
-      (f) => f.toLowerCase().endsWith(".png") && !f.startsWith(".")
-    );
+    const pngs = files.filter((f) => {
+      const lower = f.toLowerCase();
+      return (
+        (lower.endsWith(".png") || lower.endsWith(".webp")) &&
+        !f.startsWith(".")
+      );
+    });
     const prefix = `/models/icons/${normalized}`;
     const options: IconOptionResponse[] = pngs.map((filename) => {
       const base = path.basename(filename, path.extname(filename));

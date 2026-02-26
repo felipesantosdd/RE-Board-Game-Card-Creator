@@ -10,11 +10,27 @@ import {
   type ReactNode,
 } from "react";
 import { toPng } from "html-to-image";
-import { Bebas_Neue, EB_Garamond } from "next/font/google";
+import { Bebas_Neue, EB_Garamond, Cinzel, Crimson_Pro } from "next/font/google";
 import JSZip from "jszip";
 import Cropper from "react-easy-crop";
 import type { Area } from "react-easy-crop";
-import { FaDownload, FaSave } from "react-icons/fa";
+import Link from "next/link";
+import {
+  FaArchive,
+  FaDownload,
+  FaEdit,
+  FaFileImport,
+  FaQuestionCircle,
+  FaSave,
+} from "react-icons/fa";
+import { mhTutorialLayout, re3TutorialLayout } from "@/data/tutorialLayouts";
+import { TUTORIAL_BASE_PATHS } from "@/data/tutorialTypes";
+import type {
+  TutorialBlock,
+  TutorialPage,
+  TutorialPageNumber,
+} from "@/data/tutorialTypes";
+import { normalizeTutorialPage } from "@/data/tutorialTypes";
 
 /** Gera imagem recortada a partir de croppedAreaPixels (coordenadas na imagem original) */
 async function createCroppedImage(
@@ -164,10 +180,47 @@ function isIcon06(icon: { id?: string; src?: string }): boolean {
 }
 
 /** Listas de ícones vêm da API /api/icons?path= (A, B, C, Effects/01, etc.) */
+
+function normalizeIconId(value?: string | null): string {
+  if (!value) return "";
+  const raw = String(value).trim().toLowerCase();
+  if (/^\d+$/.test(raw)) return raw.padStart(2, "0");
+  return raw;
+}
+
+function isIconAllowed(item: IconOption, allowed: Set<string>): boolean {
+  if (allowed.size === 0) return true;
+  const id = normalizeIconId(item.id);
+  const label = normalizeIconId(item.label);
+  return (id && allowed.has(id)) || (label && allowed.has(label));
+}
+
+function getLayoutIconSlots(layout: LayoutOption): LayoutIconSlot[] {
+  if (layout.icons && layout.icons.length > 0) return layout.icons;
+  const slots: LayoutIconSlot[] = [];
+  if (layout.positions?.icon) {
+    slots.push({
+      path: "A",
+      label: "Ícone 1",
+      allowedIds: layout.allowedMainIconIds ?? [],
+      positions: layout.positions.icon,
+    });
+  }
+  if (layout.positions?.icon2) {
+    slots.push({
+      path: "B",
+      label: "Dados",
+      allowedIds: layout.allowedSecondaryIconIds ?? [],
+      positions: layout.positions.icon2,
+    });
+  }
+  return slots;
+}
+
 const DEFAULT_ICON_FALLBACK = "/models/icons/A/01.png";
 
-/** Substituição de códigos 0001–0010 por ícones inline (como emoji). Caminho: public/models/icons/Icons/ */
-const INLINE_ICON_MAP: Record<string, string> = {
+/** Mapa base de ícones inline (fallback até API carregar). Formato: 00{nome} ex: 0015 para 15.png */
+const INLINE_ICON_MAP_BASE: Record<string, string> = {
   "0001": "/models/icons/Icons/01.png",
   "0002": "/models/icons/Icons/02.png",
   "0003": "/models/icons/Icons/03.png",
@@ -178,19 +231,38 @@ const INLINE_ICON_MAP: Record<string, string> = {
   "0008": "/models/icons/Icons/08.png",
   "0009": "/models/icons/Icons/09.png",
   "0010": "/models/icons/Icons/10.png",
+  "0011": "/models/icons/Icons/11.png",
 };
+const TEXT_HUNTER_ICON_ALIASES: Record<string, string> = {
+  IconDragon: "/models/icons/textHunter/dragon.webp",
+  IconFire: "/models/icons/textHunter/fire.webp",
+  IconIce: "/models/icons/textHunter/ice.webp",
+  IconThunder: "/models/icons/textHunter/thunder.webp",
+  IconWater: "/models/icons/textHunter/water.webp",
+};
+const buildTextHunterAliases = (base: Record<string, string>) =>
+  Object.fromEntries(
+    Object.entries(base).flatMap(([key, value]) => [
+      [key, value],
+      [key.toLowerCase(), value],
+    ]),
+  );
+const TEXT_HUNTER_ICON_MAP = buildTextHunterAliases(TEXT_HUNTER_ICON_ALIASES);
+/** Ícone 00.png com número sobreposto. Código: 000-{número} */
+const INLINE_ICON_00 = "/models/icons/Icons/00.png";
 
 /** Renderiza texto com **texto** em negrito e ícones inline. */
 function renderTextWithBoldAndIcons(
   text: string,
   iconSizePx: number = 38,
+  iconMap: Record<string, string> = INLINE_ICON_MAP_BASE,
 ): ReactNode {
   if (!text) return text;
   const parts = text.split(/\*\*([\s\S]*?)\*\*/g);
   const result: ReactNode[] = [];
   for (let i = 0; i < parts.length; i++) {
     const segment = parts[i];
-    const content = renderTextWithInlineIcons(segment, iconSizePx);
+    const content = renderTextWithInlineIcons(segment, iconSizePx, iconMap);
     result.push(
       i % 2 === 1 ? (
         <span key={`b-${i}`} style={{ fontWeight: 700 }}>
@@ -208,19 +280,20 @@ function renderTextWithBoldAndIcons(
 function renderTextWithInlineIcons(
   text: string,
   iconSizePx: number = 38,
+  iconMap: Record<string, string> = INLINE_ICON_MAP_BASE,
 ): ReactNode {
   if (!text) return text;
-  const codes = Object.keys(INLINE_ICON_MAP).sort(
+  const codes = Object.keys(iconMap).sort(
     (a, b) => b.length - a.length || b.localeCompare(a),
   );
   const pattern = codes.length
     ? new RegExp(
-        `(${codes
+        `(000-\\d+|${codes
           .map((c) => c.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
           .join("|")})`,
         "g",
       )
-    : /(?!)/g;
+    : /(000-\d+)/g;
   const parts: ReactNode[] = [];
   let lastIndex = 0;
   let key = 0;
@@ -229,24 +302,58 @@ function renderTextWithInlineIcons(
     if (match.index > lastIndex) {
       parts.push(text.slice(lastIndex, match.index));
     }
-    const src = INLINE_ICON_MAP[match[1]];
-    if (src) {
+    const matched = match[1];
+    if (matched.startsWith("000-")) {
+      const number = matched.slice(4);
       parts.push(
-        <img
-          key={`icon-${key++}`}
-          src={src}
-          alt=""
-          className="inline-block"
+        <span
+          key={`icon-00-${key++}`}
+          className="inline-block relative"
           style={{
             width: iconSizePx,
             height: iconSizePx,
             verticalAlign: "text-bottom",
             marginBottom: 2,
           }}
-        />,
+        >
+          <img
+            src={INLINE_ICON_00}
+            alt=""
+            className="block w-full h-full object-contain"
+            style={{ filter: ICON_OUTLINE_FILTER }}
+          />
+          <span
+            className="absolute inset-0 flex items-center justify-center text-white font-bold"
+            style={{
+              fontFamily: bebasNeue.style.fontFamily,
+              fontSize: Math.round(iconSizePx * 0.55),
+            }}
+          >
+            {number}
+          </span>
+        </span>,
       );
     } else {
-      parts.push(match[1]);
+      const src = iconMap[matched];
+      if (src) {
+        parts.push(
+          <img
+            key={`icon-${key++}`}
+            src={src}
+            alt=""
+            className="inline-block"
+            style={{
+              width: iconSizePx,
+              height: iconSizePx,
+              verticalAlign: "text-bottom",
+              marginBottom: 2,
+              filter: ICON_OUTLINE_FILTER,
+            }}
+          />,
+        );
+      } else {
+        parts.push(matched);
+      }
     }
     lastIndex = pattern.lastIndex;
   }
@@ -256,6 +363,22 @@ function renderTextWithInlineIcons(
   if (parts.length === 0) return text;
   if (parts.length === 1 && typeof parts[0] === "string") return parts[0];
   return <>{parts}</>;
+}
+
+function hasInlineIconCodes(
+  text: string,
+  iconMap: Record<string, string>,
+): boolean {
+  if (!text) return false;
+  const codes = Object.keys(iconMap);
+  if (codes.length === 0) return false;
+  const pattern = new RegExp(
+    `(000-\\d+|${codes
+      .map((c) => c.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+      .join("|")})`,
+    "g",
+  );
+  return pattern.test(text);
 }
 
 /** Tooltips para rolagem de dados (Bloco 2) */
@@ -294,6 +417,20 @@ const ebGaramond = EB_Garamond({
   subsets: ["latin"],
   weight: ["400"],
 });
+const cinzel = Cinzel({
+  subsets: ["latin"],
+  weight: ["400", "700"],
+});
+const crimsonPro = Crimson_Pro({
+  subsets: ["latin"],
+  weight: ["400", "600"],
+  style: ["normal", "italic"],
+});
+/** Fonte do tutorial Monster Hunter (carregada via link em layout.tsx) */
+const TUTORIAL_MH_FONT_FAMILY = "'IM Fell English', serif";
+/** Fonte e cor do tutorial Resident Evil */
+const TUTORIAL_RE3_FONT_FAMILY = "var(--font-roboto), 'Roboto', sans-serif";
+const TUTORIAL_RE3_COLOR = "#4B4B4B";
 
 type LayoutPositions = {
   icon: { top: string; left: string; width?: string; height?: string };
@@ -321,6 +458,8 @@ type LayoutPositions = {
     width: string;
     height: string;
     fontSize: string;
+    boxShadow?: boolean;
+    label?: string;
     /** Fonte quando o título quebra em 2 linhas */
     fontSizeLine2?: string;
     /** Fonte quando o título quebra em 3+ linhas */
@@ -341,12 +480,34 @@ type LayoutPositions = {
     width?: string;
     height?: string;
     fontSize?: string;
-    /** Espaçamento entre linhas da descrição */
     lineHeight?: number | string;
-    /** Largura máxima de cada linha (ex.: "580px") - controla onde o texto quebra */
     lineWidth?: string;
-    /** Padding superior do texto da descrição */
     paddingTop?: string;
+    boxShadow?: boolean;
+    label?: string;
+  };
+  description1?: {
+    top: string;
+    left: string;
+    width?: string;
+    height?: string;
+    fontSize?: string;
+    lineHeight?: number | string;
+    lineWidth?: string;
+    paddingTop?: string;
+    boxShadow?: boolean;
+    label?: string;
+  };
+  description2?: {
+    top: string;
+    left: string;
+    width?: string;
+    height?: string;
+    fontSize?: string;
+    lineHeight?: number | string;
+    lineWidth?: string;
+    boxShadow?: boolean;
+    label?: string;
   };
   overlay: {
     top: string;
@@ -378,6 +539,44 @@ type LayoutPositions = {
   effect3NumberPositionByIcon?: Record<string, { top: string; left: string }>;
   /** Effects/03 (efeito primário): posição por ícone - central (01,02), dupla (03,04), dupla-cópia (06,07) */
   effect4NumberPositionByIcon?: Record<string, { top: string; left: string }>;
+  /** Layout Heroes: posições dos ícones Roll e Bag (heroes/fixed) */
+  heroRollPosition?: {
+    top: string;
+    left: string;
+    width?: string;
+    height?: string;
+    /** Offset do número em relação ao centro (ex: "-10px" para subir) */
+    numberOffsetX?: string;
+    numberOffsetY?: string;
+  };
+  heroBagPosition?: {
+    top: string;
+    left: string;
+    width?: string;
+    height?: string;
+    /** Offset do número em relação ao centro (ex: "-10px" para esquerda) */
+    numberOffsetX?: string;
+    numberOffsetY?: string;
+  };
+  /** Layout Heroes: posições das 3 imagens de skill (substituem ícones por cor) */
+  heroSkillImage1Position?: {
+    top: string;
+    left: string;
+    width: string;
+    height: string;
+  };
+  heroSkillImage2Position?: {
+    top: string;
+    left: string;
+    width: string;
+    height: string;
+  };
+  heroSkillImage3Position?: {
+    top: string;
+    left: string;
+    width: string;
+    height: string;
+  };
   /** Layout Enemie: posições dos campos numéricos (perigo, movimentação, vida) */
   enemieRedNumberPosition?: {
     top: string;
@@ -440,11 +639,44 @@ type LayoutPositions = {
   };
 };
 
+type LayoutIconSlot = {
+  path: string;
+  label: string;
+  allowedIds?: string[];
+  boxShadow?: boolean;
+  positions: {
+    top: string;
+    left: string;
+    width?: string;
+    height?: string;
+    iconWidth?: string;
+    iconHeight?: string;
+  };
+};
+
+type LayoutSkillsConfig = {
+  path: string;
+  label?: string;
+  allowedIds?: string[];
+};
+
 type LayoutOption = {
   id: string;
   label: string;
   image: string;
   positions: LayoutPositions;
+  icons?: LayoutIconSlot[];
+  skillsConfig?: LayoutSkillsConfig;
+  /** Categoria/aba do layout (ex: resident, monster) */
+  categoryId?: string;
+  /** Rótulo exibido na aba (ex: Resident Evil) */
+  categoryLabel?: string;
+  /** Imagem de fundo do verso; quando null → layout full bleed (sem borda base) */
+  backImage?: string | null;
+  /** IDs de ícones permitidos no slot principal deste layout (opcional) */
+  allowedMainIconIds?: string[];
+  /** IDs de ícones permitidos no slot secundário (icon2) deste layout (opcional) */
+  allowedSecondaryIconIds?: string[];
 };
 
 /** Fonte unificada de todos os títulos dos cards; redução por quebra de linha aplicada no CardPreview. */
@@ -506,12 +738,58 @@ const layoutOptions: LayoutOption[] = (layoutsData as LayoutOption[]).map(
                   UNIFIED_DESCRIPTION_LINE_HEIGHT),
           }
         : layout.positions.description,
+      description1: layout.positions.description1
+        ? {
+            ...layout.positions.description1,
+            fontSize:
+              layout.positions.description1.fontSize ===
+              "__UNIFIED_DESCRIPTION_FONT_SIZE__"
+                ? UNIFIED_DESCRIPTION_FONT_SIZE
+                : (layout.positions.description1.fontSize ??
+                  UNIFIED_DESCRIPTION_FONT_SIZE),
+            lineHeight:
+              layout.positions.description1.lineHeight ===
+              "__UNIFIED_DESCRIPTION_LINE_HEIGHT__"
+                ? UNIFIED_DESCRIPTION_LINE_HEIGHT
+                : (layout.positions.description1.lineHeight ??
+                  UNIFIED_DESCRIPTION_LINE_HEIGHT),
+          }
+        : layout.positions.description1,
     },
   }),
 );
 
-/** Layouts BG: só base + imagem do layout, sem ícones nem conteúdo (Back-S, Deck-A, Deck-B, Deck-C) */
-const BG_LAYOUT_IDS = ["bg", "bg-deck-a", "bg-deck-b", "bg-deck-c"];
+/** Mapa de categorias de layout (abas dinâmicas) derivadas do JSON */
+const layoutCategoriesMap: Record<
+  string,
+  {
+    id: string;
+    label: string;
+  }
+> = {};
+
+for (const layout of layoutOptions) {
+  const id = layout.categoryId ?? "resident";
+  if (!layoutCategoriesMap[id]) {
+    layoutCategoriesMap[id] = {
+      id,
+      label:
+        layout.categoryLabel ??
+        (id === "monster" ? "Monster Hunter" : "Resident Evil"),
+    };
+  }
+}
+
+const layoutCategories = Object.values(layoutCategoriesMap);
+
+/** Layouts BG: só base + imagem do layout, sem ícones nem conteúdo (Back-S, Deck-A, Deck-B, Deck-C, Deck-D) */
+const BG_LAYOUT_IDS = [
+  "bg",
+  "bg-deck-a",
+  "bg-deck-b",
+  "bg-deck-c",
+  "bg-deck-d",
+];
 const isBgLayout = (layoutId: string) => BG_LAYOUT_IDS.includes(layoutId);
 
 /** Layouts que usam efeitos (equip3, equip3-equip): linha de tiro, blocos de efeito, skills Effects/04 */
@@ -566,11 +844,15 @@ const TENSION_LAYOUT_IDS = [
 const isTensionLayout = (layoutId: string) =>
   TENSION_LAYOUT_IDS.includes(layoutId);
 
-/** Layout Enemie: card horizontal */
+/** Layout Enemie/Heroes: card horizontal */
 const isEnemieLayout = (layoutId: string) =>
-  layoutId === "enemie" || layoutId === "enemie2";
-/** Layout Enemie (não Enemie 2): tem campo de ícone principal. */
-const hasEnemieIconLayout = (layoutId: string) => layoutId === "enemie";
+  layoutId === "enemie" || layoutId === "enemie2" || layoutId === "heroes";
+/** Layout Enemie/Heroes: tem campo de ícone principal e skills por cor. */
+const hasEnemieIconLayout = (layoutId: string) =>
+  layoutId === "enemie" || layoutId === "heroes";
+/** Layout Heroes: ícones fixos Roll e Bag (heroes/fixed) */
+const HERO_ROLL_ICON = "/models/icons/Heroes/Fixed/01.png";
+const HERO_BAG_ICON = "/models/icons/Heroes/Fixed/02.png";
 
 const mergeLayoutPositions = (
   candidate: Partial<LayoutPositions>,
@@ -586,6 +868,18 @@ const mergeLayoutPositions = (
         ...candidate.description,
       }
     : fallback.description,
+  description1: candidate.description1
+    ? {
+        ...fallback.description,
+        ...candidate.description1,
+      }
+    : (fallback.description1 ?? fallback.description),
+  description2: candidate.description2
+    ? {
+        ...(fallback.description2 ?? {}),
+        ...candidate.description2,
+      }
+    : fallback.description2,
   overlay: candidate.overlay ?? fallback.overlay,
   skills: candidate.skills ?? fallback.skills,
   effect1: candidate.effect1 ?? fallback.effect1,
@@ -608,6 +902,14 @@ const mergeLayoutPositions = (
   effect4NumberPositionByIcon:
     candidate.effect4NumberPositionByIcon ??
     fallback.effect4NumberPositionByIcon,
+  heroRollPosition: candidate.heroRollPosition ?? fallback.heroRollPosition,
+  heroBagPosition: candidate.heroBagPosition ?? fallback.heroBagPosition,
+  heroSkillImage1Position:
+    candidate.heroSkillImage1Position ?? fallback.heroSkillImage1Position,
+  heroSkillImage2Position:
+    candidate.heroSkillImage2Position ?? fallback.heroSkillImage2Position,
+  heroSkillImage3Position:
+    candidate.heroSkillImage3Position ?? fallback.heroSkillImage3Position,
   enemieRedNumberPosition:
     candidate.enemieRedNumberPosition ?? fallback.enemieRedNumberPosition,
   enemieGreenNumberPosition:
@@ -708,37 +1010,20 @@ const INNER_OFFSET = {
 };
 
 const DEFAULT_ACCENT = "#f97316";
-const ICON_DROP_SHADOW = "0 10px 25px rgba(0,0,0,0.15)";
+const ICON_DROP_SHADOW = "inset 0 0 14px 10px rgba(0,0,0,0.35)";
+const ICON_OUTLINE_FILTER = "drop-shadow(0 0 2px rgba(0,0,0,0.7))";
 const CARD_TYPE_LABEL = "EQUIP";
-const OVERLAY_DB_NAME = "re-card-creator-overlays";
-const OVERLAY_STORE_NAME = "overlays";
-const OVERLAY_DB_VERSION = 1;
-
-const openOverlayDb = (): Promise<IDBDatabase | null> => {
-  if (typeof window === "undefined" || !window.indexedDB) {
-    return Promise.resolve(null);
-  }
-
-  return new Promise((resolve, reject) => {
-    const request = window.indexedDB.open(OVERLAY_DB_NAME, OVERLAY_DB_VERSION);
-    request.onupgradeneeded = () => {
-      const db = request.result;
-      if (!db.objectStoreNames.contains(OVERLAY_STORE_NAME)) {
-        db.createObjectStore(OVERLAY_STORE_NAME);
-      }
-    };
-    request.onsuccess = () => {
-      resolve(request.result);
-    };
-    request.onerror = () => {
-      console.error("Erro ao abrir IndexedDB para overlays.", request.error);
-      resolve(null);
-    };
-  });
-};
+import {
+  openAppDb,
+  CARDS_STORE_NAME,
+  DECKS_STORE_NAME,
+  OVERLAY_STORE_NAME,
+  getTutorialPagesFromDb,
+  saveTutorialPagesToDb,
+} from "@/lib/appDb";
 
 const saveOverlayImage = async (key: string, dataUrl: string) => {
-  const db = await openOverlayDb();
+  const db = await openAppDb();
   if (!db) return;
 
   return new Promise<void>((resolve) => {
@@ -758,7 +1043,7 @@ const saveOverlayImage = async (key: string, dataUrl: string) => {
 };
 
 const getOverlayImage = async (key: string) => {
-  const db = await openOverlayDb();
+  const db = await openAppDb();
   if (!db) return null;
 
   return new Promise<string | null>((resolve) => {
@@ -778,7 +1063,7 @@ const getOverlayImage = async (key: string) => {
 };
 
 const deleteOverlayImage = async (key: string) => {
-  const db = await openOverlayDb();
+  const db = await openAppDb();
   if (!db) return;
 
   return new Promise<void>((resolve) => {
@@ -797,8 +1082,90 @@ const deleteOverlayImage = async (key: string) => {
   });
 };
 
+const saveCardsToDb = async (cards: CardDesign[]) => {
+  const db = await openAppDb();
+  if (!db) return;
+  return new Promise<void>((resolve) => {
+    const tx = db.transaction(CARDS_STORE_NAME, "readwrite");
+    const store = tx.objectStore(CARDS_STORE_NAME);
+    store.put(cards, "cards");
+    tx.oncomplete = () => {
+      db.close();
+      resolve();
+    };
+    tx.onerror = () => {
+      console.error("Erro ao salvar cards no IndexedDB.", tx.error);
+      db.close();
+      resolve();
+    };
+  });
+};
+
+const getCardsFromDb = async (): Promise<CardDesign[] | null> => {
+  const db = await openAppDb();
+  if (!db) return null;
+  return new Promise<CardDesign[] | null>((resolve) => {
+    const tx = db.transaction(CARDS_STORE_NAME, "readonly");
+    const store = tx.objectStore(CARDS_STORE_NAME);
+    const request = store.get("cards");
+    request.onsuccess = () => {
+      db.close();
+      resolve((request.result as CardDesign[] | undefined) ?? null);
+    };
+    request.onerror = () => {
+      console.error("Erro ao ler cards do IndexedDB.", request.error);
+      db.close();
+      resolve(null);
+    };
+  });
+};
+
+const saveDecksToDb = async (
+  decks: Array<{ id: string; name: string; cards: CardDesign[] }>,
+) => {
+  const db = await openAppDb();
+  if (!db) return;
+  return new Promise<void>((resolve) => {
+    const tx = db.transaction(DECKS_STORE_NAME, "readwrite");
+    const store = tx.objectStore(DECKS_STORE_NAME);
+    store.put(decks, "decks");
+    tx.oncomplete = () => {
+      db.close();
+      resolve();
+    };
+    tx.onerror = () => {
+      console.error("Erro ao salvar decks no IndexedDB.", tx.error);
+      db.close();
+      resolve();
+    };
+  });
+};
+
+const getDecksFromDb = async (): Promise<Array<{
+  id: string;
+  name: string;
+  cards: CardDesign[];
+}> | null> => {
+  const db = await openAppDb();
+  if (!db) return null;
+  return new Promise((resolve) => {
+    const tx = db.transaction(DECKS_STORE_NAME, "readonly");
+    const store = tx.objectStore(DECKS_STORE_NAME);
+    const request = store.get("decks");
+    request.onsuccess = () => {
+      db.close();
+      resolve(request.result ?? null);
+    };
+    request.onerror = () => {
+      console.error("Erro ao ler decks do IndexedDB.", request.error);
+      db.close();
+      resolve(null);
+    };
+  });
+};
+
 const clearOverlayStore = async () => {
-  const db = await openOverlayDb();
+  const db = await openAppDb();
   if (!db) return;
 
   return new Promise<void>((resolve) => {
@@ -829,13 +1196,12 @@ const formatDescription = (text: string): string => {
   const paras = capped.split(/\n\n+/);
   if (paras[0]?.trim()) {
     let content = paras[0].trim();
-    // Remove ** já existentes para evitar empilhar a cada nova edição
-    while (
-      content.startsWith("**") &&
-      content.endsWith("**") &&
-      content.length > 4
-    ) {
-      content = content.slice(2, -2);
+    // Remove ** já existentes (início e fim independentes) para evitar empilhar
+    while (content.startsWith("**") && content.length > 2) {
+      content = content.slice(2);
+    }
+    while (content.endsWith("**") && content.length > 2) {
+      content = content.slice(0, -2);
     }
     paras[0] = "**" + content + "**";
   }
@@ -850,6 +1216,7 @@ const LOCAL_STORAGE_KEY = "re-card-creator-cards";
 type FormState = {
   title: string;
   description: string;
+  description2: string;
   layout: string;
   image: string;
   icon: string;
@@ -882,6 +1249,9 @@ type FormState = {
   bottomBarColor: string;
   /** Título: 1= fonte maior, 2= média, 3= menor (controlado pelo botão Linhas) */
   titleLines?: 1 | 2 | 3;
+  /** Layout Heroes: números Roll e Bag sobre os ícones em heroes/fixed */
+  heroRollNumber: string;
+  heroBagNumber: string;
   /** Layout Enemie: campos numéricos coloridos */
   enemieRedNumber: string;
   enemieGreenNumber: string;
@@ -906,6 +1276,7 @@ const createInitialFormState = (layoutId?: string): FormState => {
   return {
     title: layout.id === "equip4" ? "TUDO LIMPO" : "",
     description: "",
+    description2: "",
     layout: layout.id,
     image: layout.image,
     icon: "",
@@ -932,6 +1303,8 @@ const createInitialFormState = (layoutId?: string): FormState => {
     tensionColor: "#067427",
     bottomBarColor: "#39558E",
     titleLines: 1,
+    heroRollNumber: "0",
+    heroBagNumber: "0",
     enemieRedNumber: "0",
     enemieGreenNumber: "0",
     enemieBlueNumber: "0",
@@ -972,6 +1345,7 @@ type CardDesign = {
   id: string;
   title: string;
   description: string;
+  description2: string;
   image: string;
   icon: string;
   icon2: string | null;
@@ -1000,6 +1374,8 @@ type CardDesign = {
   tensionColor: string;
   bottomBarColor: string;
   titleLines?: 1 | 2 | 3;
+  heroRollNumber: string;
+  heroBagNumber: string;
   enemieRedNumber: string;
   enemieGreenNumber: string;
   enemieBlueNumber: string;
@@ -1016,6 +1392,10 @@ type CardDesign = {
 type CardPreviewProps = {
   card: Omit<CardDesign, "id">;
   overlayImage?: string | null;
+  /** Layout Heroes: imagens das 3 áreas de skill (substituem ícones por cor) */
+  heroSkillImage1?: string | null;
+  heroSkillImage2?: string | null;
+  heroSkillImage3?: string | null;
   htmlId: string;
   iconOptionsA?: IconOption[];
   skillIconOptions?: IconOption[];
@@ -1025,6 +1405,9 @@ type CardPreviewProps = {
   effectIconOptions04?: IconOption[];
   tensionIconOptions?: IconOption[];
   enemieIconOptions?: IconOption[];
+  heroIconOptions?: IconOption[];
+  /** Mapa de códigos 00{nome} para ícones inline (ex: 0015 → 15.png) */
+  inlineIconMap?: Record<string, string>;
   showDebugBackground?: boolean;
   /** Quando true, a área de overlay não é exibida (para miniaturas de layout) */
   isLayoutPreview?: boolean;
@@ -1035,6 +1418,9 @@ const BG_LAYOUT_IMAGE = "/models/cards/Back-S.png";
 const CardPreview = ({
   card,
   overlayImage,
+  heroSkillImage1,
+  heroSkillImage2,
+  heroSkillImage3,
   htmlId,
   iconOptionsA = [],
   skillIconOptions = [],
@@ -1044,6 +1430,8 @@ const CardPreview = ({
   effectIconOptions04 = [],
   tensionIconOptions = [],
   enemieIconOptions = [],
+  heroIconOptions = [],
+  inlineIconMap = INLINE_ICON_MAP_BASE,
   showDebugBackground = true,
   isLayoutPreview = false,
 }: CardPreviewProps) => {
@@ -1086,13 +1474,15 @@ const CardPreview = ({
       : titleLinesVal === 2
         ? (layoutPositions.title?.fontSizeLine2 ?? titleFontFromLayout)
         : (layoutPositions.title?.fontSizeLine3 ??
-            layoutPositions.title?.fontSizeLine2 ??
-            titleFontFromLayout);
+          layoutPositions.title?.fontSizeLine2 ??
+          titleFontFromLayout);
 
   const isEnemie = isEnemieLayout(card.layoutId);
-  /** Resolve ícone de inimigo (skills por cor) a partir de enemieIconOptions. */
+  const effectiveIconOptions =
+    card.layoutId === "heroes" ? heroIconOptions : enemieIconOptions;
+  /** Resolve ícone de inimigo/heroi (skills por cor) a partir de effectiveIconOptions. */
   const findEnemieIconForSkill = (skillId: string) =>
-    enemieIconOptions.find(
+    effectiveIconOptions.find(
       (o) =>
         o.id === skillId ||
         String(o.id) === String(skillId) ||
@@ -1131,6 +1521,20 @@ const CardPreview = ({
   const ENEMIE_01_ICON = "/models/icons/Enemies/01.png";
   const ENEMIE_02_ICON = "/models/icons/Enemies/02.png";
   const ENEMIE_06_ICON = "/models/icons/Enemies/06.png";
+  const HERO_01_ICON = "/models/icons/Heroes/01.png";
+  const ICON_01 =
+    findEnemieIconForSkill("01")?.src ??
+    (card.layoutId === "heroes" ? HERO_01_ICON : ENEMIE_01_ICON);
+  const ICON_02 =
+    findEnemieIconForSkill("02")?.src ??
+    (card.layoutId === "heroes"
+      ? "/models/icons/Heroes/02.png"
+      : ENEMIE_02_ICON);
+  const ICON_06 =
+    findEnemieIconForSkill("06")?.src ??
+    (card.layoutId === "heroes"
+      ? "/models/icons/Heroes/06.png"
+      : ENEMIE_06_ICON);
   const cardOuterDimensions = isEnemie
     ? ENEMIE_OUTER_DIMENSIONS
     : OUTER_DIMENSIONS;
@@ -1148,12 +1552,39 @@ const CardPreview = ({
       }
     : INNER_OFFSET;
 
+  const layoutConfig = getLayoutConfig(card.layoutId);
+  const isFullBleedLayout = layoutConfig.backImage === null;
+  const isMhLayout = card.layoutId.startsWith("mh");
+  const descriptionPositions =
+    layoutPositions.description1 ?? layoutPositions.description;
+  const hasInlineIconsDesc = hasInlineIconCodes(
+    card.description || "",
+    inlineIconMap,
+  );
+  const hasInlineIconsDesc2 = hasInlineIconCodes(
+    card.description2 || "",
+    inlineIconMap,
+  );
+  const layoutIconSlots = getLayoutIconSlots(layoutConfig);
+  const icon1BoxShadow = layoutIconSlots[0]?.boxShadow ? ICON_DROP_SHADOW : "";
+  const icon2BoxShadow = layoutIconSlots[1]?.boxShadow ? ICON_DROP_SHADOW : "";
+  const icon1Pos = isEquipWithEffectsLayout(card.layoutId)
+    ? EQUIP2_LAYOUT_POSITIONS.icon
+    : (layoutIconSlots[0]?.positions ?? layoutPositions.icon);
+  const icon2Pos = isEquipWithEffectsLayout(card.layoutId)
+    ? EQUIP2_LAYOUT_POSITIONS.icon2
+    : (layoutIconSlots[1]?.positions ?? layoutPositions.icon2);
+
   const innerCardStyle: React.CSSProperties = {
     position: "absolute",
-    left: `${cardInnerOffset.left}px`,
-    top: `${cardInnerOffset.top}px`,
-    width: cardInnerDimensions.width,
-    height: cardInnerDimensions.height,
+    left: isFullBleedLayout ? 0 : `${cardInnerOffset.left}px`,
+    top: isFullBleedLayout ? 0 : `${cardInnerOffset.top}px`,
+    width: isFullBleedLayout
+      ? cardOuterDimensions.width
+      : cardInnerDimensions.width,
+    height: isFullBleedLayout
+      ? cardOuterDimensions.height
+      : cardInnerDimensions.height,
     backgroundImage: `url("${heroImage}")`,
     backgroundSize: "100% 100%",
     backgroundPosition: "center",
@@ -1171,7 +1602,7 @@ const CardPreview = ({
       style={{
         width: cardOuterDimensions.width,
         height: cardOuterDimensions.height,
-        backgroundImage: `url("${BASE_IMAGE}")`,
+        backgroundImage: isFullBleedLayout ? "none" : `url("${BASE_IMAGE}")`,
         backgroundSize: "100% 100%",
         backgroundPosition: "center",
         backgroundRepeat: "no-repeat",
@@ -1189,7 +1620,73 @@ const CardPreview = ({
             }}
           />
         )}
-        {hasEnemieIconLayout(card.layoutId) && (
+        {card.layoutId === "heroes" &&
+          layoutPositions.heroRollPosition &&
+          layoutPositions.heroBagPosition && (
+            <>
+              <div
+                className="absolute flex flex-col items-center justify-center z-20"
+                style={{
+                  top: layoutPositions.heroRollPosition.top,
+                  left: layoutPositions.heroRollPosition.left,
+                  width: layoutPositions.heroRollPosition.width ?? "80px",
+                  height: layoutPositions.heroRollPosition.height ?? "60px",
+                }}
+              >
+                <img
+                  src={HERO_ROLL_ICON}
+                  alt=""
+                  className="object-contain w-full h-full"
+                />
+                {(card.heroRollNumber || card.heroRollNumber === "0") && (
+                  <div
+                    className="absolute inset-0 flex items-center justify-center font-bold drop-shadow-lg text-center"
+                    style={{
+                      fontSize: "45px",
+                      color: "#1F1612",
+                      fontFamily: bebasNeue.style.fontFamily,
+                      transform: `translate(${
+                        layoutPositions.heroRollPosition?.numberOffsetX ?? "0"
+                      }, ${layoutPositions.heroRollPosition?.numberOffsetY ?? "0"})`,
+                    }}
+                  >
+                    {card.heroRollNumber}
+                  </div>
+                )}
+              </div>
+              <div
+                className="absolute flex flex-col items-center justify-center z-20"
+                style={{
+                  top: layoutPositions.heroBagPosition.top,
+                  left: layoutPositions.heroBagPosition.left,
+                  width: layoutPositions.heroBagPosition.width ?? "80px",
+                  height: layoutPositions.heroBagPosition.height ?? "60px",
+                }}
+              >
+                <img
+                  src={HERO_BAG_ICON}
+                  alt=""
+                  className="object-contain w-full h-full"
+                />
+                {(card.heroBagNumber || card.heroBagNumber === "0") && (
+                  <div
+                    className="absolute inset-0 flex items-center justify-center font-bold drop-shadow-lg text-center"
+                    style={{
+                      fontSize: "45px",
+                      color: "#1F1612",
+                      fontFamily: bebasNeue.style.fontFamily,
+                      transform: `translate(${
+                        layoutPositions.heroBagPosition?.numberOffsetX ?? "0"
+                      }, ${layoutPositions.heroBagPosition?.numberOffsetY ?? "0"})`,
+                    }}
+                  >
+                    {card.heroBagNumber}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        {card.layoutId === "enemie" && (
           <>
             {(card.enemieRedNumber || card.enemieRedNumber === "0") &&
               layoutPositions.enemieRedNumberPosition && (
@@ -1246,7 +1743,7 @@ const CardPreview = ({
         )}
         {!isBgLayout(card.layoutId) &&
           !isTensionLayout(card.layoutId) &&
-          (overlayImage || isLayoutPreview) && (
+          (overlayImage || isLayoutPreview || card.layoutId === "heroes") && (
             <div
               className="absolute flex items-center justify-center overflow-hidden"
               style={{
@@ -1254,15 +1751,8 @@ const CardPreview = ({
                 left: layoutPositions.overlay.left,
                 width: layoutPositions.overlay.width,
                 height: layoutPositions.overlay.height,
-                ...(isEnemie && {
-                  borderRadius: "12px",
-                  boxShadow: "inset 0 0 10px 4px rgba(0, 0, 0, 0.65)",
-                }),
-                ...(!isEnemieLayout(card.layoutId) && {
-                  borderRadius: "15px",
-                  boxShadow:
-                    "inset 0 0 8px 2px rgba(0, 0, 0, 0.5), inset 2px -2px 12px 3px rgba(0, 0, 0, 0.5)",
-                }),
+                ...(isEnemie && { borderRadius: "12px" }),
+                ...(!isEnemieLayout(card.layoutId) && { borderRadius: "15px" }),
               }}
             >
               {overlayImage && !isLayoutPreview && (
@@ -1274,13 +1764,32 @@ const CardPreview = ({
                   }`}
                 />
               )}
+              {/* Overlay com box shadow por cima da arte */}
+              <div
+                className="absolute inset-0 pointer-events-none"
+                style={{
+                  ...(isEnemie && {
+                    borderRadius: "12px",
+                    boxShadow: "inset 0 0 10px 4px rgba(0, 0, 0, 0.65)",
+                  }),
+                  ...(!isEnemieLayout(card.layoutId) && {
+                    borderRadius: "15px",
+                    boxShadow:
+                      "inset 0 0 8px 2px rgba(0, 0, 0, 0.5), inset 2px -2px 12px 3px rgba(0, 0, 0, 0.5)",
+                  }),
+                }}
+              />
             </div>
           )}
         {(hasEnemieIconLayout(card.layoutId) || card.layoutId === "enemie2") &&
           layoutPositions.enemieIcon &&
           card.enemieMainIcon && (
             <div
-              className="absolute overflow-hidden "
+              className={`absolute overflow-hidden ${
+                card.layoutId === "heroes"
+                  ? "flex items-center justify-center"
+                  : ""
+              }`}
               style={{
                 top: layoutPositions.enemieIcon.top,
                 left: layoutPositions.enemieIcon.left,
@@ -1290,17 +1799,111 @@ const CardPreview = ({
             >
               <img
                 src={card.enemieMainIcon}
-                style={{
-                  objectFit: "fill",
-                  objectPosition: "center",
-                }}
-                alt="Ícone do inimigo"
+                className={
+                  card.layoutId === "heroes"
+                    ? "w-full h-full object-contain object-center"
+                    : ""
+                }
+                style={
+                  card.layoutId === "heroes"
+                    ? undefined
+                    : {
+                        objectFit: "fill",
+                        objectPosition: "center",
+                      }
+                }
+                alt={
+                  card.layoutId === "heroes"
+                    ? "Ícone do herói"
+                    : "Ícone do inimigo"
+                }
               />
             </div>
+          )}
+        {card.layoutId === "heroes" &&
+          layoutPositions.heroSkillImage1Position &&
+          layoutPositions.heroSkillImage2Position &&
+          layoutPositions.heroSkillImage3Position &&
+          (heroSkillImage1 || heroSkillImage2 || heroSkillImage3) && (
+            <>
+              {heroSkillImage1 && (
+                <div
+                  className="absolute flex items-center justify-center overflow-hidden z-20"
+                  style={{
+                    top: layoutPositions.heroSkillImage1Position.top,
+                    left: layoutPositions.heroSkillImage1Position.left,
+                    width: layoutPositions.heroSkillImage1Position.width,
+                    height: layoutPositions.heroSkillImage1Position.height,
+                    borderRadius: "8px",
+                  }}
+                >
+                  <img
+                    src={heroSkillImage1}
+                    alt=""
+                    className="w-full h-full object-contain"
+                  />
+                  <div
+                    className="absolute inset-0 pointer-events-none"
+                    style={{
+                      borderRadius: "8px",
+                    }}
+                  />
+                </div>
+              )}
+              {heroSkillImage2 && (
+                <div
+                  className="absolute flex items-center justify-center overflow-hidden z-20"
+                  style={{
+                    top: layoutPositions.heroSkillImage2Position.top,
+                    left: layoutPositions.heroSkillImage2Position.left,
+                    width: layoutPositions.heroSkillImage2Position.width,
+                    height: layoutPositions.heroSkillImage2Position.height,
+                    borderRadius: "8px",
+                  }}
+                >
+                  <img
+                    src={heroSkillImage2}
+                    alt=""
+                    className="w-full h-full object-contain"
+                  />
+                  <div
+                    className="absolute inset-0 pointer-events-none"
+                    style={{
+                      borderRadius: "8px",
+                    }}
+                  />
+                </div>
+              )}
+              {heroSkillImage3 && (
+                <div
+                  className="absolute flex items-center justify-center overflow-hidden z-20"
+                  style={{
+                    top: layoutPositions.heroSkillImage3Position.top,
+                    left: layoutPositions.heroSkillImage3Position.left,
+                    width: layoutPositions.heroSkillImage3Position.width,
+                    height: layoutPositions.heroSkillImage3Position.height,
+                    borderRadius: "8px",
+                  }}
+                >
+                  <img
+                    src={heroSkillImage3}
+                    alt=""
+                    className="w-full h-full object-contain"
+                  />
+                  <div
+                    className="absolute inset-0 pointer-events-none"
+                    style={{
+                      borderRadius: "8px",
+                    }}
+                  />
+                </div>
+              )}
+            </>
           )}
         {!isBgLayout(card.layoutId) &&
           !isTensionLayout(card.layoutId) &&
           !isEquip3EquipLayout(card.layoutId) &&
+          card.layoutId !== "heroes" &&
           (isEnemie
             ? hasEnemieIconLayout(card.layoutId)
             : (card.selectedSkills?.length ?? 0) > 0) && (
@@ -1321,11 +1924,6 @@ const CardPreview = ({
                 ...(!isEnemie && {
                   borderRadius: "15px",
                   padding: 8,
-                  ...(card.layoutId !== "equip1" &&
-                    card.layoutId !== "equip2" && {
-                      boxShadow:
-                        "inset 0 0 8px 2px rgba(0, 0, 0, 0.5), inset 2px -2px 12px 3px rgba(0, 0, 0, 0.5)",
-                    }),
                 }),
               }}
             >
@@ -1362,7 +1960,7 @@ const CardPreview = ({
                             {card.enemieBlueSkills?.find(isEnemie01) && (
                               <img
                                 key="blue-l1-01"
-                                src={ENEMIE_01_ICON}
+                                src={ICON_01}
                                 alt="01"
                                 style={{
                                   maxHeight: `${ENEMIE_SKILL_ICON_SLOT_HEIGHT_PX}px`,
@@ -1392,7 +1990,7 @@ const CardPreview = ({
                             }}
                           >
                             {hasEnemie02InSkills(
-                              enemieIconOptions,
+                              effectiveIconOptions,
                               card.enemieBlueSkills,
                             ) && (
                               <div
@@ -1404,7 +2002,7 @@ const CardPreview = ({
                                 }}
                               >
                                 <img
-                                  src={ENEMIE_02_ICON}
+                                  src={ICON_02}
                                   alt="02"
                                   style={{
                                     maxHeight: `${ENEMIE_SKILL_ICON_SLOT_HEIGHT_PX}px`,
@@ -1480,7 +2078,7 @@ const CardPreview = ({
                             {(() => {
                               const list = card.enemieBlueSkills ?? [];
                               const has06 = hasEnemie06InSkills(
-                                enemieIconOptions,
+                                effectiveIconOptions,
                                 list,
                               );
                               const others = list.filter(
@@ -1535,7 +2133,7 @@ const CardPreview = ({
                                 >
                                   {(() => {
                                     const iconSrc = is06
-                                      ? ENEMIE_06_ICON
+                                      ? ICON_06
                                       : (findEnemieIconForSkill(skillId)?.src ??
                                         "");
                                     if (!iconSrc) return null;
@@ -1604,7 +2202,7 @@ const CardPreview = ({
                             {card.enemiePurpleSkills?.find(isEnemie01) && (
                               <img
                                 key="purple-l1-01"
-                                src={ENEMIE_01_ICON}
+                                src={ICON_01}
                                 alt="01"
                                 style={{
                                   maxHeight: `${ENEMIE_SKILL_ICON_SLOT_HEIGHT_PX}px`,
@@ -1634,7 +2232,7 @@ const CardPreview = ({
                             }}
                           >
                             {hasEnemie02InSkills(
-                              enemieIconOptions,
+                              effectiveIconOptions,
                               card.enemiePurpleSkills,
                             ) && (
                               <div
@@ -1646,7 +2244,7 @@ const CardPreview = ({
                                 }}
                               >
                                 <img
-                                  src={ENEMIE_02_ICON}
+                                  src={ICON_02}
                                   alt="02"
                                   style={{
                                     maxHeight: `${ENEMIE_SKILL_ICON_SLOT_HEIGHT_PX}px`,
@@ -1722,7 +2320,7 @@ const CardPreview = ({
                             {(() => {
                               const list = card.enemiePurpleSkills ?? [];
                               const has06 = hasEnemie06InSkills(
-                                enemieIconOptions,
+                                effectiveIconOptions,
                                 list,
                               );
                               const others = list.filter(
@@ -1777,7 +2375,7 @@ const CardPreview = ({
                                 >
                                   {(() => {
                                     const iconSrc = is06
-                                      ? ENEMIE_06_ICON
+                                      ? ICON_06
                                       : (findEnemieIconForSkill(skillId)?.src ??
                                         "");
                                     if (!iconSrc) return null;
@@ -1846,7 +2444,7 @@ const CardPreview = ({
                             {card.enemieYellowSkills?.find(isEnemie01) && (
                               <img
                                 key="yellow-l1-01"
-                                src={ENEMIE_01_ICON}
+                                src={ICON_01}
                                 alt="01"
                                 style={{
                                   maxHeight: `${ENEMIE_SKILL_ICON_SLOT_HEIGHT_PX}px`,
@@ -1876,7 +2474,7 @@ const CardPreview = ({
                             }}
                           >
                             {hasEnemie02InSkills(
-                              enemieIconOptions,
+                              effectiveIconOptions,
                               card.enemieYellowSkills,
                             ) && (
                               <div
@@ -1888,7 +2486,7 @@ const CardPreview = ({
                                 }}
                               >
                                 <img
-                                  src={ENEMIE_02_ICON}
+                                  src={ICON_02}
                                   alt="02"
                                   style={{
                                     maxHeight: `${ENEMIE_SKILL_ICON_SLOT_HEIGHT_PX}px`,
@@ -1964,7 +2562,7 @@ const CardPreview = ({
                             {(() => {
                               const list = card.enemieYellowSkills ?? [];
                               const has06 = hasEnemie06InSkills(
-                                enemieIconOptions,
+                                effectiveIconOptions,
                                 list,
                               );
                               const others = list.filter(
@@ -2019,7 +2617,7 @@ const CardPreview = ({
                                 >
                                   {(() => {
                                     const iconSrc = is06
-                                      ? ENEMIE_06_ICON
+                                      ? ICON_06
                                       : (findEnemieIconForSkill(skillId)?.src ??
                                         "");
                                     if (!iconSrc) return null;
@@ -2090,6 +2688,7 @@ const CardPreview = ({
                         src={skill.src}
                         alt={skill.label}
                         className="h-26 w-30 object-contain"
+                        style={{ filter: ICON_OUTLINE_FILTER }}
                       />
                       {numberInFront ? (
                         <div
@@ -2120,64 +2719,38 @@ const CardPreview = ({
                     ...(isEquip3EquipLayout(card.layoutId) && {
                       flexDirection: "column-reverse",
                     }),
-                    top: (isEquip3EquipLayout(card.layoutId)
-                      ? layoutPositions
-                      : isEquipWithEffectsLayout(card.layoutId)
-                        ? EQUIP2_LAYOUT_POSITIONS
-                        : layoutPositions
-                    ).icon.top,
-                    left: (isEquip3EquipLayout(card.layoutId)
-                      ? layoutPositions
-                      : isEquipWithEffectsLayout(card.layoutId)
-                        ? EQUIP2_LAYOUT_POSITIONS
-                        : layoutPositions
-                    ).icon.left,
+                    top: icon1Pos?.top,
+                    left: icon1Pos?.left,
                   }}
                 >
-                  {(isEquip3EquipLayout(card.layoutId)
-                    ? layoutPositions
-                    : isEquipWithEffectsLayout(card.layoutId)
-                      ? EQUIP2_LAYOUT_POSITIONS
-                      : layoutPositions
-                  ).icon && (
+                  {icon1Pos && (
                     <>
                       <div
                         className="relative flex shrink-0 flex-col items-center justify-center"
-                        style={
-                          !isEnemieLayout(card.layoutId)
+                        style={{
+                          ...(!isEnemieLayout(card.layoutId)
                             ? {
                                 width: (() => {
-                                  const icon = isEquip3EquipLayout(
-                                    card.layoutId,
-                                  )
-                                    ? layoutPositions.icon
-                                    : isEquipWithEffectsLayout(card.layoutId)
-                                      ? EQUIP2_LAYOUT_POSITIONS.icon
-                                      : layoutPositions.icon;
+                                  const icon = icon1Pos;
                                   return icon?.width != null
                                     ? parsePx(icon.width)
                                     : 128;
                                 })(),
                                 height: (() => {
-                                  const icon = isEquip3EquipLayout(
-                                    card.layoutId,
-                                  )
-                                    ? layoutPositions.icon
-                                    : isEquipWithEffectsLayout(card.layoutId)
-                                      ? EQUIP2_LAYOUT_POSITIONS.icon
-                                      : layoutPositions.icon;
+                                  const icon = icon1Pos;
                                   return icon?.height != null
                                     ? parsePx(icon.height)
                                     : 128;
                                 })(),
                                 borderRadius: "50%",
                                 padding: 20,
-                                boxShadow:
-                                  "inset 0 0 8px 2px rgba(0, 0, 0, 0.5), inset 2px -2px 12px 3px rgba(0, 0, 0, 0.5)",
                                 overflow: "hidden",
                               }
-                            : undefined
-                        }
+                            : {}),
+                          ...(icon1BoxShadow
+                            ? { boxShadow: icon1BoxShadow }
+                            : {}),
+                        }}
                       >
                         <img
                           src={
@@ -2189,49 +2762,36 @@ const CardPreview = ({
                           }
                           alt="Ícone do card"
                           className="h-32 w-32 shrink-0 object-contain"
+                          style={{ filter: ICON_OUTLINE_FILTER }}
                         />
                       </div>
                       {!isEquip3EquipLayout(card.layoutId) &&
                         (isEquipWithEffectsLayout(card.layoutId) ||
                           card.icon2) &&
-                        (isEquipWithEffectsLayout(card.layoutId)
-                          ? EQUIP2_LAYOUT_POSITIONS.icon2
-                          : layoutPositions.icon2) && (
+                        icon2Pos && (
                           <div
                             className="absolute flex items-center justify-center overflow-hidden"
                             style={{
-                              top: (isEquipWithEffectsLayout(card.layoutId)
-                                ? EQUIP2_LAYOUT_POSITIONS.icon2
-                                : layoutPositions.icon2)!.top,
-                              left: (isEquipWithEffectsLayout(card.layoutId)
-                                ? EQUIP2_LAYOUT_POSITIONS.icon2
-                                : layoutPositions.icon2)!.left,
+                              top: icon2Pos.top,
+                              left: icon2Pos.left,
                               width: (() => {
-                                const icon2 = isEquipWithEffectsLayout(
-                                  card.layoutId,
-                                )
-                                  ? EQUIP2_LAYOUT_POSITIONS.icon2
-                                  : layoutPositions.icon2;
+                                const icon2 = icon2Pos;
                                 return icon2?.width != null
                                   ? parsePx(icon2.width)
                                   : 128;
                               })(),
                               height: (() => {
-                                const icon2 = isEquipWithEffectsLayout(
-                                  card.layoutId,
-                                )
-                                  ? EQUIP2_LAYOUT_POSITIONS.icon2
-                                  : layoutPositions.icon2;
+                                const icon2 = icon2Pos;
                                 return icon2?.height != null
                                   ? parsePx(icon2.height)
                                   : 128;
                               })(),
                               borderRadius: "50%",
                               padding: 20,
-                              ...(!isEnemieLayout(card.layoutId) && {
-                                boxShadow:
-                                  "inset 0 0 8px 2px rgba(0, 0, 0, 0.5), inset 2px -2px 12px 3px rgba(0, 0, 0, 0.5)",
-                              }),
+                              ...(!isEnemieLayout(card.layoutId) && {}),
+                              ...(icon2BoxShadow
+                                ? { boxShadow: icon2BoxShadow }
+                                : {}),
                             }}
                           >
                             <img
@@ -2244,39 +2804,28 @@ const CardPreview = ({
                               className="h-full w-full object-contain"
                               style={
                                 isEquipWithEffectsLayout(card.layoutId)
-                                  ? { transform: "translateY(-20px)" }
-                                  : undefined
+                                  ? {
+                                      transform: "translateY(-20px)",
+                                      filter: ICON_OUTLINE_FILTER,
+                                    }
+                                  : { filter: ICON_OUTLINE_FILTER }
                               }
                             />
                           </div>
                         )}
                     </>
                   )}
-
-                  <p
-                    className={`ml-5 text-black uppercase text-center font-extrabold ${
-                      isEquip3EquipLayout(card.layoutId) ? "mb-8" : "mt-8"
-                    }`}
-                    style={{
-                      fontSize: "clamp(7.5em, 2vw, 3rem)",
-                      letterSpacing: "0.1em",
-                      writingMode: "vertical-rl",
-                      transform: "rotate(180deg)",
-                    }}
-                  >
-                    {CARD_TYPE_LABEL}
-                  </p>
                 </div>
                 {isEquipWithEffectsLayout(card.layoutId) &&
                   card.equip3Number &&
-                  layoutPositions.icon2 && (
+                  icon2Pos && (
                     <div
                       className="flex items-center justify-center"
                       style={{
                         position: "absolute",
                         width: "65px",
-                        top: layoutPositions.icon2.top,
-                        left: layoutPositions.icon2.left,
+                        top: icon2Pos.top,
+                        left: icon2Pos.left,
                         textAlign: "center",
                         justifyContent: "center",
                         alignItems: "center",
@@ -2327,8 +2876,6 @@ const CardPreview = ({
                               justifyContent: "center",
                               borderRadius: "15px",
                               padding: 8,
-                              boxShadow:
-                                "inset 0 0 8px 2px rgba(0, 0, 0, 0.5), inset 2px -2px 12px 3px rgba(0, 0, 0, 0.5)",
                             }}
                           >
                             <img
@@ -2402,8 +2949,6 @@ const CardPreview = ({
                             ? {
                                 borderRadius: "15px",
                                 padding: 8,
-                                boxShadow:
-                                  "inset 0 0 8px 2px rgba(0, 0, 0, 0.5), inset 2px -2px 12px 3px rgba(0, 0, 0, 0.5)",
                               }
                             : {}),
                         }}
@@ -2669,6 +3214,8 @@ const CardPreview = ({
                 width: effectiveTitleWidth,
                 height: layoutPositions.title.height,
                 fontSize: effectiveTitleFontSize,
+                fontFamily: cinzel.style.fontFamily,
+                fontWeight: isMhLayout ? 700 : 400,
                 lineHeight:
                   layoutPositions.title?.lineHeight ??
                   UNIFIED_TITLE_LINE_HEIGHT,
@@ -2676,17 +3223,20 @@ const CardPreview = ({
                 whiteSpace: "pre-line",
                 display: "flex",
                 alignItems: isEnemie ? "flex-start" : "center",
-                justifyContent: isEnemie ? "flex-start" : "center",
+                justifyContent: "center",
                 flexDirection: "column",
                 flexWrap: "wrap",
                 flexGrow: 1,
                 flexShrink: 1,
                 flexBasis: "auto",
                 flex: 1,
+                ...(layoutPositions.title?.boxShadow && {
+                  boxShadow: ICON_DROP_SHADOW,
+                }),
                 ...(card.layoutId === "equip4" &&
                   (() => {
                     const titleBg =
-                      card.tensionColor === "#067427"
+                      card.tensionColor === ""
                         ? 'url("/models/layout/Title-Gren-A.png")'
                         : card.tensionColor === "#A63E26"
                           ? 'url("/models/layout/Title-Red-A.png")'
@@ -2713,8 +3263,6 @@ const CardPreview = ({
                         bgOffsetX !== 0 ? `${-bgOffsetX}px center` : "center",
                       backgroundRepeat: "no-repeat",
                       borderRadius: "15px",
-                      boxShadow:
-                        "inset 0 0 8px 2px rgba(0, 0, 0, 0.5), inset 2px -2px 12px 3px rgba(0, 0, 0, 0.5)",
                       ...(card.icon2 && {
                         filter:
                           "drop-shadow(0 2px 4px rgba(0,0,0,0.4)) drop-shadow(0 4px 8px rgba(0,0,0,0.3))",
@@ -2724,8 +3272,6 @@ const CardPreview = ({
                 ...(!isEnemieLayout(card.layoutId) &&
                   card.layoutId !== "equip4" && {
                     borderRadius: "15px",
-                    boxShadow:
-                      "inset 0 0 8px 2px rgba(0, 0, 0, 0.5), inset 2px -2px 12px 3px rgba(0, 0, 0, 0.5)",
                   }),
               }}
             >
@@ -2758,8 +3304,6 @@ const CardPreview = ({
                         backgroundPosition: "left center",
                         backgroundRepeat: "no-repeat",
                         borderRadius: "15px",
-                        boxShadow:
-                          "inset 0 0 8px 2px rgba(0, 0, 0, 0.5), inset 2px -2px 12px 3px rgba(0, 0, 0, 0.5)",
                       }}
                     >
                       <img
@@ -2803,8 +3347,6 @@ const CardPreview = ({
                         backgroundPosition: "right center",
                         backgroundRepeat: "no-repeat",
                         borderRadius: "15px",
-                        boxShadow:
-                          "inset 0 0 8px 2px rgba(0, 0, 0, 0.5), inset 2px -2px 12px 3px rgba(0, 0, 0, 0.5)",
                       }}
                     >
                       <img
@@ -2826,45 +3368,52 @@ const CardPreview = ({
                 <div
                   className="absolute flex flex-col gap-3 text-black drop-shadow-lg"
                   style={{
-                    top: layoutPositions.description.top,
-                    left: layoutPositions.description.left,
-                    width: layoutPositions.description.width || "570px",
-                    height: layoutPositions.description.height,
-                    fontFamily: ebGaramond.style.fontFamily,
+                    top: descriptionPositions.top,
+                    left: descriptionPositions.left,
+                    width: descriptionPositions.width || "570px",
+                    height: descriptionPositions.height,
+                    fontFamily: crimsonPro.style.fontFamily,
                     fontWeight: 590,
                     fontSize:
-                      layoutPositions.description.fontSize ??
+                      descriptionPositions.fontSize ??
                       UNIFIED_DESCRIPTION_FONT_SIZE,
                     lineHeight:
-                      layoutPositions.description.lineHeight ??
+                      descriptionPositions.lineHeight ??
                       UNIFIED_DESCRIPTION_LINE_HEIGHT,
                     padding: "20px",
-                    ...(layoutPositions.description?.paddingTop && {
+                    ...(descriptionPositions?.paddingTop && {
                       paddingTop: layoutPositions.description.paddingTop,
+                    }),
+                    ...(descriptionPositions?.boxShadow && {
+                      boxShadow: ICON_DROP_SHADOW,
                     }),
                     ...(card.layoutId === "equip4" && {
                       borderRadius: "15px",
-                      boxShadow:
-                        "inset 0 0 8px 2px rgba(0, 0, 0, 0.5), inset 2px -2px 12px 3px rgba(0, 0, 0, 0.5)",
                     }),
                   }}
                 >
                   <p
                     className="m-0 w-full text-center whitespace-pre-line"
                     style={{
-                      fontFamily: ebGaramond.style.fontFamily,
+                      fontFamily: crimsonPro.style.fontFamily,
                       fontWeight: 590,
                       lineHeight:
-                        layoutPositions.description?.lineHeight ??
+                        descriptionPositions?.lineHeight ??
                         UNIFIED_DESCRIPTION_LINE_HEIGHT,
                       ...(layoutPositions.description?.lineWidth && {
-                        maxWidth: layoutPositions.description.lineWidth,
+                        maxWidth: descriptionPositions.lineWidth,
                         marginLeft: "auto",
                         marginRight: "auto",
                       }),
                     }}
                   >
-                    {renderTextWithBoldAndIcons(card.description || "")}
+                    {renderTextWithBoldAndIcons(
+                      isMhLayout
+                        ? (card.description || "").replace(/\*\*/g, "")
+                        : card.description || "",
+                      38,
+                      inlineIconMap,
+                    )}
                   </p>
                   {(card.tension1Icon || card.tension2Icon) && (
                     <div className="flex flex-col gap-3">
@@ -2878,11 +3427,15 @@ const CardPreview = ({
                           <span
                             className="flex-1 text-left whitespace-pre-line"
                             style={{
-                              fontFamily: ebGaramond.style.fontFamily,
+                              fontFamily: crimsonPro.style.fontFamily,
                               fontWeight: 590,
                             }}
                           >
-                            {renderTextWithInlineIcons(card.tension2Text || "")}
+                            {renderTextWithInlineIcons(
+                              card.tension2Text || "",
+                              38,
+                              inlineIconMap,
+                            )}
                           </span>
                         </div>
                       )}
@@ -2896,11 +3449,15 @@ const CardPreview = ({
                           <span
                             className="flex-1 text-left whitespace-pre-line"
                             style={{
-                              fontFamily: ebGaramond.style.fontFamily,
+                              fontFamily: crimsonPro.style.fontFamily,
                               fontWeight: 590,
                             }}
                           >
-                            {renderTextWithInlineIcons(card.tension1Text || "")}
+                            {renderTextWithInlineIcons(
+                              card.tension1Text || "",
+                              38,
+                              inlineIconMap,
+                            )}
                           </span>
                         </div>
                       )}
@@ -3047,22 +3604,23 @@ const CardPreview = ({
                   <div
                     className="absolute flex flex-wrap justify-center items-center content-center gap-4 text-black drop-shadow-lg"
                     style={{
-                      top: layoutPositions.description.top,
-                      left: layoutPositions.description.left,
-                      width: layoutPositions.description.width || "570px",
-                      height: layoutPositions.description.height || "420px",
-                      fontFamily: ebGaramond.style.fontFamily,
+                      top: descriptionPositions.top,
+                      left: descriptionPositions.left,
+                      width: descriptionPositions.width || "570px",
+                      height: descriptionPositions.height || "420px",
+                      fontFamily: crimsonPro.style.fontFamily,
                       fontWeight: 590,
                       fontSize:
-                        layoutPositions.description.fontSize ??
+                        descriptionPositions.fontSize ??
                         UNIFIED_DESCRIPTION_FONT_SIZE,
                       lineHeight:
-                        layoutPositions.description.lineHeight ??
+                        descriptionPositions.lineHeight ??
                         UNIFIED_DESCRIPTION_LINE_HEIGHT,
                       padding: "0 40px 40px 40px",
                       borderRadius: "15px",
-                      boxShadow:
-                        "inset 0 0 8px 2px rgba(0, 0, 0, 0.5), inset 2px -2px 12px 3px rgba(0, 0, 0, 0.5)",
+                      ...(descriptionPositions?.boxShadow && {
+                        boxShadow: ICON_DROP_SHADOW,
+                      }),
                     }}
                   >
                     <div
@@ -3080,9 +3638,6 @@ const CardPreview = ({
                         borderRadius:
                           layoutPositions.descriptionSkillsBox?.borderRadius ??
                           "25px",
-                        boxShadow:
-                          layoutPositions.descriptionSkillsBox?.boxShadow ??
-                          "inset 0 0 8px 2px rgba(0, 0, 0, 0.5), inset 2px -2px 12px 3px rgba(0, 0, 0, 0.5)",
                         backgroundColor:
                           layoutPositions.descriptionSkillsBox
                             ?.backgroundColor ?? "#ef4444",
@@ -3158,83 +3713,183 @@ const CardPreview = ({
                         textAlignLast: "center",
                         letterSpacing: "-0.03em",
                         lineHeight:
-                          layoutPositions.description?.lineHeight ??
+                          descriptionPositions?.lineHeight ??
                           UNIFIED_DESCRIPTION_LINE_HEIGHT,
                       }}
                     >
-                      {renderTextWithBoldAndIcons(card.description || "")}
+                      {renderTextWithBoldAndIcons(
+                        isMhLayout
+                          ? (card.description || "").replace(/\*\*/g, "")
+                          : card.description || "",
+                        38,
+                        inlineIconMap,
+                      )}
                     </p>
                   </div>
                 ) : (
                   <p
                     className="absolute text-black drop-shadow-lg text-center flex flex-wrap justify-center items-center content-center"
                     style={{
-                      top: layoutPositions.description.top,
-                      left: layoutPositions.description.left,
-                      width: layoutPositions.description.width || "570px",
-                      height: layoutPositions.description.height || "420px",
-                      fontFamily: ebGaramond.style.fontFamily,
+                      top: descriptionPositions.top,
+                      left: descriptionPositions.left,
+                      width: descriptionPositions.width || "570px",
+                      height: descriptionPositions.height || "420px",
+                      fontFamily: crimsonPro.style.fontFamily,
                       fontWeight: 590,
                       fontSize:
-                        layoutPositions.description.fontSize ??
+                        descriptionPositions.fontSize ??
                         UNIFIED_DESCRIPTION_FONT_SIZE,
                       lineHeight:
-                        layoutPositions.description.lineHeight ??
+                        descriptionPositions.lineHeight ??
                         UNIFIED_DESCRIPTION_LINE_HEIGHT,
                       letterSpacing: "-0.03em",
                       padding: "0 40px 40px 40px",
                       borderRadius: "15px",
-                      boxShadow:
-                        "inset 0 0 8px 2px rgba(0, 0, 0, 0.5), inset 2px -2px 12px 3px rgba(0, 0, 0, 0.5)",
+                      ...(descriptionPositions?.boxShadow && {
+                        boxShadow: ICON_DROP_SHADOW,
+                      }),
                       whiteSpace: "pre-line",
                       textAlign: "center",
                       textAlignLast: "center",
                     }}
                   >
-                    {renderTextWithBoldAndIcons(card.description || "")}
+                    {renderTextWithBoldAndIcons(
+                      isMhLayout
+                        ? (card.description || "").replace(/\*\*/g, "")
+                        : card.description || "",
+                      38,
+                      inlineIconMap,
+                    )}
                   </p>
                 );
               })()
             ) : card.layoutId === "equip3" ? null : (
-              <p
-                className={`absolute text-black drop-shadow-lg ${
-                  isEnemie ? "text-left" : "text-center"
-                }`}
-                style={{
-                  top: layoutPositions.description.top,
-                  left: layoutPositions.description.left,
-                  fontFamily: ebGaramond.style.fontFamily,
-                  fontWeight: 590,
-                  fontSize:
-                    layoutPositions.description.fontSize ??
-                    UNIFIED_DESCRIPTION_FONT_SIZE,
-                  lineHeight:
-                    layoutPositions.description?.lineHeight ??
-                    UNIFIED_DESCRIPTION_LINE_HEIGHT,
-                  width: layoutPositions.description.width || "570px",
-                  height: layoutPositions.description.height || "420px",
-                  whiteSpace: "pre-line",
-                  textAlign: isEnemie ? "left" : "center",
-                  padding: "40px",
-                  ...(isEnemie && (card.description || "").trim()
-                    ? {
-                        borderRadius: "12px",
-                        boxShadow: "inset 0 0 25px 4px rgba(0, 0, 0, 0.65)",
-                      }
-                    : {}),
-                  ...(isEnemie && {
-                    padding: "2%",
-                  }),
-                  ...(!isEnemieLayout(card.layoutId) &&
-                    !isEquipWithEffectsLayout(card.layoutId) && {
-                      borderRadius: "15px",
-                      boxShadow:
-                        "inset 0 0 8px 2px rgba(0, 0, 0, 0.5), inset 2px -2px 12px 3px rgba(0, 0, 0, 0.5)",
-                    }),
-                }}
-              >
-                {renderTextWithBoldAndIcons(card.description || "")}
-              </p>
+              <>
+                {isMhLayout ? (
+                  <div
+                    className="absolute text-black drop-shadow-lg"
+                    style={{
+                      top: descriptionPositions.top,
+                      left: descriptionPositions.left,
+                      width: descriptionPositions.width || "570px",
+                      height: descriptionPositions.height || "420px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      padding: "16px 20px",
+                      borderRadius: "12px",
+                      ...(descriptionPositions?.boxShadow && {
+                        boxShadow: ICON_DROP_SHADOW,
+                      }),
+                    }}
+                  >
+                    <p
+                      className="m-0 w-full"
+                      style={{
+                        fontFamily: crimsonPro.style.fontFamily,
+                        fontWeight: card.layoutId === "mh1" ? 400 : 590,
+                        fontSize:
+                          descriptionPositions.fontSize ??
+                          UNIFIED_DESCRIPTION_FONT_SIZE,
+                        lineHeight:
+                          descriptionPositions?.lineHeight ??
+                          UNIFIED_DESCRIPTION_LINE_HEIGHT,
+                        whiteSpace: "pre-line",
+                        textAlign: "justify",
+                        textAlignLast: "center",
+                      }}
+                    >
+                      {renderTextWithBoldAndIcons(
+                        (card.description || "").replace(/\*\*/g, ""),
+                        38,
+                        inlineIconMap,
+                      )}
+                    </p>
+                  </div>
+                ) : (
+                  <p
+                    className={`absolute text-black drop-shadow-lg ${
+                      isEnemie ? "text-left" : "text-center"
+                    }`}
+                    style={{
+                      top: descriptionPositions.top,
+                      left: descriptionPositions.left,
+                      fontFamily: crimsonPro.style.fontFamily,
+                      fontWeight: card.layoutId === "mh1" ? 400 : 590,
+                      fontSize:
+                        descriptionPositions.fontSize ??
+                        UNIFIED_DESCRIPTION_FONT_SIZE,
+                      lineHeight:
+                        descriptionPositions?.lineHeight ??
+                        UNIFIED_DESCRIPTION_LINE_HEIGHT,
+                      width: descriptionPositions.width || "570px",
+                      height: descriptionPositions.height || "420px",
+                      whiteSpace: "pre-line",
+                      textAlign: isEnemie ? "left" : "center",
+                      padding: "40px",
+                      ...(descriptionPositions?.boxShadow && {
+                        boxShadow: ICON_DROP_SHADOW,
+                      }),
+                      ...(isEnemie && (card.description || "").trim()
+                        ? { borderRadius: "12px" }
+                        : {}),
+                      ...(isEnemie && { padding: "2%" }),
+                      ...(!isEnemieLayout(card.layoutId) &&
+                        !isEquipWithEffectsLayout(card.layoutId) && {
+                          borderRadius: "15px",
+                        }),
+                    }}
+                  >
+                    {renderTextWithBoldAndIcons(
+                      card.description || "",
+                      38,
+                      inlineIconMap,
+                    )}
+                  </p>
+                )}
+                {isMhLayout && layoutPositions.description2 && (
+                  <div
+                    className="absolute text-black drop-shadow-lg"
+                    style={{
+                      top: layoutPositions.description2.top,
+                      left: layoutPositions.description2.left,
+                      width: layoutPositions.description2.width || "580px",
+                      height: layoutPositions.description2.height || "360px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      padding: "16px 20px",
+                      borderRadius: "12px",
+                      ...(layoutPositions.description2?.boxShadow && {
+                        boxShadow: ICON_DROP_SHADOW,
+                      }),
+                    }}
+                  >
+                    <p
+                      className="m-0 w-full"
+                      style={{
+                        fontFamily: crimsonPro.style.fontFamily,
+                        fontWeight: card.layoutId === "mh1" ? 400 : 590,
+                        fontSize:
+                          layoutPositions.description2.fontSize ??
+                          UNIFIED_DESCRIPTION_FONT_SIZE,
+                        lineHeight:
+                          layoutPositions.description2.lineHeight ??
+                          UNIFIED_DESCRIPTION_LINE_HEIGHT,
+                        whiteSpace: "pre-line",
+                        textAlign: "justify",
+                        textAlignLast: "center",
+                      }}
+                    >
+                      {renderTextWithBoldAndIcons(
+                        (card.description2 || "").replace(/\*\*/g, ""),
+                        38,
+                        inlineIconMap,
+                      )}
+                    </p>
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}
@@ -3255,13 +3910,31 @@ export default function Home() {
   const [overlayCache, setOverlayCache] = useState<
     Record<string, string | null>
   >({});
+  const [heroSkillImage1, setHeroSkillImage1] = useState<string | null>(null);
+  const [heroSkillImage2, setHeroSkillImage2] = useState<string | null>(null);
+  const [heroSkillImage3, setHeroSkillImage3] = useState<string | null>(null);
+  const [heroSkillImagesCache, setHeroSkillImagesCache] = useState<
+    Record<
+      string,
+      { skill1: string | null; skill2: string | null; skill3: string | null }
+    >
+  >({});
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
+  const [isJsonTextModalOpen, setIsJsonTextModalOpen] = useState(false);
+  const [jsonText, setJsonText] = useState("");
+  const [jsonTextError, setJsonTextError] = useState<string | null>(null);
   const [storageWarning, setStorageWarning] = useState<string | null>(null);
+  const [layoutCategory, setLayoutCategory] = useState<string>(
+    layoutCategories[0]?.id ?? "resident",
+  );
   const [iconOptionsA, setIconOptionsA] = useState<IconOption[]>([]);
   const [iconOptionsB, setIconOptionsB] = useState<IconOption[]>([]);
   const [iconOptionsD, setIconOptionsD] = useState<IconOption[]>([]);
+  const [layoutIconOptionsByPath, setLayoutIconOptionsByPath] = useState<
+    Record<string, IconOption[]>
+  >({});
   const [skillIconOptions, setSkillIconOptions] = useState<IconOption[]>([]);
   const [effect2IconOptions, setEffect2IconOptions] = useState<IconOption[]>(
     [],
@@ -3282,15 +3955,61 @@ export default function Home() {
   const [enemieMainIconOptions, setEnemieMainIconOptions] = useState<
     IconOption[]
   >([]);
+  const [heroIconOptions, setHeroIconOptions] = useState<IconOption[]>([]);
+  const [inlineIconMap, setInlineIconMap] = useState<Record<string, string>>(
+    () => ({ ...INLINE_ICON_MAP_BASE, ...TEXT_HUNTER_ICON_MAP }),
+  );
   const [exportZipProgress, setExportZipProgress] = useState<number | null>(
     null,
   );
+  const [decks, setDecks] = useState<
+    Array<{ id: string; name: string; cards: CardDesign[] }>
+  >([]);
+  const [isDeckModalOpen, setIsDeckModalOpen] = useState<boolean>(false);
+  const [isTutorialModalOpen, setIsTutorialModalOpen] =
+    useState<boolean>(false);
+  const [tutorialPageIndex, setTutorialPageIndex] = useState<number>(0);
+  const [isTutorialEditMode, setIsTutorialEditMode] = useState<boolean>(false);
+  const [tutorialPagesState, setTutorialPagesState] = useState<
+    import("@/data/tutorialTypes").TutorialLayout | null
+  >(null);
+
+  useEffect(() => {
+    if (isTutorialModalOpen) {
+      setTutorialPageIndex(0);
+      setIsTutorialEditMode(false);
+      const gameKey = layoutCategory === "monster" ? "MH" : "RE3";
+      const fallback = {
+        RE3: re3TutorialLayout as import("@/data/tutorialTypes").TutorialLayout,
+        MH: mhTutorialLayout as import("@/data/tutorialTypes").TutorialLayout,
+      };
+      (async () => {
+        const saved = await getTutorialPagesFromDb(fallback);
+        const pagesForGame = saved[gameKey];
+        const raw = pagesForGame?.length ? pagesForGame : fallback[gameKey];
+        setTutorialPagesState(
+          JSON.parse(JSON.stringify(raw)).map(normalizeTutorialPage),
+        );
+      })();
+    } else {
+      setTutorialPagesState(null);
+    }
+  }, [isTutorialModalOpen, layoutCategory]);
+  const [deckName, setDeckName] = useState<string>("");
+  const [deckError, setDeckError] = useState<string | null>(null);
+  const [isRenameDeckOpen, setIsRenameDeckOpen] = useState<boolean>(false);
+  const [renameDeckId, setRenameDeckId] = useState<string | null>(null);
+  const [renameDeckName, setRenameDeckName] = useState<string>("");
+  const [renameDeckError, setRenameDeckError] = useState<string | null>(null);
   const importFileRef = useRef<HTMLInputElement | null>(null);
+  const heroSkillImage1Ref = useRef<HTMLInputElement | null>(null);
+  const heroSkillImage2Ref = useRef<HTMLInputElement | null>(null);
+  const heroSkillImage3Ref = useRef<HTMLInputElement | null>(null);
   const descriptionTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const descriptionRef = useRef<string>("");
-  const descriptionFormatTimeoutRef = useRef<
-    ReturnType<typeof setTimeout> | null
-  >(null);
+  const descriptionFormatTimeoutRef = useRef<ReturnType<
+    typeof setTimeout
+  > | null>(null);
   const selectedCardRef = useRef<HTMLDivElement | null>(null);
   const lastSavedLayoutIdRef = useRef<string | null>(null);
 
@@ -3322,20 +4041,50 @@ export default function Home() {
       "Tension",
       "Enemies",
       "Enemies/Icons",
+      "Heroes",
+      "Icons",
+      "textHunter",
     ] as const;
-    const setters = [
-      setIconOptionsA,
-      setIconOptionsB,
-      setSkillIconOptions,
-      setIconOptionsD,
-      setEffect2IconOptions,
-      setEffect3IconOptions,
-      setEffect4IconOptions,
-      setEffectIconOptions04,
-      setTensionIconOptions,
-      setEnemieIconOptions,
-      setEnemieMainIconOptions,
-    ];
+    const processIcons = (data: IconOption[], isTextHunter = false) => {
+      const built: Record<string, string> = {};
+      for (const item of data) {
+        if (isTextHunter) {
+          const label = String(item.label || "").trim();
+          if (!label) continue;
+          const key = `Icon${label
+            .split(/[^a-zA-Z0-9]+/)
+            .filter(Boolean)
+            .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+            .join("")}`;
+          if (!key) continue;
+          built[key] = item.src;
+          built[key.toLowerCase()] = item.src;
+        } else if (item.label !== "00") {
+          built["00" + item.label] = item.src;
+        }
+      }
+      setInlineIconMap(() => ({
+        ...INLINE_ICON_MAP_BASE,
+        ...TEXT_HUNTER_ICON_MAP,
+        ...built,
+      }));
+    };
+    const handlers: Record<string, (data: IconOption[]) => void> = {
+      A: setIconOptionsA,
+      B: setIconOptionsB,
+      C: setSkillIconOptions,
+      D: setIconOptionsD,
+      "Effects/01": setEffect2IconOptions,
+      "Effects/02": setEffect3IconOptions,
+      "Effects/03": setEffect4IconOptions,
+      "Effects/04": setEffectIconOptions04,
+      Tension: setTensionIconOptions,
+      Enemies: setEnemieIconOptions,
+      "Enemies/Icons": setEnemieMainIconOptions,
+      Heroes: setHeroIconOptions,
+      Icons: (data) => processIcons(data, false),
+      textHunter: (data) => processIcons(data, true),
+    };
     Promise.allSettled(
       paths.map((p) =>
         fetch(`/api/icons?path=${encodeURIComponent(p)}`).then((r) => r.json()),
@@ -3343,8 +4092,40 @@ export default function Home() {
     ).then((results) => {
       results.forEach((result, i) => {
         const data = result.status === "fulfilled" ? result.value : null;
-        if (Array.isArray(data)) setters[i](data);
+        const handler = handlers[paths[i]];
+        if (Array.isArray(data) && handler) handler(data);
       });
+    });
+  }, []);
+
+  useEffect(() => {
+    const paths = Array.from(
+      new Set(
+        layoutOptions
+          .flatMap((layout) => {
+            const iconPaths = (layout.icons ?? []).map((slot) => slot.path);
+            const skillPath = layout.skillsConfig?.path
+              ? [layout.skillsConfig.path]
+              : [];
+            return [...iconPaths, ...skillPath];
+          })
+          .filter((p) => typeof p === "string" && p.trim() !== ""),
+      ),
+    );
+    if (paths.length === 0) return;
+    Promise.allSettled(
+      paths.map((p) =>
+        fetch(`/api/icons?path=${encodeURIComponent(p)}`).then((r) => r.json()),
+      ),
+    ).then((results) => {
+      const next: Record<string, IconOption[]> = {};
+      results.forEach((result, i) => {
+        const data = result.status === "fulfilled" ? result.value : null;
+        if (Array.isArray(data)) next[paths[i]] = data;
+      });
+      if (Object.keys(next).length > 0) {
+        setLayoutIconOptionsByPath((prev) => ({ ...prev, ...next }));
+      }
     });
   }, []);
 
@@ -3354,14 +4135,18 @@ export default function Home() {
       form.icon !== "/models/icons/A/03.png"
     ) {
       setForm((prev) => ({ ...prev, icon: "/models/icons/A/03.png" }));
-    } else if (
-      form.icon === "" &&
-      iconOptionsA.length > 0 &&
-      form.layout !== "equip4"
-    ) {
-      setForm((prev) => ({ ...prev, icon: iconOptionsA[0].src }));
+    } else if (form.icon === "" && form.layout !== "equip4") {
+      const layout = getLayoutConfig(form.layout);
+      const iconSlot = getLayoutIconSlots(layout)[0];
+      const options =
+        iconSlot?.path && layoutIconOptionsByPath[iconSlot.path]
+          ? layoutIconOptionsByPath[iconSlot.path]
+          : iconOptionsA;
+      if (options.length > 0) {
+        setForm((prev) => ({ ...prev, icon: options[0].src }));
+      }
     }
-  }, [iconOptionsA.length, form.layout, form.icon]);
+  }, [form.layout, form.icon, iconOptionsA, layoutIconOptionsByPath]);
 
   const handleArtUpload = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -3379,6 +4164,23 @@ export default function Home() {
     reader.readAsDataURL(file);
     event.target.value = "";
   };
+
+  const handleHeroSkillImageUpload =
+    (slot: 1 | 2 | 3) => (event: ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result === "string") {
+          if (slot === 1) setHeroSkillImage1(reader.result);
+          else if (slot === 2) setHeroSkillImage2(reader.result);
+          else setHeroSkillImage3(reader.result);
+        }
+      };
+      reader.readAsDataURL(file);
+      event.target.value = "";
+    };
 
   const cropAspect = (() => {
     const config = getLayoutConfig(form.layout);
@@ -3417,6 +4219,7 @@ export default function Home() {
     setForm({
       title: card.title,
       description: card.description,
+      description2: card.description2 ?? "",
       layout: card.layoutId,
       image: card.image,
       icon: card.icon,
@@ -3440,6 +4243,8 @@ export default function Home() {
       tensionColor: card.tensionColor ?? "#067427",
       bottomBarColor: card.bottomBarColor ?? "#39558E",
       titleLines: (card.titleLines ?? 1) as 1 | 2 | 3,
+      heroRollNumber: card.heroRollNumber ?? "0",
+      heroBagNumber: card.heroBagNumber ?? "0",
       enemieRedNumber: card.enemieRedNumber ?? "0",
       enemieGreenNumber: card.enemieGreenNumber ?? "0",
       enemieBlueNumber: card.enemieBlueNumber ?? "0",
@@ -3457,6 +4262,20 @@ export default function Home() {
     });
     const cachedOverlay = await getOverlayImage(card.id);
     setOverlayImage(cachedOverlay);
+    if (card.layoutId === "heroes") {
+      const [s1, s2, s3] = await Promise.all([
+        getOverlayImage(`${card.id}-hero-skill1`),
+        getOverlayImage(`${card.id}-hero-skill2`),
+        getOverlayImage(`${card.id}-hero-skill3`),
+      ]);
+      setHeroSkillImage1(s1);
+      setHeroSkillImage2(s2);
+      setHeroSkillImage3(s3);
+    } else {
+      setHeroSkillImage1(null);
+      setHeroSkillImage2(null);
+      setHeroSkillImage3(null);
+    }
     setEditingId(card.id);
   };
 
@@ -3468,7 +4287,116 @@ export default function Home() {
     descriptionRef.current = "";
     setForm(createInitialFormState(lastSavedLayoutIdRef.current ?? undefined));
     setOverlayImage(null);
+    setHeroSkillImage1(null);
+    setHeroSkillImage2(null);
+    setHeroSkillImage3(null);
     setEditingId(null);
+  };
+
+  const getDefaultLayoutIdForCategory = (categoryId: string) =>
+    layoutOptions.find((opt) => (opt.categoryId ?? "resident") === categoryId)
+      ?.id ??
+    layoutOptions[0]?.id ??
+    DEFAULT_LAYOUT.id;
+
+  const resetDraft = () => {
+    setCards([]);
+    const defaultLayoutId = getDefaultLayoutIdForCategory(layoutCategory);
+    setForm(createInitialFormState(defaultLayoutId));
+    setOverlayImage(null);
+    setHeroSkillImage1(null);
+    setHeroSkillImage2(null);
+    setHeroSkillImage3(null);
+    setEditingId(null);
+  };
+
+  const resolveIconSrcForSlot = (
+    layout: LayoutOption,
+    slotIndex: number,
+    value: unknown,
+  ): string => {
+    if (typeof value !== "string") return "";
+    if (value.includes("/")) return value;
+    const normalized = normalizeIconId(value);
+    if (!normalized) return "";
+    const slots = getLayoutIconSlots(layout);
+    const slot = slots[slotIndex];
+    if (!slot?.path) return "";
+    const options = getOptionsForPath(slot.path);
+    const match = options.find(
+      (item) =>
+        normalizeIconId(item.id) === normalized ||
+        normalizeIconId(item.label) === normalized,
+    );
+    return match?.src ?? "";
+  };
+
+  const normalizeIdArray = (input: unknown): string[] => {
+    if (!Array.isArray(input)) return [];
+    return input
+      .map((item) => {
+        if (typeof item === "number") return String(item).padStart(2, "0");
+        if (typeof item === "string") return normalizeIconId(item);
+        return "";
+      })
+      .filter(Boolean);
+  };
+
+  const handleSaveDeck = () => {
+    setDeckError(null);
+    const name = deckName.trim();
+    if (!name) {
+      setDeckError("Digite um nome para o deck.");
+      return;
+    }
+    if (cards.length === 0) {
+      setDeckError("Não há cards para salvar.");
+      return;
+    }
+    const existing = decks.find(
+      (d) => d.name.toLowerCase() === name.toLowerCase(),
+    );
+    if (existing) {
+      setDecks((prev) =>
+        prev.map((d) =>
+          d.id === existing.id ? { ...d, cards: [...cards] } : d,
+        ),
+      );
+    } else {
+      const newDeck = {
+        id: crypto.randomUUID(),
+        name,
+        cards: [...cards],
+      };
+      setDecks((prev) => [newDeck, ...prev]);
+    }
+    resetDraft();
+    setDeckName("");
+    setIsDeckModalOpen(false);
+  };
+
+  const handleRenameDeck = () => {
+    setRenameDeckError(null);
+    if (!renameDeckId) return;
+    const name = renameDeckName.trim();
+    if (!name) {
+      setRenameDeckError("Digite um nome para o deck.");
+      return;
+    }
+    const exists = decks.find(
+      (d) =>
+        d.name.toLowerCase() === name.toLowerCase() && d.id !== renameDeckId,
+    );
+    if (exists) {
+      setRenameDeckError("Já existe um deck com esse nome.");
+      return;
+    }
+    setDecks((prev) =>
+      prev.map((d) => (d.id === renameDeckId ? { ...d, name } : d)),
+    );
+    setIsRenameDeckOpen(false);
+    setRenameDeckId(null);
+    setRenameDeckName("");
   };
 
   useEffect(() => {
@@ -3481,16 +4409,10 @@ export default function Home() {
   }, [editingId]);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const stored = window.localStorage.getItem(LOCAL_STORAGE_KEY);
-    if (!stored) return;
-    try {
-      const parsed = JSON.parse(stored) as Array<
-        CardDesign & {
-          overlayImage?: string | null;
-        }
-      >;
-      const sanitized = parsed.map((card) => {
+    let active = true;
+
+    const sanitizeCards = (parsed: CardDesign[]) =>
+      parsed.map((card) => {
         const layout = getLayoutConfig(card.layoutId);
         const positions = mergeLayoutPositions(
           card.layoutPositions ?? {},
@@ -3515,6 +4437,8 @@ export default function Home() {
           tension2Text: card.tension2Text ?? "",
           tensionColor: card.tensionColor ?? "#067427",
           bottomBarColor: card.bottomBarColor ?? "#39558E",
+          heroRollNumber: card.heroRollNumber ?? "0",
+          heroBagNumber: card.heroBagNumber ?? "0",
           enemieRedNumber: card.enemieRedNumber ?? "0",
           enemieGreenNumber: card.enemieGreenNumber ?? "0",
           enemieBlueNumber: card.enemieBlueNumber ?? "0",
@@ -3531,27 +4455,59 @@ export default function Home() {
           enemieYellowExtraNumber: card.enemieYellowExtraNumber ?? "",
         };
       });
-      setCards(sanitized);
-    } catch (error) {
-      console.error(error);
-    }
+
+    const loadCards = async () => {
+      if (typeof window === "undefined") return;
+      const storedDb = await getCardsFromDb();
+      if (!active) return;
+      if (storedDb && storedDb.length > 0) {
+        setCards(sanitizeCards(storedDb));
+        return;
+      }
+      const stored = window.localStorage.getItem(LOCAL_STORAGE_KEY);
+      if (!stored) return;
+      try {
+        const parsed = JSON.parse(stored) as CardDesign[];
+        const sanitized = sanitizeCards(parsed);
+        setCards(sanitized);
+        await saveCardsToDb(sanitized);
+        window.localStorage.removeItem(LOCAL_STORAGE_KEY);
+      } catch (error) {
+        console.error(error);
+      }
+    };
+
+    loadCards();
+    return () => {
+      active = false;
+    };
   }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    try {
-      window.localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(cards));
-      setStorageWarning(null);
-    } catch (error) {
-      console.error(
-        "Não foi possível persistir os cards no localStorage.",
-        error,
-      );
-      setStorageWarning(
-        "O navegador bloqueou o armazenamento local. Tente limpar o cache ou usar outro navegador.",
-      );
-    }
+    void saveCardsToDb(cards);
   }, [cards]);
+
+  useEffect(() => {
+    let active = true;
+    const loadDecks = async () => {
+      if (typeof window === "undefined") return;
+      const stored = await getDecksFromDb();
+      if (!active) return;
+      if (stored && Array.isArray(stored)) {
+        setDecks(stored);
+      }
+    };
+    loadDecks();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    void saveDecksToDb(decks);
+  }, [decks]);
 
   useEffect(() => {
     let active = true;
@@ -3572,10 +4528,59 @@ export default function Home() {
     };
   }, [cards]);
 
+  useEffect(() => {
+    let active = true;
+
+    const syncHeroSkillImagesCache = async () => {
+      const heroCards = cards.filter((c) => c.layoutId === "heroes");
+      const entries = await Promise.all(
+        heroCards.map(async (card) => {
+          const [skill1, skill2, skill3] = await Promise.all([
+            getOverlayImage(`${card.id}-hero-skill1`),
+            getOverlayImage(`${card.id}-hero-skill2`),
+            getOverlayImage(`${card.id}-hero-skill3`),
+          ]);
+          return [card.id, { skill1, skill2, skill3 }] as const;
+        }),
+      );
+      if (!active) return;
+      setHeroSkillImagesCache(Object.fromEntries(entries));
+    };
+
+    syncHeroSkillImagesCache();
+    return () => {
+      active = false;
+    };
+  }, [cards]);
+
   const currentLayoutConfig = getLayoutConfig(form.layout);
-  const showExtraIcons =
-    !isEquipWithEffectsLayout(currentLayoutConfig.id) &&
-    Boolean(currentLayoutConfig.positions.icon2);
+  const layoutIconSlots = getLayoutIconSlots(currentLayoutConfig);
+  const getOptionsForPath = (path: string): IconOption[] => {
+    if (layoutIconOptionsByPath[path]) return layoutIconOptionsByPath[path];
+    if (path === "A") return iconOptionsA;
+    if (path === "B") return iconOptionsB;
+    if (path === "D") return iconOptionsD;
+    if (path === "C") return skillIconOptions;
+    return [];
+  };
+  const getSkillOptionsForLayout = (layoutId: string): IconOption[] => {
+    const layout = getLayoutConfig(layoutId);
+    const config = layout.skillsConfig;
+    const path = config?.path ?? "C";
+    const optionsRaw = getOptionsForPath(path);
+    const allowedSet = new Set(
+      (config?.allowedIds ?? []).map(normalizeIconId).filter(Boolean),
+    );
+    return allowedSet.size > 0
+      ? optionsRaw.filter((item) => isIconAllowed(item, allowedSet))
+      : optionsRaw;
+  };
+  const skillOptionsForCurrentLayout = getSkillOptionsForLayout(
+    currentLayoutConfig.id,
+  );
+  const showLayoutIcons =
+    layoutIconSlots.length > 0 &&
+    !isEquipWithEffectsLayout(currentLayoutConfig.id);
 
   const previewCard = {
     icon: form.icon,
@@ -3583,6 +4588,7 @@ export default function Home() {
     icon2Id: form.icon2Id || null,
     title: form.title,
     description: form.description,
+    description2: form.description2 ?? "",
     image: form.image,
     type: CARD_TYPE_LABEL,
     accent: form.accent,
@@ -3607,6 +4613,8 @@ export default function Home() {
     tensionColor: form.tensionColor,
     bottomBarColor: form.bottomBarColor,
     titleLines: form.titleLines ?? 1,
+    heroRollNumber: form.heroRollNumber ?? "0",
+    heroBagNumber: form.heroBagNumber ?? "0",
     enemieRedNumber: form.enemieRedNumber,
     enemieGreenNumber: form.enemieGreenNumber,
     enemieBlueNumber: form.enemieBlueNumber,
@@ -3644,6 +4652,20 @@ export default function Home() {
       await deleteOverlayImage(cardId);
     }
 
+    if (cardToSave.layoutId === "heroes") {
+      await Promise.all([
+        heroSkillImage1
+          ? saveOverlayImage(`${cardId}-hero-skill1`, heroSkillImage1)
+          : deleteOverlayImage(`${cardId}-hero-skill1`),
+        heroSkillImage2
+          ? saveOverlayImage(`${cardId}-hero-skill2`, heroSkillImage2)
+          : deleteOverlayImage(`${cardId}-hero-skill2`),
+        heroSkillImage3
+          ? saveOverlayImage(`${cardId}-hero-skill3`, heroSkillImage3)
+          : deleteOverlayImage(`${cardId}-hero-skill3`),
+      ]);
+    }
+
     setOverlayCache((prev) => {
       const next = { ...prev };
       if (overlayImage) {
@@ -3653,6 +4675,17 @@ export default function Home() {
       }
       return next;
     });
+
+    if (cardToSave.layoutId === "heroes") {
+      setHeroSkillImagesCache((prev) => ({
+        ...prev,
+        [cardId]: {
+          skill1: heroSkillImage1,
+          skill2: heroSkillImage2,
+          skill3: heroSkillImage3,
+        },
+      }));
+    }
 
     lastSavedLayoutIdRef.current = cardToSave.layoutId;
 
@@ -3745,7 +4778,17 @@ export default function Home() {
       delete next[id];
       return next;
     });
+    setHeroSkillImagesCache((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
     void deleteOverlayImage(id);
+    void Promise.all([
+      deleteOverlayImage(`${id}-hero-skill1`),
+      deleteOverlayImage(`${id}-hero-skill2`),
+      deleteOverlayImage(`${id}-hero-skill3`),
+    ]);
   };
 
   const createExportData = () =>
@@ -3772,6 +4815,8 @@ export default function Home() {
         tension2Text,
         tensionColor,
         bottomBarColor,
+        heroRollNumber,
+        heroBagNumber,
         enemieRedNumber,
         enemieGreenNumber,
         enemieBlueNumber,
@@ -3809,6 +4854,8 @@ export default function Home() {
         tension2Text,
         tensionColor,
         bottomBarColor,
+        heroRollNumber: heroRollNumber ?? "0",
+        heroBagNumber: heroBagNumber ?? "0",
         enemieRedNumber,
         enemieGreenNumber,
         enemieBlueNumber,
@@ -3899,6 +4946,10 @@ export default function Home() {
     }
     setCards([]);
     setOverlayCache({});
+    setHeroSkillImagesCache({});
+    setHeroSkillImage1(null);
+    setHeroSkillImage2(null);
+    setHeroSkillImage3(null);
     setOverlayImage(null);
     setEditingId(null);
     await clearOverlayStore();
@@ -3938,6 +4989,8 @@ export default function Home() {
           tension2Text?: string | null;
           tensionColor?: string | null;
           bottomBarColor?: string | null;
+          heroRollNumber?: string | null;
+          heroBagNumber?: string | null;
           enemieRedNumber?: string | null;
           enemieGreenNumber?: string | null;
           enemieBlueNumber?: string | null;
@@ -3985,6 +5038,8 @@ export default function Home() {
             tension2Text: item.tension2Text ?? "",
             tensionColor: item.tensionColor ?? "#067427",
             bottomBarColor: item.bottomBarColor ?? "#39558E",
+            heroRollNumber: item.heroRollNumber ?? "0",
+            heroBagNumber: item.heroBagNumber ?? "0",
             enemieRedNumber: item.enemieRedNumber ?? "0",
             enemieGreenNumber: item.enemieGreenNumber ?? "0",
             enemieBlueNumber: item.enemieBlueNumber ?? "0",
@@ -4013,8 +5068,212 @@ export default function Home() {
     event.target.value = "";
   };
 
+  const openJsonTextModal = () => {
+    setJsonTextError(null);
+    setJsonText(buildJsonExampleForLayout(form.layout));
+    setIsJsonTextModalOpen(true);
+  };
+
+  const resolveIconFromSlot = (
+    value: unknown,
+    slotIndex: number,
+    layoutId: string,
+  ) => {
+    if (!value) return { src: "", id: "" };
+    const raw = String(value).trim();
+    if (!raw) return { src: "", id: "" };
+    const layout = getLayoutConfig(layoutId);
+    const slot = layout.icons?.[slotIndex];
+    const options = slot ? getOptionsForPath(slot.path) : [];
+
+    if (raw.includes("/") || raw.endsWith(".png") || raw.endsWith(".webp")) {
+      const match = options.find((o) => o.src === raw);
+      return { src: raw, id: match?.id ?? "" };
+    }
+
+    const normalized = normalizeIconId(raw);
+    const match = options.find(
+      (o) =>
+        normalizeIconId(String(o.id)) === normalized || String(o.id) === raw,
+    );
+    return { src: match?.src ?? "", id: match?.id ?? "" };
+  };
+
+  const handleImportJsonText = () => {
+    setJsonTextError(null);
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(jsonText);
+    } catch (error) {
+      console.error(error);
+      setJsonTextError("JSON inválido.");
+      return;
+    }
+
+    if (!Array.isArray(parsed)) {
+      setJsonTextError("O JSON deve ser um array de objetos.");
+      return;
+    }
+
+    const layout = getLayoutConfig(form.layout);
+    const skillOptions = getSkillOptionsForLayout(layout.id);
+    const allowedSkillIds = new Map<string, string>();
+    skillOptions.forEach((skill) => {
+      allowedSkillIds.set(normalizeIconId(String(skill.id)), String(skill.id));
+    });
+
+    const importedCards = parsed
+      .filter((item) => item && typeof item === "object")
+      .map((item) => {
+        const data = item as Record<string, unknown>;
+        const iconResult = resolveIconFromSlot(data.icon, 0, layout.id);
+        const icon2Result = resolveIconFromSlot(data.icon2, 1, layout.id);
+
+        const selectedSkillsRaw = Array.isArray(data.selectedSkills)
+          ? data.selectedSkills.map((id) => normalizeIconId(String(id)))
+          : [];
+        const selectedSkills = selectedSkillsRaw
+          .map((id) => allowedSkillIds.get(id))
+          .filter(Boolean) as string[];
+
+        const skillNumbers: Record<string, string> = {};
+        if (data.skillNumbers && typeof data.skillNumbers === "object") {
+          Object.entries(data.skillNumbers as Record<string, unknown>).forEach(
+            ([key, value]) => {
+              const normalized = normalizeIconId(String(key));
+              const mapped = allowedSkillIds.get(normalized);
+              if (!mapped) return;
+              skillNumbers[mapped] = String(value ?? "").replace(/\D/g, "");
+            },
+          );
+        }
+
+        return {
+          id: crypto.randomUUID(),
+          title: String(data.title ?? ""),
+          description: String(data.description ?? ""),
+          description2: String(data.description2 ?? ""),
+          image: layout.image,
+          icon: iconResult.src,
+          icon2: icon2Result.src || null,
+          icon2Id: icon2Result.id || null,
+          accent: DEFAULT_ACCENT,
+          type: CARD_TYPE_LABEL,
+          layoutId: layout.id,
+          selectedSkills,
+          skillNumbers,
+          enemieBlueSkills: Array.isArray(data.enemieBlueSkills)
+            ? (data.enemieBlueSkills as string[])
+            : [],
+          enemieYellowSkills: Array.isArray(data.enemieYellowSkills)
+            ? (data.enemieYellowSkills as string[])
+            : [],
+          enemiePurpleSkills: Array.isArray(data.enemiePurpleSkills)
+            ? (data.enemiePurpleSkills as string[])
+            : [],
+          equip3Number: String(data.equip3Number ?? ""),
+          linhaDeTiro: String(data.linhaDeTiro ?? ""),
+          effect2Icon: String(data.effect2Icon ?? ""),
+          effect2Number: String(data.effect2Number ?? ""),
+          effect3Icon: String(data.effect3Icon ?? ""),
+          effect3Number: String(data.effect3Number ?? ""),
+          effect4Icon: String(data.effect4Icon ?? ""),
+          effect4Number: String(data.effect4Number ?? ""),
+          tension1Icon: String(data.tension1Icon ?? ""),
+          tension1Text: String(data.tension1Text ?? ""),
+          tension2Icon: String(data.tension2Icon ?? ""),
+          tension2Text: String(data.tension2Text ?? ""),
+          tensionColor: String(data.tensionColor ?? "#067427"),
+          bottomBarColor: String(data.bottomBarColor ?? "#39558E"),
+          titleLines: Number(data.titleLines ?? 1) as 1 | 2 | 3,
+          heroRollNumber: String(data.heroRollNumber ?? "0"),
+          heroBagNumber: String(data.heroBagNumber ?? "0"),
+          enemieRedNumber: String(data.enemieRedNumber ?? "0"),
+          enemieGreenNumber: String(data.enemieGreenNumber ?? "0"),
+          enemieBlueNumber: String(data.enemieBlueNumber ?? "0"),
+          enemieBlueColor: Boolean(data.enemieBlueColor ?? false),
+          enemieYellowColor: Boolean(data.enemieYellowColor ?? false),
+          enemiePurpleColor: Boolean(data.enemiePurpleColor ?? false),
+          enemieMainIcon: String(data.enemieMainIcon ?? ""),
+          enemieMainIconNumber: String(data.enemieMainIconNumber ?? ""),
+          enemieBlueExtraNumber: String(data.enemieBlueExtraNumber ?? ""),
+          enemiePurpleExtraNumber: String(data.enemiePurpleExtraNumber ?? ""),
+          enemieYellowExtraNumber: String(data.enemieYellowExtraNumber ?? ""),
+          layoutPositions: layout.positions,
+        } as CardDesign;
+      });
+
+    if (importedCards.length === 0) {
+      setJsonTextError("Nenhum card válido encontrado.");
+      return;
+    }
+
+    setCards((prev) => [...importedCards, ...prev]);
+    setIsJsonTextModalOpen(false);
+    setJsonTextError(null);
+    setStatusMessage(`${importedCards.length} card(s) importados.`);
+  };
+
   const circleRadius = 45;
   const circleCircumference = 2 * Math.PI * circleRadius;
+
+  const formEnemieIconOptions =
+    form.layout === "heroes" ? heroIconOptions : enemieIconOptions;
+
+  const buildJsonExampleForLayout = (layoutId: string) => {
+    const layout = getLayoutConfig(layoutId);
+    const example: Record<string, unknown> = {
+      title: "Exemplo de titulo",
+      description: "Texto principal com IconFire no meio.",
+    };
+
+    if (layout.positions.description2) {
+      example.description2 = "Segundo bloco de texto.";
+    }
+
+    if (layout.icons?.[0]) {
+      example.icon = layout.icons[0]?.allowedIds?.[0] ?? "01";
+    }
+
+    if (layout.icons?.[1]) {
+      example.icon2 = layout.icons[1]?.allowedIds?.[0] ?? "01";
+    }
+
+    const skillOptions = getSkillOptionsForLayout(layoutId);
+    if (skillOptions.length > 0) {
+      const skillId = String(skillOptions[0]?.id ?? "01");
+      example.selectedSkills = [skillId];
+      example.skillNumbers = { [skillId]: "1" };
+    }
+
+    if (layoutId === "equip3") {
+      example.equip3Number = "1";
+      example.linhaDeTiro = "LOS";
+    }
+
+    if (layoutId === "heroes") {
+      example.heroRollNumber = "1";
+      example.heroBagNumber = "1";
+    }
+
+    if (isTensionLayout(layoutId)) {
+      example.tension1Text = "Texto tensao 1";
+      example.tension2Text = "Texto tensao 2";
+      example.tensionColor = "#067427";
+      example.bottomBarColor = "#39558E";
+    }
+
+    if (isEnemieLayout(layoutId)) {
+      example.enemieRedNumber = "1";
+      example.enemieGreenNumber = "2";
+      example.enemieBlueNumber = "3";
+      example.enemieBlueColor = true;
+      example.enemieYellowColor = false;
+      example.enemiePurpleColor = false;
+    }
+
+    return JSON.stringify([example], null, 2);
+  };
 
   return (
     <div className="min-h-screen bg-slate-950 text-white">
@@ -4077,6 +5336,78 @@ export default function Home() {
         </header>
 
         <div className="space-y-3 rounded-3xl border border-white/10 bg-black/50 p-5 shadow-xl">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-lg font-semibold text-white">Decks</p>
+                <span className="text-xs uppercase tracking-[0.4em] text-slate-400">
+                  {decks.length} decks
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                {cards.length > 0 && (
+                  <span className="rounded-full border border-amber-400/50 bg-amber-500/10 px-3 py-1 text-[10px] uppercase tracking-[0.3em] text-amber-200">
+                    Deck atual (rascunho) · {cards.length}
+                  </span>
+                )}
+                {cards.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      resetDraft();
+                      setStatusMessage(null);
+                    }}
+                    className="rounded-2xl border border-red-400/30 bg-red-500/10 px-3 py-1 text-[10px] uppercase tracking-[0.3em] text-red-200 transition hover:border-red-300"
+                  >
+                    Descartar rascunho
+                  </button>
+                )}
+              </div>
+            </div>
+            {decks.length === 0 ? (
+              <p className="text-sm text-slate-400">Nenhum deck salvo ainda.</p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {decks.map((deck) => (
+                  <div
+                    key={deck.id}
+                    className="flex items-center gap-2 rounded-2xl border border-white/20 bg-white/5 px-3 py-2"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (cards.length > 0) {
+                          setStatusMessage(
+                            "Salve o deck atual antes de carregar outro.",
+                          );
+                          return;
+                        }
+                        setStatusMessage(null);
+                        setCards(deck.cards ?? []);
+                        setEditingId(null);
+                      }}
+                      className="text-xs uppercase tracking-[0.3em] text-white transition hover:text-amber-200"
+                      title={`Carregar ${deck.name}`}
+                    >
+                      {deck.name} ({deck.cards?.length ?? 0})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRenameDeckError(null);
+                        setRenameDeckId(deck.id);
+                        setRenameDeckName(deck.name);
+                        setIsRenameDeckOpen(true);
+                      }}
+                      className="rounded-xl border border-white/20 px-2 py-1 text-[10px] uppercase tracking-[0.3em] text-slate-200 transition hover:border-white"
+                    >
+                      Renomear
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
           <div className="flex items-center justify-between">
             <div>
               <p className="text-lg font-semibold text-white">Cards salvos</p>
@@ -4088,9 +5419,9 @@ export default function Home() {
               <button
                 type="button"
                 className="rounded-2xl border border-white/20 bg-white/5 px-3 py-1 text-xs uppercase tracking-[0.3em] text-white transition hover:border-white"
-                onClick={handleExportJson}
+                onClick={openJsonTextModal}
               >
-                Exportar JSON
+                Importar JSON (Texto)
               </button>
               <button
                 type="button"
@@ -4102,25 +5433,11 @@ export default function Home() {
               </button>
               <button
                 type="button"
-                className="rounded-2xl border border-white/20 bg-white/5 px-3 py-1 text-xs uppercase tracking-[0.3em] text-white transition hover:border-white"
-                onClick={() => importFileRef.current?.click()}
-              >
-                Importar JSON
-              </button>
-              <button
-                type="button"
                 className="rounded-2xl border  bg-red-600/10 px-3 py-1 text-xs uppercase tracking-[0.3em] text-red-100 transition hover:border-red-300"
                 onClick={() => void handleClearData()}
               >
                 Limpar DB
               </button>
-              <input
-                type="file"
-                accept="application/json"
-                ref={importFileRef}
-                className="hidden"
-                onChange={handleImportJson}
-              />
             </div>
           </div>
           {importError && (
@@ -4170,10 +5487,32 @@ export default function Home() {
                           <CardPreview
                             card={savedCard}
                             overlayImage={overlayCache[savedCard.id] ?? null}
+                            heroSkillImage1={
+                              savedCard.layoutId === "heroes"
+                                ? (heroSkillImagesCache[savedCard.id]?.skill1 ??
+                                  null)
+                                : null
+                            }
+                            heroSkillImage2={
+                              savedCard.layoutId === "heroes"
+                                ? (heroSkillImagesCache[savedCard.id]?.skill2 ??
+                                  null)
+                                : null
+                            }
+                            heroSkillImage3={
+                              savedCard.layoutId === "heroes"
+                                ? (heroSkillImagesCache[savedCard.id]?.skill3 ??
+                                  null)
+                                : null
+                            }
                             htmlId={`thumb-${savedCard.id}`}
                             iconOptionsA={iconOptionsA}
-                            skillIconOptions={skillIconOptions}
+                            skillIconOptions={getSkillOptionsForLayout(
+                              savedCard.layoutId,
+                            )}
                             enemieIconOptions={enemieIconOptions}
+                            heroIconOptions={heroIconOptions}
+                            inlineIconMap={inlineIconMap}
                             effect2IconOptions={effect2IconOptions}
                             effect3IconOptions={effect3IconOptions}
                             effect4IconOptions={effect4IconOptions}
@@ -4222,6 +5561,22 @@ export default function Home() {
             <div className="space-y-4">
               <div className="flex w-full min-w-0 flex-col gap-2 text-sm text-slate-300">
                 <span>Layout</span>
+                <div className="mb-2 flex gap-2">
+                  {layoutCategories.map((category) => (
+                    <button
+                      key={category.id}
+                      type="button"
+                      onClick={() => setLayoutCategory(category.id)}
+                      className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
+                        layoutCategory === category.id
+                          ? "bg-amber-500 text-black"
+                          : "bg-slate-800 text-slate-200 hover:bg-slate-700"
+                      }`}
+                    >
+                      {category.label}
+                    </button>
+                  ))}
+                </div>
                 <div
                   className="grid w-full min-w-[220px] gap-2 overflow-x-auto overflow-y-auto rounded-2xl border border-white/10 bg-black/50 p-2"
                   style={{
@@ -4230,116 +5585,156 @@ export default function Home() {
                       "repeat(auto-fill, minmax(100px, 1fr))",
                   }}
                 >
-                  {layoutOptions.map((option) => {
-                    const layoutConfig = getLayoutConfig(option.id);
-                    const isEnemie = isEnemieLayout(option.id);
-                    const dims = isEnemie
-                      ? ENEMIE_OUTER_DIMENSIONS
-                      : OUTER_DIMENSIONS;
-                    const layoutScale = 100 / dims.width;
-                    const thumbW = 100;
-                    const thumbH = Math.round(dims.height * layoutScale);
-                    const isSelected = form.layout === option.id;
-                    const isEquip3 = isEquipWithEffectsLayout(option.id);
-                    const layoutPreviewCard: Omit<CardDesign, "id"> = {
-                      ...previewCard,
-                      layoutId: option.id,
-                      layoutPositions: layoutConfig.positions,
-                      image: option.image,
-                      icon:
-                        option.id === "equip3-equip"
-                          ? "/models/icons/A/03.png"
-                          : isEquip3 || isEnemie
-                            ? ""
-                            : option.id === "equip4"
-                              ? form.icon
-                              : (iconOptionsA[0]?.src ?? form.icon),
-                      icon2: layoutConfig.positions.icon2
-                        ? (iconOptionsB[0]?.src ?? form.icon2)
-                        : null,
-                      icon2Id: layoutConfig.positions.icon2
-                        ? (iconOptionsB[0]?.id ?? form.icon2Id)
-                        : null,
-                      linhaDeTiro: isEquip3 ? "LOS" : form.linhaDeTiro,
-                      effect2Icon:
-                        effect2IconOptions[0]?.id ?? form.effect2Icon,
-                      effect2Number: "1",
-                      effect3Icon:
-                        effect3IconOptions[0]?.id ?? form.effect3Icon,
-                      effect3Number: "",
-                      effect4Icon:
-                        effect4IconOptions[0]?.id ?? form.effect4Icon,
-                      effect4Number: "1",
-                    };
-                    return (
-                      <button
-                        key={option.id}
-                        type="button"
-                        onClick={() => {
-                          const selected = getLayoutConfig(option.id);
-                          const isEquip3Click = isEquipWithEffectsLayout(
-                            selected.id,
-                          );
-                          const isEquip3EquipClick =
-                            selected.id === "equip3-equip";
-                          setForm((prev) => ({
-                            ...prev,
-                            layout: selected.id,
-                            image: selected.image,
-                            icon: isEquip3EquipClick
-                              ? "/models/icons/A/03.png"
-                              : isEquip3Click || selected.id === "equip4"
-                                ? ""
-                                : prev.icon || (iconOptionsA[0]?.src ?? ""),
-                            icon2: selected.positions.icon2 ? prev.icon2 : "",
-                            icon2Id: selected.positions.icon2
-                              ? prev.icon2Id
-                              : "",
-                            ...(selected.id === "equip4" &&
-                              !(prev.title ?? "").trim() && {
-                                title: "TUDO LIMPO",
-                              }),
-                          }));
-                        }}
-                        className={`shrink-0 overflow-hidden rounded-xl border-2 transition ${
-                          isSelected
-                            ? "border-amber-500 ring-2 ring-amber-500/50"
-                            : "border-white/20 hover:border-white/50"
-                        }`}
-                        style={{
-                          width: thumbW,
-                          height: thumbH,
-                          position: "relative",
-                        }}
-                        title={option.label}
-                      >
-                        <div
-                          className="absolute left-0 top-0 origin-top-left"
-                          style={{
-                            width: dims.width,
-                            height: dims.height,
-                            transform: `scale(${layoutScale})`,
+                  {layoutOptions
+                    .filter(
+                      (option) =>
+                        (option.categoryId ?? "resident") === layoutCategory,
+                    )
+                    .map((option) => {
+                      const layoutConfig = getLayoutConfig(option.id);
+                      const isEnemie = isEnemieLayout(option.id);
+                      const dims = isEnemie
+                        ? ENEMIE_OUTER_DIMENSIONS
+                        : OUTER_DIMENSIONS;
+                      const layoutScale = 100 / dims.width;
+                      const thumbW = 100;
+                      const thumbH = Math.round(dims.height * layoutScale);
+                      const isSelected = form.layout === option.id;
+                      const isEquip3 = isEquipWithEffectsLayout(option.id);
+                      const layoutIconSlots = getLayoutIconSlots(layoutConfig);
+                      const icon1Slot = layoutIconSlots[0];
+                      const icon2Slot = layoutIconSlots[1];
+                      const icon1Allowed = new Set(
+                        (icon1Slot?.allowedIds ?? [])
+                          .map(normalizeIconId)
+                          .filter(Boolean),
+                      );
+                      const icon2Allowed = new Set(
+                        (icon2Slot?.allowedIds ?? [])
+                          .map(normalizeIconId)
+                          .filter(Boolean),
+                      );
+                      const icon1OptionsRaw = icon1Slot
+                        ? getOptionsForPath(icon1Slot.path)
+                        : iconOptionsA;
+                      const icon2OptionsRaw = icon2Slot
+                        ? getOptionsForPath(icon2Slot.path)
+                        : iconOptionsB;
+                      const icon1Options =
+                        icon1Allowed.size > 0
+                          ? icon1OptionsRaw.filter((item) =>
+                              isIconAllowed(item, icon1Allowed),
+                            )
+                          : icon1OptionsRaw;
+                      const icon2Options =
+                        icon2Allowed.size > 0
+                          ? icon2OptionsRaw.filter((item) =>
+                              isIconAllowed(item, icon2Allowed),
+                            )
+                          : icon2OptionsRaw;
+                      const layoutPreviewCard: Omit<CardDesign, "id"> = {
+                        ...previewCard,
+                        layoutId: option.id,
+                        layoutPositions: layoutConfig.positions,
+                        image: option.image,
+                        icon:
+                          option.id === "equip3-equip"
+                            ? "/models/icons/A/03.png"
+                            : isEquip3 || isEnemie
+                              ? ""
+                              : option.id === "equip4"
+                                ? form.icon
+                                : (icon1Options[0]?.src ?? form.icon),
+                        icon2: Boolean(icon2Slot)
+                          ? (icon2Options[0]?.src ?? form.icon2)
+                          : null,
+                        icon2Id: Boolean(icon2Slot)
+                          ? (icon2Options[0]?.id ?? form.icon2Id)
+                          : null,
+                        linhaDeTiro: isEquip3 ? "LOS" : form.linhaDeTiro,
+                        effect2Icon:
+                          effect2IconOptions[0]?.id ?? form.effect2Icon,
+                        effect2Number: "1",
+                        effect3Icon:
+                          effect3IconOptions[0]?.id ?? form.effect3Icon,
+                        effect3Number: "",
+                        effect4Icon:
+                          effect4IconOptions[0]?.id ?? form.effect4Icon,
+                        effect4Number: "1",
+                      };
+                      return (
+                        <button
+                          key={option.id}
+                          type="button"
+                          onClick={() => {
+                            const selected = getLayoutConfig(option.id);
+                            const isEquip3Click = isEquipWithEffectsLayout(
+                              selected.id,
+                            );
+                            const isEquip3EquipClick =
+                              selected.id === "equip3-equip";
+                            const hasIcon2 = Boolean(icon2Slot);
+                            const defaultIcon1 = icon1Options[0]?.src ?? "";
+                            setForm((prev) => ({
+                              ...prev,
+                              layout: selected.id,
+                              image: selected.image,
+                              icon: isEquip3EquipClick
+                                ? "/models/icons/A/03.png"
+                                : isEquip3Click || selected.id === "equip4"
+                                  ? ""
+                                  : prev.icon || defaultIcon1,
+                              icon2: hasIcon2 ? prev.icon2 : "",
+                              icon2Id: hasIcon2 ? prev.icon2Id : "",
+                              ...(selected.id === "equip4" &&
+                                !(prev.title ?? "").trim() && {
+                                  title: "TUDO LIMPO",
+                                }),
+                            }));
                           }}
+                          className={`shrink-0 overflow-hidden rounded-xl border-2 transition ${
+                            isSelected
+                              ? "border-amber-500 ring-2 ring-amber-500/50"
+                              : "border-white/20 hover:border-white/50"
+                          }`}
+                          style={{
+                            width: thumbW,
+                            height: thumbH,
+                            position: "relative",
+                          }}
+                          title={option.label}
                         >
-                          <CardPreview
-                            card={layoutPreviewCard}
-                            overlayImage={null}
-                            isLayoutPreview
-                            htmlId={`layout-preview-${option.id}`}
-                            iconOptionsA={iconOptionsA}
-                            skillIconOptions={skillIconOptions}
-                            effect2IconOptions={effect2IconOptions}
-                            effect3IconOptions={effect3IconOptions}
-                            effect4IconOptions={effect4IconOptions}
-                            effectIconOptions04={effectIconOptions04}
-                            tensionIconOptions={tensionIconOptions}
-                            enemieIconOptions={enemieIconOptions}
-                            showDebugBackground={false}
-                          />
-                        </div>
-                      </button>
-                    );
-                  })}
+                          <div
+                            className="absolute left-0 top-0 origin-top-left"
+                            style={{
+                              width: dims.width,
+                              height: dims.height,
+                              transform: `scale(${layoutScale})`,
+                            }}
+                          >
+                            <CardPreview
+                              card={layoutPreviewCard}
+                              overlayImage={null}
+                              isLayoutPreview
+                              htmlId={`layout-preview-${option.id}`}
+                              iconOptionsA={iconOptionsA}
+                              skillIconOptions={getSkillOptionsForLayout(
+                                option.id,
+                              )}
+                              effect2IconOptions={effect2IconOptions}
+                              effect3IconOptions={effect3IconOptions}
+                              effect4IconOptions={effect4IconOptions}
+                              effectIconOptions04={effectIconOptions04}
+                              tensionIconOptions={tensionIconOptions}
+                              enemieIconOptions={enemieIconOptions}
+                              heroIconOptions={heroIconOptions}
+                              inlineIconMap={inlineIconMap}
+                              showDebugBackground={false}
+                            />
+                          </div>
+                        </button>
+                      );
+                    })}
                 </div>
               </div>
               {form.layout === "equip4" && (
@@ -4447,6 +5842,7 @@ export default function Home() {
                             src={item.src}
                             alt={item.label}
                             className="h-6 w-6 object-contain"
+                            style={{ filter: ICON_OUTLINE_FILTER }}
                           />
                         </button>
                       ))}
@@ -4487,18 +5883,25 @@ export default function Home() {
               )}
               <label className="flex flex-col gap-2 text-sm text-slate-300">
                 <div className="flex items-center justify-between gap-2">
-                  <span>Título (Enter quebra a linha)</span>
+                  <span>
+                    {getLayoutConfig(form.layout).positions.title.label ??
+                      "Título"}{" "}
+                    (Enter quebra a linha)
+                  </span>
                   <button
                     type="button"
                     onClick={() =>
                       setForm((prev) => ({
                         ...prev,
-                        titleLines: ((prev.titleLines ?? 1) % 3) + 1 as 1 | 2 | 3,
+                        titleLines: (((prev.titleLines ?? 1) % 3) + 1) as
+                          | 1
+                          | 2
+                          | 3,
                       }))
                     }
                     className="shrink-0 rounded-lg border border-white/20 bg-white/5 px-3 py-1.5 text-xs text-slate-300 transition hover:bg-white/10"
                   >
-                    Linhas {(form.titleLines ?? 1)}
+                    Linhas {form.titleLines ?? 1}
                   </button>
                 </div>
                 <textarea
@@ -4521,7 +5924,27 @@ export default function Home() {
               </label>
               {form.layout !== "equip3" && (
                 <label className="flex flex-col gap-2 text-sm text-slate-300">
-                  Descrição (Enter quebra a linha)
+                  {form.layout.startsWith("mh") ? (
+                    <span className="flex items-center gap-2">
+                      {getLayoutConfig(form.layout).positions.description1
+                        ?.label ?? "Descrição 1"}
+                      <span className="inline-block h-3 w-3 rounded-full bg-red-500/70" />
+                    </span>
+                  ) : (
+                    (getLayoutConfig(form.layout).positions.description
+                      ?.label ?? "Descrição (Enter quebra a linha)")
+                  )}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setStatusMessage(
+                        "Códigos: IconFire, IconIce, IconWater, IconThunder, IconDragon (variações minúsculas também)",
+                      )
+                    }
+                    className="self-start rounded-lg border border-white/20 bg-white/5 px-2 py-1 text-[10px] uppercase tracking-[0.3em] text-slate-200 transition hover:border-white"
+                  >
+                    Ver códigos
+                  </button>
                   <textarea
                     ref={descriptionTextareaRef}
                     rows={3}
@@ -4529,6 +5952,7 @@ export default function Home() {
                     value={form.description || ""}
                     className="rounded-2xl border border-white/10 bg-transparent px-4 py-3 text-sm leading-relaxed text-white outline-none transition focus:border-slate-300 overflow-hidden resize-y min-h-[80px]"
                     style={{ minHeight: 80 }}
+                    title="Códigos: IconFire, IconIce, IconWater, IconThunder, IconDragon (variações minúsculas também)"
                     onChange={(event) => {
                       const v = event.target.value;
                       descriptionRef.current = v;
@@ -4537,585 +5961,206 @@ export default function Home() {
                       }
                       setForm((prev) => ({ ...prev, description: v }));
                       descriptionFormatTimeoutRef.current = setTimeout(() => {
+                        if (form.layout.startsWith("mh")) return;
                         setForm((prev) => ({
                           ...prev,
-                          description: formatDescription(descriptionRef.current),
+                          description: formatDescription(
+                            descriptionRef.current,
+                          ),
                         }));
                       }, 3000);
                     }}
                   />
                 </label>
               )}
-              {hasEnemieIconLayout(form.layout) && (
-                <div className="flex gap-4">
-                  <label className="flex flex-col gap-2 text-sm text-slate-300 flex-1">
-                    <span className="text-red-400">Perigo</span>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      value={form.enemieRedNumber || "0"}
-                      onChange={(e) => {
-                        const value = e.target.value.replace(/\D/g, "");
-                        setForm((prev) => ({
-                          ...prev,
-                          enemieRedNumber: value.slice(-1) || "0",
-                        }));
-                      }}
-                      className="rounded-2xl border border-red-500/50 bg-transparent px-4 py-3 text-base text-white outline-none transition focus:border-red-500"
-                      placeholder="0"
-                    />
-                  </label>
-                  <label className="flex flex-col gap-2 text-sm text-slate-300 flex-1">
-                    <span className="text-green-400">Velocidade</span>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      value={form.enemieGreenNumber || "0"}
-                      onChange={(e) => {
-                        const value = e.target.value.replace(/\D/g, "");
-                        setForm((prev) => ({
-                          ...prev,
-                          enemieGreenNumber: value.slice(-1) || "0",
-                        }));
-                      }}
-                      className="rounded-2xl border border-green-500/50 bg-transparent px-4 py-3 text-base text-white outline-none transition focus:border-green-500"
-                      placeholder="0"
-                    />
-                  </label>
-                  <label className="flex flex-col gap-2 text-sm text-slate-300 flex-1">
-                    <span className="text-blue-400">Vida</span>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      value={form.enemieBlueNumber || "0"}
-                      onChange={(e) =>
-                        setForm((prev) => ({
-                          ...prev,
-                          enemieBlueNumber:
-                            e.target.value.replace(/\D/g, "") || "0",
-                        }))
-                      }
-                      className="rounded-2xl border border-blue-500/50 bg-transparent px-4 py-3 text-base text-white outline-none transition focus:border-blue-500"
-                      placeholder="0"
-                    />
-                  </label>
-                </div>
-              )}
-              {form.layout !== "equip4" && (
-                <div className="flex flex-col gap-2 text-sm text-slate-300">
-                  <span>Arte própria?</span>
+              {getLayoutConfig(form.layout).positions.description2 && (
+                <label className="flex flex-col gap-2 text-sm text-slate-300">
+                  <span className="flex items-center gap-2">
+                    {getLayoutConfig(form.layout).positions.description2
+                      ?.label ?? "Descrição 2"}
+                    <span className="inline-block h-3 w-3 rounded-full bg-blue-500/70" />
+                  </span>
                   <button
                     type="button"
-                    className="rounded-2xl border border-white/10 bg-gradient-to-r from-slate-700 to-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:border-white/60"
-                    onClick={() => fileInputRef.current?.click()}
+                    onClick={() =>
+                      setStatusMessage(
+                        "Códigos: IconFire, IconIce, IconWater, IconThunder, IconDragon (variações minúsculas também)",
+                      )
+                    }
+                    className="self-start rounded-lg border border-white/20 bg-white/5 px-2 py-1 text-[10px] uppercase tracking-[0.3em] text-slate-200 transition hover:border-white"
                   >
-                    Enviar arte
+                    Ver códigos
                   </button>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    ref={fileInputRef}
-                    className="hidden"
-                    onChange={handleArtUpload}
+                  <textarea
+                    rows={3}
+                    placeholder="Texto da segunda área de descrição..."
+                    value={form.description2 || ""}
+                    className="rounded-2xl border border-white/10 bg-transparent px-4 py-3 text-sm leading-relaxed text-white outline-none transition focus:border-slate-300 overflow-hidden resize-y min-h-[80px]"
+                    style={{ minHeight: 80 }}
+                    title="Códigos: IconFire, IconIce, IconWater, IconThunder, IconDragon (variações minúsculas também)"
+                    onChange={(event) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        description2: event.target.value,
+                      }))
+                    }
                   />
-                </div>
+                </label>
               )}
-            </div>
-
-            {form.layout !== "equip3" &&
-              form.layout !== "equip3-equip" &&
-              !isTensionLayout(form.layout) &&
-              !isEnemieLayout(form.layout) && (
-                <>
-                  <div className="space-y-3">
-                    <h3 className="text-xl font-semibold">Ícone 1</h3>
-                    <div className="flex flex-wrap justify-around items-center gap-3">
-                      {iconOptionsA.map((item) => (
-                        <button
-                          key={item.id}
-                          type="button"
-                          onClick={() =>
-                            setForm((prev) => ({ ...prev, icon: item.src }))
-                          }
-                          className={`flex h-12 w-12 items-center justify-center rounded-full border transition ${
-                            form.icon === item.src
-                              ? "border-amber-400 bg-[#EDE4D7]"
-                              : "border-white/20 bg-[#EDE4D7]/70"
-                          }`}
-                        >
-                          <img
-                            src={item.src}
-                            alt={item.label}
-                            className="h-6 w-6 object-contain"
-                          />
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  {showExtraIcons && (
-                    <div className="space-y-3">
-                      <h3 className="text-xl font-semibold">Dados</h3>
-                      <div className="flex flex-wrap justify-around items-center gap-3">
-                        {iconOptionsB.map((item) => (
-                          <button
-                            key={item.id}
-                            type="button"
-                            onClick={() =>
-                              setForm((prev) => ({
-                                ...prev,
-                                icon2: item.src,
-                                icon2Id: item.id,
-                              }))
-                            }
-                            className={`flex h-12 w-12 items-center justify-center rounded-full border transition ${
-                              form.icon2 === item.src
-                                ? "border-amber-400 bg-[#EDE4D7]"
-                                : "border-white/20 bg-[#EDE4D7]/70"
-                            }`}
-                          >
-                            <img
-                              src={item.src}
-                              alt={item.label}
-                              className="h-6 w-6 object-contain"
-                            />
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </>
-              )}
-
-            {form.layout !== "equip3" &&
-              form.layout !== "equip3-equip" &&
-              !isTensionLayout(form.layout) &&
-              !isEnemieLayout(form.layout) && (
-                <div className="space-y-3">
-                  <h3 className="text-xl font-semibold">Skills</h3>
-                  <div className="flex flex-wrap justify-around items-center gap-4">
-                    {skillIconOptions.map((skill) => {
-                      const selected = form.selectedSkills.includes(skill.id);
+              {form.layout !== "equip3" &&
+                form.layout !== "equip3-equip" &&
+                !isTensionLayout(form.layout) &&
+                !isEnemieLayout(form.layout) &&
+                showLayoutIcons && (
+                  <div className="space-y-6">
+                    {layoutIconSlots.map((slot, index) => {
+                      const optionsRaw = getOptionsForPath(slot.path);
+                      const allowedSet = new Set(
+                        (slot.allowedIds ?? [])
+                          .map(normalizeIconId)
+                          .filter(Boolean),
+                      );
+                      const options =
+                        allowedSet.size > 0
+                          ? optionsRaw.filter((item) =>
+                              isIconAllowed(item, allowedSet),
+                            )
+                          : optionsRaw;
+                      const isIcon1 = index === 0;
+                      const isIcon2 = index === 1;
+                      if (!isIcon1 && !isIcon2) return null;
+                      const selectedSrc = isIcon2 ? form.icon2 : form.icon;
                       return (
-                        <div
-                          key={skill.id}
-                          className="flex flex-col items-center gap-1"
-                        >
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setForm((prev) => {
-                                const exists = prev.selectedSkills.includes(
-                                  skill.id,
-                                );
-                                const next = exists
-                                  ? prev.selectedSkills.filter(
-                                      (id) => id !== skill.id,
-                                    )
-                                  : [...prev.selectedSkills, skill.id];
-                                return { ...prev, selectedSkills: next };
-                              })
-                            }
-                            className={`flex h-12 w-12 items-center justify-center rounded-full border transition ${
-                              selected
-                                ? "border-amber-400 bg-[#EDE4D7]"
-                                : "border-white/20 bg-[#EDE4D7]/70"
-                            }`}
-                            title={
-                              TOOLTIP_SKILL_NUMBER[String(Number(skill.id))] ??
-                              skill.label
-                            }
-                          >
-                            <img
-                              src={skill.src}
-                              alt={skill.label}
-                              className="h-6 w-6 object-contain"
-                            />
-                          </button>
-                          <input
-                            type="text"
-                            inputMode="numeric"
-                            value={form.skillNumbers?.[skill.id] || ""}
-                            onChange={(e) =>
-                              setForm((prev) => ({
-                                ...prev,
-                                skillNumbers: {
-                                  ...prev.skillNumbers,
-                                  [skill.id]: e.target.value.replace(/\D/g, ""),
-                                },
-                              }))
-                            }
-                            className="w-12 rounded border border-white/10 bg-white/5 px-1 py-0.5 text-center text-xs text-white"
-                            placeholder="Nº"
-                            title={Object.entries(TOOLTIP_SKILL_NUMBER)
-                              .map(([k, v]) => `${k} = ${v}`)
-                              .join(" | ")}
-                          />
+                        <div key={index} className="space-y-3">
+                          <h3 className="text-xl font-semibold">
+                            {slot.label}
+                          </h3>
+                          <div className="flex flex-wrap justify-around items-center gap-3">
+                            {options.map((item) => (
+                              <button
+                                key={item.id}
+                                type="button"
+                                onClick={() =>
+                                  setForm((prev) =>
+                                    isIcon2
+                                      ? {
+                                          ...prev,
+                                          icon2: item.src,
+                                          icon2Id: item.id,
+                                        }
+                                      : { ...prev, icon: item.src },
+                                  )
+                                }
+                                className={`flex h-12 w-12 items-center justify-center rounded-full border transition ${
+                                  selectedSrc === item.src
+                                    ? "border-amber-400 bg-[#EDE4D7]"
+                                    : "border-white/20 bg-[#EDE4D7]/70"
+                                }`}
+                              >
+                                <img
+                                  src={item.src}
+                                  alt={item.label}
+                                  className="h-6 w-6 object-contain"
+                                />
+                              </button>
+                            ))}
+                          </div>
                         </div>
                       );
                     })}
                   </div>
-                  <div className="flex flex-wrap justify-around items-center gap-2 rounded-2xl border border-white/10 bg-white/5 p-2 text-xs uppercase tracking-[0.3em] text-slate-300">
-                    {form.selectedSkills.length === 0 ? (
-                      <span className="w-full text-center text-[0.55rem]">
-                        Nenhuma skill selecionada
-                      </span>
-                    ) : (
-                      form.selectedSkills.map((skillId) => {
-                        const skill = skillIconOptions.find(
-                          (option) => option.id === skillId,
-                        );
-                        if (!skill) return null;
-                        return (
-                          <span
-                            key={`selected-skill-${skillId}`}
-                            className="flex items-center gap-1 rounded-full border border-white/30 bg-white/10 px-2 py-1 text-[0.6rem] text-slate-100"
-                          >
-                            <img
-                              src={skill.src}
-                              alt={skill.label}
-                              className="h-4 w-4 object-contain"
-                            />
-                            {skill.label}
-                          </span>
-                        );
-                      })
-                    )}
-                  </div>
-                </div>
-              )}
-            {(form.layout === "equip3" || form.layout === "equip3-equip") && (
-              <>
-                {form.layout === "equip3" && (
-                  <label className="flex flex-col gap-2 text-sm text-slate-300">
-                    Marcador de Munição
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      value={form.equip3Number || ""}
-                      maxLength={3}
-                      className="rounded-2xl border border-white/10 bg-transparent px-4 py-3 text-sm text-white outline-none transition focus:border-slate-300"
-                      placeholder="ex: 09"
-                      onChange={(event) =>
-                        setForm((prev) => ({
-                          ...prev,
-                          equip3Number: event.target.value,
-                        }))
-                      }
-                    />
-                  </label>
                 )}
 
-                <div className="space-y-4 border-t border-white/10 pt-4">
-                  <div className="space-y-2">
-                    <span className="text-sm font-medium text-slate-300">
-                      1. Linha de tiro
-                    </span>
-                    <input
-                      type="text"
-                      value={form.linhaDeTiro || ""}
-                      onChange={(e) =>
-                        setForm((prev) => ({
-                          ...prev,
-                          linhaDeTiro: e.target.value.toUpperCase(),
-                        }))
-                      }
-                      className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none transition focus:border-slate-400"
-                      placeholder="ex: LOS"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <span className="text-sm font-medium text-slate-300">
-                      Dados de Ataque
-                    </span>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        value={form.effect2Number || ""}
-                        onChange={(e) =>
-                          setForm((prev) => ({
-                            ...prev,
-                            effect2Number: e.target.value.replace(
-                              /[^\d,]/g,
-                              "",
-                            ),
-                          }))
-                        }
-                        className="w-14 rounded-full border border-white/10 bg-white/5 px-2 py-1.5 text-center text-sm text-white"
-                        placeholder="Nº ou 1,2"
-                        title={Object.entries(TOOLTIP_DICE)
-                          .map(([, v]) => `${v}`)
-                          .join(" | ")}
-                      />
-                      {effect2IconOptions.map((item) => (
-                        <button
-                          key={item.id}
-                          type="button"
-                          onClick={() =>
-                            setForm((prev) => ({
-                              ...prev,
-                              effect2Icon: item.id,
-                            }))
-                          }
-                          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border transition ${
-                            form.effect2Icon === item.id
-                              ? "border-amber-400 bg-[#EDE4D7]"
-                              : "border-white/20 bg-[#D9CCBE]"
-                          }`}
-                          title={Object.entries(TOOLTIP_DICE)
-                            .map(([, v]) => `${v}`)
-                            .join(" | ")}
-                        >
-                          <img
-                            src={item.src}
-                            alt={item.label}
-                            className="h-6 w-6 object-contain"
-                          />
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <span className="text-sm font-medium text-slate-300">
-                      Efeito secundário
-                    </span>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        value={form.effect3Number || ""}
-                        onChange={(e) =>
-                          setForm((prev) => ({
-                            ...prev,
-                            effect3Number: e.target.value.replace(/\D/g, ""),
-                          }))
-                        }
-                        className="w-14 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-center text-sm text-white"
-                        placeholder="Nº"
-                        title={Object.entries(TOOLTIP_EFFECT3)
-                          .map(([k, v]) => `${k} = ${v}`)
-                          .join(" | ")}
-                      />
-                      {effect3IconOptions.map((item) => (
-                        <button
-                          key={item.id}
-                          type="button"
-                          onClick={() =>
-                            setForm((prev) => ({
-                              ...prev,
-                              effect3Icon: item.id,
-                            }))
-                          }
-                          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border transition ${
-                            form.effect3Icon === item.id
-                              ? "border-amber-400 bg-[#EDE4D7]"
-                              : "border-white/20 bg-[#D9CCBE]"
-                          }`}
-                          title={
-                            TOOLTIP_EFFECT3[String(Number(item.id))] ??
-                            item.label
-                          }
-                        >
-                          <img
-                            src={item.src}
-                            alt={item.label}
-                            className="h-6 w-6 object-contain"
-                          />
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <span className="text-sm font-medium text-slate-300">
-                      Efeito primário
-                    </span>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        value={form.effect4Number || ""}
-                        onChange={(e) =>
-                          setForm((prev) => ({
-                            ...prev,
-                            effect4Number: e.target.value.replace(/\D/g, ""),
-                          }))
-                        }
-                        className="w-14 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-center text-sm text-white"
-                        placeholder="Nº"
-                        title={Object.entries(TOOLTIP_EFFECT4)
-                          .map(([k, v]) => `${k} = ${v}`)
-                          .join(" | ")}
-                      />
-                      {effect4IconOptions.map((item) => (
-                        <button
-                          key={item.id}
-                          type="button"
-                          onClick={() =>
-                            setForm((prev) => ({
-                              ...prev,
-                              effect4Icon: item.id,
-                            }))
-                          }
-                          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border transition ${
-                            form.effect4Icon === item.id
-                              ? "border-amber-400 bg-[#EDE4D7]"
-                              : "border-white/20 bg-[#D9CCBE]"
-                          }`}
-                          title={
-                            TOOLTIP_EFFECT4[String(Number(item.id))] ??
-                            item.label
-                          }
-                        >
-                          <img
-                            src={item.src}
-                            alt={item.label}
-                            className="h-6 w-6 object-contain"
-                          />
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-3 border-t border-white/10 pt-4">
-                  <h3 className="text-xl font-semibold">Skills</h3>
-
-                  <div className="flex flex-wrap justify-around items-center gap-4">
-                    {(form.layout === "equip3-equip"
-                      ? effectIconOptions04.filter(
-                          (o) =>
-                            EQUIP3_EQUIP_SELECTABLE_SKILL_IDS.includes(
-                              String(o.id).padStart(2, "0"),
-                            ) ||
-                            EQUIP3_EQUIP_SELECTABLE_SKILL_IDS.includes(
-                              String(o.id),
-                            ),
-                        )
-                      : effectIconOptions04
-                    ).map((item) => {
-                      const selected = form.selectedSkills.includes(item.id);
-                      return (
-                        <div
-                          key={item.id}
-                          className="flex flex-col items-center gap-1"
-                        >
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setForm((prev) => {
-                                const exists = prev.selectedSkills.includes(
-                                  item.id,
-                                );
-                                let next: string[];
-                                if (form.layout === "equip3-equip") {
-                                  if (exists) {
-                                    next = prev.selectedSkills.filter(
-                                      (id) => id !== item.id,
-                                    );
-                                  } else {
-                                    next = [
-                                      ...prev.selectedSkills.filter(
-                                        (id) =>
-                                          !EQUIP3_EQUIP_SELECTABLE_SKILL_IDS.includes(
-                                            String(id).padStart(2, "0"),
-                                          ) &&
-                                          !EQUIP3_EQUIP_SELECTABLE_SKILL_IDS.includes(
-                                            String(id),
-                                          ),
-                                      ),
-                                      item.id,
-                                    ];
-                                  }
-                                } else {
-                                  next = exists
-                                    ? prev.selectedSkills.filter(
-                                        (id) => id !== item.id,
-                                      )
-                                    : [...prev.selectedSkills, item.id];
-                                }
-                                return { ...prev, selectedSkills: next };
-                              })
-                            }
-                            className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full border transition hover:opacity-90 ${
-                              selected
-                                ? "border-amber-400 bg-[#EDE4D7]"
-                                : "border-white/20"
-                            }`}
-                            style={
-                              selected
-                                ? undefined
-                                : { backgroundColor: "#D9CCBE" }
-                            }
-                            title={
-                              TOOLTIP_SKILL_NUMBER[String(Number(item.id))] ??
-                              item.label
-                            }
+              {form.layout !== "equip3" &&
+                form.layout !== "equip3-equip" &&
+                !isTensionLayout(form.layout) &&
+                !isEnemieLayout(form.layout) && (
+                  <div className="space-y-3">
+                    <h3 className="text-xl font-semibold">
+                      {getLayoutConfig(form.layout).skillsConfig?.label ??
+                        "Skills"}
+                    </h3>
+                    <div className="flex flex-wrap justify-around items-center gap-4">
+                      {skillOptionsForCurrentLayout.map((skill) => {
+                        const selected = form.selectedSkills.includes(skill.id);
+                        return (
+                          <div
+                            key={skill.id}
+                            className="flex flex-col items-center gap-1"
                           >
-                            <img
-                              src={item.src}
-                              alt={item.label}
-                              className="h-8 w-8 object-contain"
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setForm((prev) => {
+                                  const exists = prev.selectedSkills.includes(
+                                    skill.id,
+                                  );
+                                  const next = exists
+                                    ? prev.selectedSkills.filter(
+                                        (id) => id !== skill.id,
+                                      )
+                                    : [...prev.selectedSkills, skill.id];
+                                  return { ...prev, selectedSkills: next };
+                                })
+                              }
+                              className={`flex h-12 w-12 items-center justify-center rounded-full border transition ${
+                                selected
+                                  ? "border-amber-400 bg-[#EDE4D7]"
+                                  : "border-white/20 bg-[#EDE4D7]/70"
+                              }`}
+                              title={
+                                TOOLTIP_SKILL_NUMBER[
+                                  String(Number(skill.id))
+                                ] ?? skill.label
+                              }
+                            >
+                              <img
+                                src={skill.src}
+                                alt={skill.label}
+                                className="h-6 w-6 object-contain"
+                                style={{ filter: ICON_OUTLINE_FILTER }}
+                              />
+                            </button>
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              value={form.skillNumbers?.[skill.id] || ""}
+                              onChange={(e) =>
+                                setForm((prev) => ({
+                                  ...prev,
+                                  skillNumbers: {
+                                    ...prev.skillNumbers,
+                                    [skill.id]: e.target.value.replace(
+                                      /\D/g,
+                                      "",
+                                    ),
+                                  },
+                                }))
+                              }
+                              className="w-12 rounded border border-white/10 bg-white/5 px-1 py-0.5 text-center text-xs text-white"
+                              placeholder="Nº"
+                              title={Object.entries(TOOLTIP_SKILL_NUMBER)
+                                .map(([k, v]) => `${k} = ${v}`)
+                                .join(" | ")}
                             />
-                          </button>
-                          <input
-                            type="text"
-                            inputMode="numeric"
-                            value={form.skillNumbers?.[item.id] || ""}
-                            onChange={(e) =>
-                              setForm((prev) => ({
-                                ...prev,
-                                skillNumbers: {
-                                  ...prev.skillNumbers,
-                                  [item.id]: e.target.value.replace(/\D/g, ""),
-                                },
-                              }))
-                            }
-                            className="w-12 rounded border border-white/10 bg-white/5 px-1 py-0.5 text-center text-xs text-white"
-                            placeholder="Nº"
-                            title={Object.entries(TOOLTIP_SKILL_NUMBER)
-                              .map(([k, v]) => `${k} = ${v}`)
-                              .join(" | ")}
-                          />
-                        </div>
-                      );
-                    })}
-                  </div>
-                  <div className="flex flex-wrap items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 p-2 text-xs uppercase tracking-[0.3em] text-slate-300">
-                    {(form.layout === "equip3-equip"
-                      ? form.selectedSkills.filter(
-                          (id) =>
-                            EQUIP3_EQUIP_SELECTABLE_SKILL_IDS.includes(
-                              String(id).padStart(2, "0"),
-                            ) ||
-                            EQUIP3_EQUIP_SELECTABLE_SKILL_IDS.includes(
-                              String(id),
-                            ),
-                        )
-                      : form.selectedSkills
-                    ).length === 0
-                      ? ""
-                      : (form.layout === "equip3-equip"
-                          ? form.selectedSkills.filter(
-                              (id) =>
-                                EQUIP3_EQUIP_SELECTABLE_SKILL_IDS.includes(
-                                  String(id).padStart(2, "0"),
-                                ) ||
-                                EQUIP3_EQUIP_SELECTABLE_SKILL_IDS.includes(
-                                  String(id),
-                                ),
-                            )
-                          : form.selectedSkills
-                        ).map((skillId) => {
-                          const skill = effectIconOptions04.find(
-                            (o) => o.id === skillId,
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="flex flex-wrap justify-around items-center gap-2 rounded-2xl border border-white/10 bg-white/5 p-2 text-xs uppercase tracking-[0.3em] text-slate-300">
+                      {form.selectedSkills.length === 0 ? (
+                        <span className="w-full text-center text-[0.55rem]">
+                          Nenhuma skill selecionada
+                        </span>
+                      ) : (
+                        form.selectedSkills.map((skillId) => {
+                          const skill = skillIconOptions.find(
+                            (option) => option.id === skillId,
                           );
                           if (!skill) return null;
                           return (
                             <span
-                              key={`selected-skill-04-${skillId}`}
+                              key={`selected-skill-${skillId}`}
                               className="flex items-center gap-1 rounded-full border border-white/30 bg-white/10 px-2 py-1 text-[0.6rem] text-slate-100"
                             >
                               <img
@@ -5126,611 +6171,1007 @@ export default function Home() {
                               {skill.label}
                             </span>
                           );
-                        })}
+                        })
+                      )}
+                    </div>
                   </div>
-                </div>
-              </>
-            )}
-
-            {isTensionLayout(form.layout) && (
-              <div className="space-y-4 border-t border-white/10 pt-4">
-                <span className="text-sm font-medium text-slate-300">
-                  Ícones de tensão (clique no ícone para selecionar)
-                </span>
-                <div className="space-y-3">
-                  {tensionIconOptions[1] && (
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() =>
+                )}
+              {(form.layout === "equip3" || form.layout === "equip3-equip") && (
+                <>
+                  {form.layout === "equip3" && (
+                    <label className="flex flex-col gap-2 text-sm text-slate-300">
+                      Marcador de Munição
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={form.equip3Number || ""}
+                        maxLength={3}
+                        className="rounded-2xl border border-white/10 bg-transparent px-4 py-3 text-sm text-white outline-none transition focus:border-slate-300"
+                        placeholder="ex: 09"
+                        onChange={(event) =>
                           setForm((prev) => ({
                             ...prev,
-                            tension2Icon:
-                              prev.tension2Icon === tensionIconOptions[1].id
-                                ? ""
-                                : tensionIconOptions[1].id,
-                            ...(prev.tension2Icon === tensionIconOptions[1].id
-                              ? { tension2Text: "" }
-                              : {}),
+                            equip3Number: event.target.value,
                           }))
                         }
-                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border transition ${
-                          form.tension2Icon === tensionIconOptions[1].id
-                            ? "border-amber-400 bg-[#EDE4D7]"
-                            : "border-white/20 bg-[#D9CCBE]"
-                        }`}
-                        title={tensionIconOptions[1].label}
-                      >
-                        <img
-                          src={tensionIconOptions[1].src}
-                          alt={tensionIconOptions[1].label}
-                          className="h-6 w-6 object-contain"
-                        />
-                      </button>
-                      {form.tension2Icon === tensionIconOptions[1].id && (
+                      />
+                    </label>
+                  )}
+
+                  <div className="space-y-4 border-t border-white/10 pt-4">
+                    <div className="space-y-2">
+                      <span className="text-sm font-medium text-slate-300">
+                        1. Linha de tiro
+                      </span>
+                      <input
+                        type="text"
+                        value={form.linhaDeTiro || ""}
+                        onChange={(e) =>
+                          setForm((prev) => ({
+                            ...prev,
+                            linhaDeTiro: e.target.value.toUpperCase(),
+                          }))
+                        }
+                        className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none transition focus:border-slate-400"
+                        placeholder="ex: LOS"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <span className="text-sm font-medium text-slate-300">
+                        Dados de Ataque
+                      </span>
+                      <div className="flex flex-wrap items-center gap-2">
                         <input
                           type="text"
-                          value={form.tension2Text || ""}
+                          inputMode="numeric"
+                          value={form.effect2Number || ""}
                           onChange={(e) =>
                             setForm((prev) => ({
                               ...prev,
-                              tension2Text: e.target.value,
+                              effect2Number: e.target.value.replace(
+                                /[^\d,]/g,
+                                "",
+                              ),
                             }))
                           }
-                          className="min-w-[200px] flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none transition focus:border-slate-400"
-                          placeholder="Texto ao lado do ícone (caveira)"
+                          className="w-14 rounded-full border border-white/10 bg-white/5 px-2 py-1.5 text-center text-sm text-white"
+                          placeholder="Nº ou 1,2"
+                          title={Object.entries(TOOLTIP_DICE)
+                            .map(([, v]) => `${v}`)
+                            .join(" | ")}
                         />
-                      )}
-                    </div>
-                  )}
-                  {tensionIconOptions[0] && (
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setForm((prev) => ({
-                            ...prev,
-                            tension1Icon:
-                              prev.tension1Icon === tensionIconOptions[0].id
-                                ? ""
-                                : tensionIconOptions[0].id,
-                            ...(prev.tension1Icon === tensionIconOptions[0].id
-                              ? { tension1Text: "" }
-                              : {}),
-                          }))
-                        }
-                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border transition ${
-                          form.tension1Icon === tensionIconOptions[0].id
-                            ? "border-amber-400 bg-[#EDE4D7]"
-                            : "border-white/20 bg-[#D9CCBE]"
-                        }`}
-                        title={tensionIconOptions[0].label}
-                      >
-                        <img
-                          src={tensionIconOptions[0].src}
-                          alt={tensionIconOptions[0].label}
-                          className="h-6 w-6 object-contain"
-                        />
-                      </button>
-                      {form.tension1Icon === tensionIconOptions[0].id && (
-                        <input
-                          type="text"
-                          value={form.tension1Text || ""}
-                          onChange={(e) =>
-                            setForm((prev) => ({
-                              ...prev,
-                              tension1Text: e.target.value,
-                            }))
-                          }
-                          className="min-w-[200px] flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none transition focus:border-slate-400"
-                          placeholder="Texto ao lado do ícone (mordida)"
-                        />
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {isEnemieLayout(form.layout) && (
-              <div className="space-y-4 border-t border-white/10 pt-4">
-                {(hasEnemieIconLayout(form.layout) ||
-                  form.layout === "enemie2") && (
-                  <div className="flex flex-col gap-2">
-                    <span className="text-sm font-medium text-slate-300">
-                      Ícone do inimigo
-                    </span>
-                    <p className="text-xs text-slate-400">
-                      Ícones da pasta Enemies/Icons
-                    </p>
-                    <div className="flex flex-wrap justify-around items-center gap-2">
-                      {enemieMainIconOptions.map((icon) => {
-                        const src = icon.src ?? "";
-                        const isSelected =
-                          form.enemieMainIcon === src ||
-                          form.enemieMainIcon === icon.id;
-                        return (
+                        {effect2IconOptions.map((item) => (
                           <button
-                            key={icon.id}
+                            key={item.id}
                             type="button"
                             onClick={() =>
                               setForm((prev) => ({
                                 ...prev,
-                                enemieMainIcon: isSelected ? "" : src,
+                                effect2Icon: item.id,
                               }))
                             }
-                            className={`flex h-12 w-12 items-center justify-center rounded-lg transition ${
-                              isSelected
-                                ? "border-2 border-amber-400 bg-amber-500/20"
-                                : "border border-white/20 bg-white/5 hover:border-white/40"
+                            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border transition ${
+                              form.effect2Icon === item.id
+                                ? "border-amber-400 bg-[#EDE4D7]"
+                                : "border-white/20 bg-[#D9CCBE]"
                             }`}
-                            title={icon.label}
+                            title={Object.entries(TOOLTIP_DICE)
+                              .map(([, v]) => `${v}`)
+                              .join(" | ")}
                           >
-                            {src ? (
+                            <img
+                              src={item.src}
+                              alt={item.label}
+                              className="h-6 w-6 object-contain"
+                              style={{ filter: ICON_OUTLINE_FILTER }}
+                            />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <span className="text-sm font-medium text-slate-300">
+                        Efeito secundário
+                      </span>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          value={form.effect3Number || ""}
+                          onChange={(e) =>
+                            setForm((prev) => ({
+                              ...prev,
+                              effect3Number: e.target.value.replace(/\D/g, ""),
+                            }))
+                          }
+                          className="w-14 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-center text-sm text-white"
+                          placeholder="Nº"
+                          title={Object.entries(TOOLTIP_EFFECT3)
+                            .map(([k, v]) => `${k} = ${v}`)
+                            .join(" | ")}
+                        />
+                        {effect3IconOptions.map((item) => (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() =>
+                              setForm((prev) => ({
+                                ...prev,
+                                effect3Icon: item.id,
+                              }))
+                            }
+                            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border transition ${
+                              form.effect3Icon === item.id
+                                ? "border-amber-400 bg-[#EDE4D7]"
+                                : "border-white/20 bg-[#D9CCBE]"
+                            }`}
+                            title={
+                              TOOLTIP_EFFECT3[String(Number(item.id))] ??
+                              item.label
+                            }
+                          >
+                            <img
+                              src={item.src}
+                              alt={item.label}
+                              className="h-6 w-6 object-contain"
+                            />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <span className="text-sm font-medium text-slate-300">
+                        Efeito primário
+                      </span>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          value={form.effect4Number || ""}
+                          onChange={(e) =>
+                            setForm((prev) => ({
+                              ...prev,
+                              effect4Number: e.target.value.replace(/\D/g, ""),
+                            }))
+                          }
+                          className="w-14 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-center text-sm text-white"
+                          placeholder="Nº"
+                          title={Object.entries(TOOLTIP_EFFECT4)
+                            .map(([k, v]) => `${k} = ${v}`)
+                            .join(" | ")}
+                        />
+                        {effect4IconOptions.map((item) => (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() =>
+                              setForm((prev) => ({
+                                ...prev,
+                                effect4Icon: item.id,
+                              }))
+                            }
+                            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border transition ${
+                              form.effect4Icon === item.id
+                                ? "border-amber-400 bg-[#EDE4D7]"
+                                : "border-white/20 bg-[#D9CCBE]"
+                            }`}
+                            title={
+                              TOOLTIP_EFFECT4[String(Number(item.id))] ??
+                              item.label
+                            }
+                          >
+                            <img
+                              src={item.src}
+                              alt={item.label}
+                              className="h-6 w-6 object-contain"
+                            />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3 border-t border-white/10 pt-4">
+                    <h3 className="text-xl font-semibold">Skills</h3>
+
+                    <div className="flex flex-wrap justify-around items-center gap-4">
+                      {(form.layout === "equip3-equip"
+                        ? effectIconOptions04.filter(
+                            (o) =>
+                              EQUIP3_EQUIP_SELECTABLE_SKILL_IDS.includes(
+                                String(o.id).padStart(2, "0"),
+                              ) ||
+                              EQUIP3_EQUIP_SELECTABLE_SKILL_IDS.includes(
+                                String(o.id),
+                              ),
+                          )
+                        : effectIconOptions04
+                      ).map((item) => {
+                        const selected = form.selectedSkills.includes(item.id);
+                        return (
+                          <div
+                            key={item.id}
+                            className="flex flex-col items-center gap-1"
+                          >
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setForm((prev) => {
+                                  const exists = prev.selectedSkills.includes(
+                                    item.id,
+                                  );
+                                  let next: string[];
+                                  if (form.layout === "equip3-equip") {
+                                    if (exists) {
+                                      next = prev.selectedSkills.filter(
+                                        (id) => id !== item.id,
+                                      );
+                                    } else {
+                                      next = [
+                                        ...prev.selectedSkills.filter(
+                                          (id) =>
+                                            !EQUIP3_EQUIP_SELECTABLE_SKILL_IDS.includes(
+                                              String(id).padStart(2, "0"),
+                                            ) &&
+                                            !EQUIP3_EQUIP_SELECTABLE_SKILL_IDS.includes(
+                                              String(id),
+                                            ),
+                                        ),
+                                        item.id,
+                                      ];
+                                    }
+                                  } else {
+                                    next = exists
+                                      ? prev.selectedSkills.filter(
+                                          (id) => id !== item.id,
+                                        )
+                                      : [...prev.selectedSkills, item.id];
+                                  }
+                                  return { ...prev, selectedSkills: next };
+                                })
+                              }
+                              className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full border transition hover:opacity-90 ${
+                                selected
+                                  ? "border-amber-400 bg-[#EDE4D7]"
+                                  : "border-white/20"
+                              }`}
+                              style={
+                                selected
+                                  ? undefined
+                                  : { backgroundColor: "#D9CCBE" }
+                              }
+                              title={
+                                TOOLTIP_SKILL_NUMBER[String(Number(item.id))] ??
+                                item.label
+                              }
+                            >
                               <img
-                                src={src}
-                                alt={icon.label}
+                                src={item.src}
+                                alt={item.label}
                                 className="h-8 w-8 object-contain"
                               />
-                            ) : null}
-                          </button>
+                            </button>
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              value={form.skillNumbers?.[item.id] || ""}
+                              onChange={(e) =>
+                                setForm((prev) => ({
+                                  ...prev,
+                                  skillNumbers: {
+                                    ...prev.skillNumbers,
+                                    [item.id]: e.target.value.replace(
+                                      /\D/g,
+                                      "",
+                                    ),
+                                  },
+                                }))
+                              }
+                              className="w-12 rounded border border-white/10 bg-white/5 px-1 py-0.5 text-center text-xs text-white"
+                              placeholder="Nº"
+                              title={Object.entries(TOOLTIP_SKILL_NUMBER)
+                                .map(([k, v]) => `${k} = ${v}`)
+                                .join(" | ")}
+                            />
+                          </div>
                         );
                       })}
                     </div>
+                    <div className="flex flex-wrap items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 p-2 text-xs uppercase tracking-[0.3em] text-slate-300">
+                      {(form.layout === "equip3-equip"
+                        ? form.selectedSkills.filter(
+                            (id) =>
+                              EQUIP3_EQUIP_SELECTABLE_SKILL_IDS.includes(
+                                String(id).padStart(2, "0"),
+                              ) ||
+                              EQUIP3_EQUIP_SELECTABLE_SKILL_IDS.includes(
+                                String(id),
+                              ),
+                          )
+                        : form.selectedSkills
+                      ).length === 0
+                        ? ""
+                        : (form.layout === "equip3-equip"
+                            ? form.selectedSkills.filter(
+                                (id) =>
+                                  EQUIP3_EQUIP_SELECTABLE_SKILL_IDS.includes(
+                                    String(id).padStart(2, "0"),
+                                  ) ||
+                                  EQUIP3_EQUIP_SELECTABLE_SKILL_IDS.includes(
+                                    String(id),
+                                  ),
+                              )
+                            : form.selectedSkills
+                          ).map((skillId) => {
+                            const skill = effectIconOptions04.find(
+                              (o) => o.id === skillId,
+                            );
+                            if (!skill) return null;
+                            return (
+                              <span
+                                key={`selected-skill-04-${skillId}`}
+                                className="flex items-center gap-1 rounded-full border border-white/30 bg-white/10 px-2 py-1 text-[0.6rem] text-slate-100"
+                              >
+                                <img
+                                  src={skill.src}
+                                  alt={skill.label}
+                                  className="h-4 w-4 object-contain"
+                                />
+                                {skill.label}
+                              </span>
+                            );
+                          })}
+                    </div>
                   </div>
-                )}
-                {hasEnemieIconLayout(form.layout) && (
-                  <>
-                    <h3 className="text-xl font-semibold">Skills por cor</h3>
-                    <p className="text-sm text-slate-400">
-                      Clique no ícone para adicionar à cor. O número digitado
-                      abaixo do ícone 06 será exibido na frente dele no card.
-                    </p>
-                    <div className="flex flex-wrap justify-around items-center gap-4">
-                      {/* Azul */}
-                      <div className="flex-1 min-w-[320px] space-y-2 rounded-lg border border-blue-500/30 bg-blue-500/5 p-3">
-                        <div className="grid grid-cols-6 place-items-center gap-2">
-                          {enemieIconOptions
-                            .filter((icon) => !isIcon02(icon))
-                            .map((icon) => {
-                              const list = form.enemieBlueSkills ?? [];
-                              const has06 = hasEnemie06InSkills(
-                                enemieIconOptions,
-                                list,
-                              );
-                              const is06 = isIcon06(icon);
-                              const is01 = isIcon01(icon);
-                              const icon02 = enemieIconOptions.find(isIcon02);
-                              const id02 = icon02?.id ?? icon02?.src ?? "02";
-                              const isSelected = is06
-                                ? list.includes(icon.id) ||
-                                  list.includes(icon.src ?? "") ||
-                                  has06
-                                : is01
-                                  ? list.some((id) => isId01(id) || isId02(id))
-                                  : list.includes(icon.id) ||
-                                    list.includes(icon.src ?? "");
-                              const skillId = icon.id;
-                              return (
-                                <div
-                                  key={icon.id}
-                                  className="flex flex-col items-center gap-1"
-                                >
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      setForm((prev) => {
-                                        const list =
-                                          prev.enemieBlueSkills ?? [];
-                                        const has06 = hasEnemie06InSkills(
-                                          enemieIconOptions,
-                                          list,
-                                        );
-                                        let next: string[];
-                                        if (isIcon06(icon)) {
-                                          const has06InList = list.some(
-                                            (id) =>
-                                              id === icon.id ||
-                                              id === icon.src ||
-                                              isId06(id),
-                                          );
-                                          if (has06InList) {
-                                            next = list.filter(
-                                              (id) =>
-                                                id !== icon.id &&
-                                                id !== icon.src &&
-                                                !isId06(id),
-                                            );
-                                          } else if (has06) {
-                                            next = list;
-                                          } else {
-                                            next = [...list, icon.id];
-                                          }
-                                        } else if (is01) {
-                                          const has01 = list.some(
-                                            (id) => isId01(id) || isId02(id),
-                                          );
-                                          next = has01
-                                            ? list.filter(
-                                                (id) =>
-                                                  !isId01(id) && !isId02(id),
-                                              )
-                                            : [...list, icon.id, id02];
-                                        } else {
-                                          const exists = list.some(
-                                            (id) =>
-                                              id === icon.id || id === icon.src,
-                                          );
-                                          next = exists
-                                            ? list.filter(
-                                                (id) =>
-                                                  id !== icon.id &&
-                                                  id !== icon.src,
-                                              )
-                                            : [...list, icon.id];
-                                        }
-                                        return {
-                                          ...prev,
-                                          enemieBlueSkills: next,
-                                        };
-                                      })
-                                    }
-                                    className={`flex h-10 w-10 items-center justify-center rounded-lg transition ${
-                                      isSelected
-                                        ? "border-4 border-amber-400 bg-[#EDE4D7]"
-                                        : "border border-white/20 bg-[#D9CCBE]"
-                                    }`}
-                                    title={icon.label}
-                                  >
-                                    <img
-                                      src={icon.src}
-                                      alt={icon.label}
-                                      className="h-6 w-6 object-contain"
-                                    />
-                                  </button>
-                                  {isSelected && (
-                                    <input
-                                      type="text"
-                                      inputMode="numeric"
-                                      value={
-                                        form.skillNumbers?.[
-                                          `enemie-blue-${is06 && has06 ? "06" : skillId}`
-                                        ] ??
-                                        (is06 && has06
-                                          ? form.enemieBlueExtraNumber
-                                          : undefined) ??
-                                        ""
-                                      }
-                                      onChange={(e) => {
-                                        const key =
-                                          is06 && has06 ? "06" : skillId;
-                                        const val = e.target.value.replace(
-                                          /\D/g,
-                                          "",
-                                        );
-                                        setForm((prev) => ({
-                                          ...prev,
-                                          ...(is06 && has06
-                                            ? { enemieBlueExtraNumber: val }
-                                            : {}),
-                                          skillNumbers: {
-                                            ...prev.skillNumbers,
-                                            [`enemie-blue-${key}`]: val,
-                                          },
-                                        }));
-                                      }}
-                                      className="w-12 rounded border border-white/10 bg-white/5 px-1 py-0.5 text-center text-xs text-white"
-                                      placeholder="Nº"
-                                    />
-                                  )}
-                                </div>
-                              );
-                            })}
-                        </div>
+                </>
+              )}
+
+              {isTensionLayout(form.layout) && (
+                <div className="space-y-4 border-t border-white/10 pt-4">
+                  <span className="text-sm font-medium text-slate-300">
+                    Ícones de tensão (clique no ícone para selecionar)
+                  </span>
+                  <div className="space-y-3">
+                    {tensionIconOptions[1] && (
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setForm((prev) => ({
+                              ...prev,
+                              tension2Icon:
+                                prev.tension2Icon === tensionIconOptions[1].id
+                                  ? ""
+                                  : tensionIconOptions[1].id,
+                              ...(prev.tension2Icon === tensionIconOptions[1].id
+                                ? { tension2Text: "" }
+                                : {}),
+                            }))
+                          }
+                          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border transition ${
+                            form.tension2Icon === tensionIconOptions[1].id
+                              ? "border-amber-400 bg-[#EDE4D7]"
+                              : "border-white/20 bg-[#D9CCBE]"
+                          }`}
+                          title={tensionIconOptions[1].label}
+                        >
+                          <img
+                            src={tensionIconOptions[1].src}
+                            alt={tensionIconOptions[1].label}
+                            className="h-6 w-6 object-contain"
+                          />
+                        </button>
+                        {form.tension2Icon === tensionIconOptions[1].id && (
+                          <input
+                            type="text"
+                            value={form.tension2Text || ""}
+                            onChange={(e) =>
+                              setForm((prev) => ({
+                                ...prev,
+                                tension2Text: e.target.value,
+                              }))
+                            }
+                            className="min-w-[200px] flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none transition focus:border-slate-400"
+                            placeholder="Texto ao lado do ícone (caveira)"
+                          />
+                        )}
                       </div>
-                      {/* Roxo */}
-                      <div className="flex-1 min-w-[320px] space-y-2 rounded-lg border border-purple-500/30 bg-purple-500/5 p-3">
-                        <div className="grid grid-cols-6 place-items-center gap-2">
-                          {enemieIconOptions
-                            .filter((icon) => !isIcon02(icon))
-                            .map((icon) => {
-                              const list = form.enemiePurpleSkills ?? [];
-                              const has06 = hasEnemie06InSkills(
-                                enemieIconOptions,
-                                list,
-                              );
-                              const is06 = isIcon06(icon);
-                              const is01 = isIcon01(icon);
-                              const icon02 = enemieIconOptions.find(isIcon02);
-                              const id02 = icon02?.id ?? icon02?.src ?? "02";
-                              const isSelected = is06
-                                ? list.includes(icon.id) ||
-                                  list.includes(icon.src ?? "") ||
-                                  has06
-                                : is01
-                                  ? list.some((id) => isId01(id) || isId02(id))
-                                  : list.includes(icon.id) ||
-                                    list.includes(icon.src ?? "");
-                              const skillId = icon.id;
-                              return (
-                                <div
-                                  key={icon.id}
-                                  className="flex flex-col items-center gap-1"
-                                >
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      setForm((prev) => {
-                                        const list =
-                                          prev.enemiePurpleSkills ?? [];
-                                        const has06 = hasEnemie06InSkills(
-                                          enemieIconOptions,
-                                          list,
-                                        );
-                                        let next: string[];
-                                        if (isIcon06(icon)) {
-                                          const has06InList = list.some(
-                                            (id) =>
-                                              id === icon.id ||
-                                              id === icon.src ||
-                                              isId06(id),
-                                          );
-                                          if (has06InList) {
-                                            next = list.filter(
-                                              (id) =>
-                                                id !== icon.id &&
-                                                id !== icon.src &&
-                                                !isId06(id),
-                                            );
-                                          } else if (has06) {
-                                            next = list;
-                                          } else {
-                                            next = [...list, icon.id];
-                                          }
-                                        } else if (is01) {
-                                          const has01 = list.some(
-                                            (id) => isId01(id) || isId02(id),
-                                          );
-                                          next = has01
-                                            ? list.filter(
-                                                (id) =>
-                                                  !isId01(id) && !isId02(id),
-                                              )
-                                            : [...list, icon.id, id02];
-                                        } else {
-                                          const exists = list.some(
-                                            (id) =>
-                                              id === icon.id || id === icon.src,
-                                          );
-                                          next = exists
-                                            ? list.filter(
-                                                (id) =>
-                                                  id !== icon.id &&
-                                                  id !== icon.src,
-                                              )
-                                            : [...list, icon.id];
-                                        }
-                                        return {
-                                          ...prev,
-                                          enemiePurpleSkills: next,
-                                        };
-                                      })
-                                    }
-                                    className={`flex h-10 w-10 items-center justify-center rounded-lg transition ${
-                                      isSelected
-                                        ? "border-4 border-amber-400 bg-[#EDE4D7]"
-                                        : "border border-white/20 bg-[#D9CCBE]"
-                                    }`}
-                                    title={icon.label}
-                                  >
-                                    <img
-                                      src={icon.src}
-                                      alt={icon.label}
-                                      className="h-6 w-6 object-contain"
-                                    />
-                                  </button>
-                                  {isSelected && (
-                                    <input
-                                      type="text"
-                                      inputMode="numeric"
-                                      value={
-                                        form.skillNumbers?.[
-                                          `enemie-purple-${is06 && has06 ? "06" : skillId}`
-                                        ] ??
-                                        (is06 && has06
-                                          ? form.enemiePurpleExtraNumber
-                                          : undefined) ??
-                                        ""
-                                      }
-                                      onChange={(e) => {
-                                        const key =
-                                          is06 && has06 ? "06" : skillId;
-                                        const val = e.target.value.replace(
-                                          /\D/g,
-                                          "",
-                                        );
-                                        setForm((prev) => ({
-                                          ...prev,
-                                          ...(is06 && has06
-                                            ? { enemiePurpleExtraNumber: val }
-                                            : {}),
-                                          skillNumbers: {
-                                            ...prev.skillNumbers,
-                                            [`enemie-purple-${key}`]: val,
-                                          },
-                                        }));
-                                      }}
-                                      className="w-12 rounded border border-white/10 bg-white/5 px-1 py-0.5 text-center text-xs text-white"
-                                      placeholder="Nº"
-                                    />
-                                  )}
-                                </div>
-                              );
-                            })}
-                        </div>
+                    )}
+                    {tensionIconOptions[0] && (
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setForm((prev) => ({
+                              ...prev,
+                              tension1Icon:
+                                prev.tension1Icon === tensionIconOptions[0].id
+                                  ? ""
+                                  : tensionIconOptions[0].id,
+                              ...(prev.tension1Icon === tensionIconOptions[0].id
+                                ? { tension1Text: "" }
+                                : {}),
+                            }))
+                          }
+                          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border transition ${
+                            form.tension1Icon === tensionIconOptions[0].id
+                              ? "border-amber-400 bg-[#EDE4D7]"
+                              : "border-white/20 bg-[#D9CCBE]"
+                          }`}
+                          title={tensionIconOptions[0].label}
+                        >
+                          <img
+                            src={tensionIconOptions[0].src}
+                            alt={tensionIconOptions[0].label}
+                            className="h-6 w-6 object-contain"
+                          />
+                        </button>
+                        {form.tension1Icon === tensionIconOptions[0].id && (
+                          <input
+                            type="text"
+                            value={form.tension1Text || ""}
+                            onChange={(e) =>
+                              setForm((prev) => ({
+                                ...prev,
+                                tension1Text: e.target.value,
+                              }))
+                            }
+                            className="min-w-[200px] flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none transition focus:border-slate-400"
+                            placeholder="Texto ao lado do ícone (mordida)"
+                          />
+                        )}
                       </div>
-                      {/* Amarelo */}
-                      <div className="flex-1 min-w-[320px] space-y-2 rounded-lg border border-yellow-500/30 bg-yellow-500/5 p-3">
-                        <div className="grid grid-cols-6 place-items-center gap-2">
-                          {enemieIconOptions
-                            .filter((icon) => !isIcon02(icon))
-                            .map((icon) => {
-                              const list = form.enemieYellowSkills ?? [];
-                              const has06 = hasEnemie06InSkills(
-                                enemieIconOptions,
-                                list,
-                              );
-                              const is06 = isIcon06(icon);
-                              const is01 = isIcon01(icon);
-                              const icon02 = enemieIconOptions.find(isIcon02);
-                              const id02 = icon02?.id ?? icon02?.src ?? "02";
-                              const isSelected = is06
-                                ? list.includes(icon.id) ||
-                                  list.includes(icon.src ?? "") ||
-                                  has06
-                                : is01
-                                  ? list.some((id) => isId01(id) || isId02(id))
-                                  : list.includes(icon.id) ||
-                                    list.includes(icon.src ?? "");
-                              const skillId = icon.id;
-                              return (
-                                <div
-                                  key={icon.id}
-                                  className="flex flex-col items-center gap-1"
-                                >
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      setForm((prev) => {
-                                        const list =
-                                          prev.enemieYellowSkills ?? [];
-                                        const has06 = hasEnemie06InSkills(
-                                          enemieIconOptions,
-                                          list,
-                                        );
-                                        let next: string[];
-                                        if (isIcon06(icon)) {
-                                          const has06InList = list.some(
-                                            (id) =>
-                                              id === icon.id ||
-                                              id === icon.src ||
-                                              isId06(id),
-                                          );
-                                          if (has06InList) {
-                                            next = list.filter(
-                                              (id) =>
-                                                id !== icon.id &&
-                                                id !== icon.src &&
-                                                !isId06(id),
-                                            );
-                                          } else if (has06) {
-                                            next = list;
-                                          } else {
-                                            next = [...list, icon.id];
-                                          }
-                                        } else if (is01) {
-                                          const has01 = list.some(
-                                            (id) => isId01(id) || isId02(id),
-                                          );
-                                          next = has01
-                                            ? list.filter(
-                                                (id) =>
-                                                  !isId01(id) && !isId02(id),
-                                              )
-                                            : [...list, icon.id, id02];
-                                        } else {
-                                          const exists = list.some(
-                                            (id) =>
-                                              id === icon.id || id === icon.src,
-                                          );
-                                          next = exists
-                                            ? list.filter(
-                                                (id) =>
-                                                  id !== icon.id &&
-                                                  id !== icon.src,
-                                              )
-                                            : [...list, icon.id];
-                                        }
-                                        return {
-                                          ...prev,
-                                          enemieYellowSkills: next,
-                                        };
-                                      })
-                                    }
-                                    className={`flex h-10 w-10 items-center justify-center rounded-lg transition ${
-                                      isSelected
-                                        ? "border-4 border-amber-400 bg-[#EDE4D7]"
-                                        : "border border-white/20 bg-[#D9CCBE]"
-                                    }`}
-                                    title={icon.label}
-                                  >
-                                    <img
-                                      src={icon.src}
-                                      alt={icon.label}
-                                      className="h-6 w-6 object-contain"
-                                    />
-                                  </button>
-                                  {isSelected && (
-                                    <input
-                                      type="text"
-                                      inputMode="numeric"
-                                      value={
-                                        form.skillNumbers?.[
-                                          `enemie-yellow-${is06 && has06 ? "06" : skillId}`
-                                        ] ??
-                                        (is06 && has06
-                                          ? form.enemieYellowExtraNumber
-                                          : undefined) ??
-                                        ""
-                                      }
-                                      onChange={(e) => {
-                                        const key =
-                                          is06 && has06 ? "06" : skillId;
-                                        const val = e.target.value.replace(
-                                          /\D/g,
-                                          "",
-                                        );
-                                        setForm((prev) => ({
-                                          ...prev,
-                                          ...(is06 && has06
-                                            ? { enemieYellowExtraNumber: val }
-                                            : {}),
-                                          skillNumbers: {
-                                            ...prev.skillNumbers,
-                                            [`enemie-yellow-${key}`]: val,
-                                          },
-                                        }));
-                                      }}
-                                      className="w-12 rounded border border-white/10 bg-white/5 px-1 py-0.5 text-center text-xs text-white"
-                                      placeholder="Nº"
-                                    />
-                                  )}
-                                </div>
-                              );
-                            })}
-                        </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {isEnemieLayout(form.layout) && (
+                <div className="space-y-4 border-t border-white/10 pt-4">
+                  {(hasEnemieIconLayout(form.layout) ||
+                    form.layout === "enemie2") && (
+                    <div className="flex flex-col gap-2">
+                      <span className="text-sm font-medium text-slate-300">
+                        {form.layout === "heroes"
+                          ? "Ícone do herói"
+                          : "Ícone do inimigo"}
+                      </span>
+                      <p className="text-xs text-slate-400">
+                        {form.layout === "heroes"
+                          ? "Ícones da pasta Heroes (carregados automaticamente)"
+                          : "Ícones da pasta Enemies/Icons"}
+                      </p>
+                      <div className="flex flex-wrap justify-around items-center gap-2">
+                        {(form.layout === "heroes"
+                          ? heroIconOptions
+                          : enemieMainIconOptions
+                        ).map((icon) => {
+                          const src = icon.src ?? "";
+                          const isSelected =
+                            form.enemieMainIcon === src ||
+                            form.enemieMainIcon === icon.id;
+                          return (
+                            <button
+                              key={icon.id}
+                              type="button"
+                              onClick={() =>
+                                setForm((prev) => ({
+                                  ...prev,
+                                  enemieMainIcon: isSelected ? "" : src,
+                                }))
+                              }
+                              className={`flex h-12 w-12 items-center justify-center rounded-lg transition ${
+                                form.layout === "heroes"
+                                  ? `${isSelected ? "border-2 border-amber-400" : "border border-white/40 hover:border-amber-400"}`
+                                  : isSelected
+                                    ? "border-2 border-amber-400 bg-amber-500/20"
+                                    : "border border-white/20 bg-white/5 hover:border-white/40"
+                              }`}
+                              title={icon.label}
+                              style={
+                                form.layout === "heroes"
+                                  ? { backgroundColor: "#EFDDB9" }
+                                  : undefined
+                              }
+                            >
+                              {src ? (
+                                <img
+                                  src={src}
+                                  alt={icon.label}
+                                  className="h-8 w-8 object-contain"
+                                />
+                              ) : null}
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
-                  </>
-                )}
-              </div>
-            )}
+                  )}
+                  {form.layout === "enemie" && (
+                    <>
+                      <h3 className="text-xl font-semibold">Skills por cor</h3>
+                      <p className="text-sm text-slate-400">
+                        Clique no ícone para adicionar à cor. O número digitado
+                        abaixo do ícone 06 será exibido na frente dele no card.
+                      </p>
+                      <div className="flex flex-wrap justify-around items-center gap-4">
+                        {/* Azul */}
+                        <div className="flex-1 min-w-[320px] space-y-2 rounded-lg border border-blue-500/30 bg-blue-500/5 p-3">
+                          <div className="grid grid-cols-6 place-items-center gap-2">
+                            {formEnemieIconOptions
+                              .filter((icon) => !isIcon02(icon))
+                              .map((icon) => {
+                                const list = form.enemieBlueSkills ?? [];
+                                const has06 = hasEnemie06InSkills(
+                                  formEnemieIconOptions,
+                                  list,
+                                );
+                                const is06 = isIcon06(icon);
+                                const is01 = isIcon01(icon);
+                                const icon02 =
+                                  formEnemieIconOptions.find(isIcon02);
+                                const id02 = icon02?.id ?? icon02?.src ?? "02";
+                                const isSelected = is06
+                                  ? list.includes(icon.id) ||
+                                    list.includes(icon.src ?? "") ||
+                                    has06
+                                  : is01
+                                    ? list.some(
+                                        (id) => isId01(id) || isId02(id),
+                                      )
+                                    : list.includes(icon.id) ||
+                                      list.includes(icon.src ?? "");
+                                const skillId = icon.id;
+                                return (
+                                  <div
+                                    key={icon.id}
+                                    className="flex flex-col items-center gap-1"
+                                  >
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        setForm((prev) => {
+                                          const list =
+                                            prev.enemieBlueSkills ?? [];
+                                          const has06 = hasEnemie06InSkills(
+                                            formEnemieIconOptions,
+                                            list,
+                                          );
+                                          let next: string[];
+                                          if (isIcon06(icon)) {
+                                            const has06InList = list.some(
+                                              (id) =>
+                                                id === icon.id ||
+                                                id === icon.src ||
+                                                isId06(id),
+                                            );
+                                            if (has06InList) {
+                                              next = list.filter(
+                                                (id) =>
+                                                  id !== icon.id &&
+                                                  id !== icon.src &&
+                                                  !isId06(id),
+                                              );
+                                            } else if (has06) {
+                                              next = list;
+                                            } else {
+                                              next = [...list, icon.id];
+                                            }
+                                          } else if (is01) {
+                                            const has01 = list.some(
+                                              (id) => isId01(id) || isId02(id),
+                                            );
+                                            next = has01
+                                              ? list.filter(
+                                                  (id) =>
+                                                    !isId01(id) && !isId02(id),
+                                                )
+                                              : [...list, icon.id, id02];
+                                          } else {
+                                            const exists = list.some(
+                                              (id) =>
+                                                id === icon.id ||
+                                                id === icon.src,
+                                            );
+                                            next = exists
+                                              ? list.filter(
+                                                  (id) =>
+                                                    id !== icon.id &&
+                                                    id !== icon.src,
+                                                )
+                                              : [...list, icon.id];
+                                          }
+                                          return {
+                                            ...prev,
+                                            enemieBlueSkills: next,
+                                          };
+                                        })
+                                      }
+                                      className={`flex h-10 w-10 items-center justify-center rounded-lg transition ${
+                                        isSelected
+                                          ? "border-4 border-amber-400 bg-[#EDE4D7]"
+                                          : "border border-white/20 bg-[#D9CCBE]"
+                                      }`}
+                                      title={icon.label}
+                                    >
+                                      <img
+                                        src={icon.src}
+                                        alt={icon.label}
+                                        className="h-6 w-6 object-contain"
+                                      />
+                                    </button>
+                                    {isSelected && (
+                                      <input
+                                        type="text"
+                                        inputMode={is01 ? "text" : "numeric"}
+                                        value={
+                                          form.skillNumbers?.[
+                                            `enemie-blue-${is06 && has06 ? "06" : skillId}`
+                                          ] ??
+                                          (is06 && has06
+                                            ? form.enemieBlueExtraNumber
+                                            : undefined) ??
+                                          ""
+                                        }
+                                        onChange={(e) => {
+                                          const key =
+                                            is06 && has06 ? "06" : skillId;
+                                          const val = is01
+                                            ? e.target.value
+                                                .toUpperCase()
+                                                .replace(/[^0-9A-Za-z]/g, "")
+                                                .slice(0, 5)
+                                            : e.target.value.replace(/\D/g, "");
+                                          setForm((prev) => ({
+                                            ...prev,
+                                            ...(is06 && has06
+                                              ? { enemieBlueExtraNumber: val }
+                                              : {}),
+                                            skillNumbers: {
+                                              ...prev.skillNumbers,
+                                              [`enemie-blue-${key}`]: val,
+                                            },
+                                          }));
+                                        }}
+                                        className="w-12 rounded border border-white/10 bg-white/5 px-1 py-0.5 text-center text-xs text-white"
+                                        placeholder={is01 ? "Nº ou LOS" : "Nº"}
+                                      />
+                                    )}
+                                  </div>
+                                );
+                              })}
+                          </div>
+                        </div>
+                        {/* Roxo */}
+                        <div className="flex-1 min-w-[320px] space-y-2 rounded-lg border border-purple-500/30 bg-purple-500/5 p-3">
+                          <div className="grid grid-cols-6 place-items-center gap-2">
+                            {formEnemieIconOptions
+                              .filter((icon) => !isIcon02(icon))
+                              .map((icon) => {
+                                const list = form.enemiePurpleSkills ?? [];
+                                const has06 = hasEnemie06InSkills(
+                                  formEnemieIconOptions,
+                                  list,
+                                );
+                                const is06 = isIcon06(icon);
+                                const is01 = isIcon01(icon);
+                                const icon02 =
+                                  formEnemieIconOptions.find(isIcon02);
+                                const id02 = icon02?.id ?? icon02?.src ?? "02";
+                                const isSelected = is06
+                                  ? list.includes(icon.id) ||
+                                    list.includes(icon.src ?? "") ||
+                                    has06
+                                  : is01
+                                    ? list.some(
+                                        (id) => isId01(id) || isId02(id),
+                                      )
+                                    : list.includes(icon.id) ||
+                                      list.includes(icon.src ?? "");
+                                const skillId = icon.id;
+                                return (
+                                  <div
+                                    key={icon.id}
+                                    className="flex flex-col items-center gap-1"
+                                  >
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        setForm((prev) => {
+                                          const list =
+                                            prev.enemiePurpleSkills ?? [];
+                                          const has06 = hasEnemie06InSkills(
+                                            formEnemieIconOptions,
+                                            list,
+                                          );
+                                          let next: string[];
+                                          if (isIcon06(icon)) {
+                                            const has06InList = list.some(
+                                              (id) =>
+                                                id === icon.id ||
+                                                id === icon.src ||
+                                                isId06(id),
+                                            );
+                                            if (has06InList) {
+                                              next = list.filter(
+                                                (id) =>
+                                                  id !== icon.id &&
+                                                  id !== icon.src &&
+                                                  !isId06(id),
+                                              );
+                                            } else if (has06) {
+                                              next = list;
+                                            } else {
+                                              next = [...list, icon.id];
+                                            }
+                                          } else if (is01) {
+                                            const has01 = list.some(
+                                              (id) => isId01(id) || isId02(id),
+                                            );
+                                            next = has01
+                                              ? list.filter(
+                                                  (id) =>
+                                                    !isId01(id) && !isId02(id),
+                                                )
+                                              : [...list, icon.id, id02];
+                                          } else {
+                                            const exists = list.some(
+                                              (id) =>
+                                                id === icon.id ||
+                                                id === icon.src,
+                                            );
+                                            next = exists
+                                              ? list.filter(
+                                                  (id) =>
+                                                    id !== icon.id &&
+                                                    id !== icon.src,
+                                                )
+                                              : [...list, icon.id];
+                                          }
+                                          return {
+                                            ...prev,
+                                            enemiePurpleSkills: next,
+                                          };
+                                        })
+                                      }
+                                      className={`flex h-10 w-10 items-center justify-center rounded-lg transition ${
+                                        isSelected
+                                          ? "border-4 border-amber-400 bg-[#EDE4D7]"
+                                          : "border border-white/20 bg-[#D9CCBE]"
+                                      }`}
+                                      title={icon.label}
+                                    >
+                                      <img
+                                        src={icon.src}
+                                        alt={icon.label}
+                                        className="h-6 w-6 object-contain"
+                                      />
+                                    </button>
+                                    {isSelected && (
+                                      <input
+                                        type="text"
+                                        inputMode={is01 ? "text" : "numeric"}
+                                        value={
+                                          form.skillNumbers?.[
+                                            `enemie-purple-${is06 && has06 ? "06" : skillId}`
+                                          ] ??
+                                          (is06 && has06
+                                            ? form.enemiePurpleExtraNumber
+                                            : undefined) ??
+                                          ""
+                                        }
+                                        onChange={(e) => {
+                                          const key =
+                                            is06 && has06 ? "06" : skillId;
+                                          const val = is01
+                                            ? e.target.value
+                                                .toUpperCase()
+                                                .replace(/[^0-9A-Za-z]/g, "")
+                                                .slice(0, 5)
+                                            : e.target.value.replace(/\D/g, "");
+                                          setForm((prev) => ({
+                                            ...prev,
+                                            ...(is06 && has06
+                                              ? { enemiePurpleExtraNumber: val }
+                                              : {}),
+                                            skillNumbers: {
+                                              ...prev.skillNumbers,
+                                              [`enemie-purple-${key}`]: val,
+                                            },
+                                          }));
+                                        }}
+                                        className="w-12 rounded border border-white/10 bg-white/5 px-1 py-0.5 text-center text-xs text-white"
+                                        placeholder={is01 ? "Nº ou LOS" : "Nº"}
+                                      />
+                                    )}
+                                  </div>
+                                );
+                              })}
+                          </div>
+                        </div>
+                        {/* Amarelo */}
+                        <div className="flex-1 min-w-[320px] space-y-2 rounded-lg border border-yellow-500/30 bg-yellow-500/5 p-3">
+                          <div className="grid grid-cols-6 place-items-center gap-2">
+                            {formEnemieIconOptions
+                              .filter((icon) => !isIcon02(icon))
+                              .map((icon) => {
+                                const list = form.enemieYellowSkills ?? [];
+                                const has06 = hasEnemie06InSkills(
+                                  formEnemieIconOptions,
+                                  list,
+                                );
+                                const is06 = isIcon06(icon);
+                                const is01 = isIcon01(icon);
+                                const icon02 =
+                                  formEnemieIconOptions.find(isIcon02);
+                                const id02 = icon02?.id ?? icon02?.src ?? "02";
+                                const isSelected = is06
+                                  ? list.includes(icon.id) ||
+                                    list.includes(icon.src ?? "") ||
+                                    has06
+                                  : is01
+                                    ? list.some(
+                                        (id) => isId01(id) || isId02(id),
+                                      )
+                                    : list.includes(icon.id) ||
+                                      list.includes(icon.src ?? "");
+                                const skillId = icon.id;
+                                return (
+                                  <div
+                                    key={icon.id}
+                                    className="flex flex-col items-center gap-1"
+                                  >
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        setForm((prev) => {
+                                          const list =
+                                            prev.enemieYellowSkills ?? [];
+                                          const has06 = hasEnemie06InSkills(
+                                            formEnemieIconOptions,
+                                            list,
+                                          );
+                                          let next: string[];
+                                          if (isIcon06(icon)) {
+                                            const has06InList = list.some(
+                                              (id) =>
+                                                id === icon.id ||
+                                                id === icon.src ||
+                                                isId06(id),
+                                            );
+                                            if (has06InList) {
+                                              next = list.filter(
+                                                (id) =>
+                                                  id !== icon.id &&
+                                                  id !== icon.src &&
+                                                  !isId06(id),
+                                              );
+                                            } else if (has06) {
+                                              next = list;
+                                            } else {
+                                              next = [...list, icon.id];
+                                            }
+                                          } else if (is01) {
+                                            const has01 = list.some(
+                                              (id) => isId01(id) || isId02(id),
+                                            );
+                                            next = has01
+                                              ? list.filter(
+                                                  (id) =>
+                                                    !isId01(id) && !isId02(id),
+                                                )
+                                              : [...list, icon.id, id02];
+                                          } else {
+                                            const exists = list.some(
+                                              (id) =>
+                                                id === icon.id ||
+                                                id === icon.src,
+                                            );
+                                            next = exists
+                                              ? list.filter(
+                                                  (id) =>
+                                                    id !== icon.id &&
+                                                    id !== icon.src,
+                                                )
+                                              : [...list, icon.id];
+                                          }
+                                          return {
+                                            ...prev,
+                                            enemieYellowSkills: next,
+                                          };
+                                        })
+                                      }
+                                      className={`flex h-10 w-10 items-center justify-center rounded-lg transition ${
+                                        isSelected
+                                          ? "border-4 border-amber-400 bg-[#EDE4D7]"
+                                          : "border border-white/20 bg-[#D9CCBE]"
+                                      }`}
+                                      title={icon.label}
+                                    >
+                                      <img
+                                        src={icon.src}
+                                        alt={icon.label}
+                                        className="h-6 w-6 object-contain"
+                                      />
+                                    </button>
+                                    {isSelected && (
+                                      <input
+                                        type="text"
+                                        inputMode={is01 ? "text" : "numeric"}
+                                        value={
+                                          form.skillNumbers?.[
+                                            `enemie-yellow-${is06 && has06 ? "06" : skillId}`
+                                          ] ??
+                                          (is06 && has06
+                                            ? form.enemieYellowExtraNumber
+                                            : undefined) ??
+                                          ""
+                                        }
+                                        onChange={(e) => {
+                                          const key =
+                                            is06 && has06 ? "06" : skillId;
+                                          const val = is01
+                                            ? e.target.value
+                                                .toUpperCase()
+                                                .replace(/[^0-9A-Za-z]/g, "")
+                                                .slice(0, 5)
+                                            : e.target.value.replace(/\D/g, "");
+                                          setForm((prev) => ({
+                                            ...prev,
+                                            ...(is06 && has06
+                                              ? { enemieYellowExtraNumber: val }
+                                              : {}),
+                                            skillNumbers: {
+                                              ...prev.skillNumbers,
+                                              [`enemie-yellow-${key}`]: val,
+                                            },
+                                          }));
+                                        }}
+                                        className="w-12 rounded border border-white/10 bg-white/5 px-1 py-0.5 text-center text-xs text-white"
+                                        placeholder={is01 ? "Nº ou LOS" : "Nº"}
+                                      />
+                                    )}
+                                  </div>
+                                );
+                              })}
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
 
-            {statusMessage && (
-              <div className="rounded-2xl border border-white/20 bg-white/5 px-4 py-3 text-sm text-slate-200">
-                {statusMessage}
-              </div>
-            )}
+              {statusMessage && (
+                <div className="rounded-2xl border border-white/20 bg-white/5 px-4 py-3 text-sm text-slate-200">
+                  {statusMessage}
+                </div>
+              )}
+            </div>
           </div>
           <div className="order-2 flex flex-col items-center gap-5 rounded-3xl border border-white/10 bg-slate-900/70 p-6 shadow-xl self-start">
             <div className="overflow-x-auto" style={{ width: "100%" }}>
               <CardPreview
                 card={previewCard}
                 overlayImage={overlayImage}
+                heroSkillImage1={
+                  form.layout === "heroes" ? heroSkillImage1 : null
+                }
+                heroSkillImage2={
+                  form.layout === "heroes" ? heroSkillImage2 : null
+                }
+                heroSkillImage3={
+                  form.layout === "heroes" ? heroSkillImage3 : null
+                }
                 htmlId="preview-card"
                 iconOptionsA={iconOptionsA}
-                skillIconOptions={skillIconOptions}
+                skillIconOptions={getSkillOptionsForLayout(form.layout)}
                 enemieIconOptions={enemieIconOptions}
+                heroIconOptions={heroIconOptions}
+                inlineIconMap={inlineIconMap}
                 effect2IconOptions={effect2IconOptions}
                 effect3IconOptions={effect3IconOptions}
                 effect4IconOptions={effect4IconOptions}
@@ -5741,11 +7182,49 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Botões flutuantes Salvar e Baixar */}
+        {/* Botões flutuantes: Tutorial (?), Importar, Salvar deck, Salvar card, Baixar */}
         <div
           className="fixed bottom-6 right-6 z-50 flex flex-col gap-3"
           aria-label="Ações do card"
         >
+          <button
+            type="button"
+            onClick={() => setIsTutorialModalOpen(true)}
+            className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-white/30 bg-slate-800/95 text-white backdrop-blur-sm transition hover:scale-105 hover:border-white"
+            title="Tutorial"
+            aria-label="Abrir tutorial"
+          >
+            <FaQuestionCircle className="h-6 w-6" />
+          </button>
+          <Link
+            href="/tutorials"
+            className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-white/30 bg-slate-800/95 text-white backdrop-blur-sm transition hover:scale-105 hover:border-white"
+            title="Editar tutoriais"
+            aria-label="Editar tutoriais"
+          >
+            <FaEdit className="h-6 w-6" />
+          </Link>
+          <button
+            type="button"
+            onClick={openJsonTextModal}
+            className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-white/30 bg-slate-800/95 text-white backdrop-blur-sm transition hover:scale-105 hover:border-white"
+            title="Importar JSON"
+            aria-label="Importar JSON"
+          >
+            <FaFileImport className="h-6 w-6" />
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setDeckError(null);
+              setIsDeckModalOpen(true);
+            }}
+            className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-white/30 bg-slate-800/95 text-white backdrop-blur-sm transition hover:scale-105 hover:border-white"
+            title="Salvar deck"
+            aria-label="Salvar deck"
+          >
+            <FaArchive className="h-6 w-6" />
+          </button>
           <button
             type="button"
             onClick={() => void handleSaveCard()}
@@ -5769,6 +7248,556 @@ export default function Home() {
           </button>
         </div>
 
+        {isDeckModalOpen && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-6">
+            <div className="w-full max-w-2xl rounded-3xl border border-white/20 bg-slate-900/95 p-6 shadow-2xl">
+              <div className="flex items-center justify-between gap-4">
+                <h3 className="text-xl font-semibold text-white">
+                  Salvar Deck
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsDeckModalOpen(false);
+                    setDeckError(null);
+                  }}
+                  className="h-8 w-8 rounded-full border border-white/20 text-white transition hover:border-white"
+                  aria-label="Fechar"
+                >
+                  ×
+                </button>
+              </div>
+              <p className="mt-2 text-sm text-slate-300">
+                Salve os cards atuais como um deck reutilizável.
+              </p>
+              {decks.some(
+                (d) => d.name.toLowerCase() === deckName.trim().toLowerCase(),
+              ) && (
+                <div className="mt-3 rounded-xl border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
+                  Este nome já existe. O deck será atualizado.
+                </div>
+              )}
+              <input
+                value={deckName}
+                onChange={(e) => setDeckName(e.target.value)}
+                className="mt-4 w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white outline-none transition focus:border-amber-400"
+                placeholder="Nome do deck"
+              />
+              {deckError && (
+                <div className="mt-3 rounded-xl border border-red-400/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+                  {deckError}
+                </div>
+              )}
+              <div className="mt-4 flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsDeckModalOpen(false);
+                    setDeckError(null);
+                  }}
+                  className="rounded-2xl border border-white/20 bg-white/5 px-4 py-2 text-sm text-white transition hover:border-white"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveDeck}
+                  className="rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 px-4 py-2 text-sm font-semibold text-black transition hover:brightness-110"
+                >
+                  Salvar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {isRenameDeckOpen && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-6">
+            <div className="w-full max-w-xl rounded-3xl border border-white/20 bg-slate-900/95 p-6 shadow-2xl">
+              <div className="flex items-center justify-between gap-4">
+                <h3 className="text-xl font-semibold text-white">
+                  Renomear Deck
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsRenameDeckOpen(false);
+                    setRenameDeckError(null);
+                  }}
+                  className="h-8 w-8 rounded-full border border-white/20 text-white transition hover:border-white"
+                  aria-label="Fechar"
+                >
+                  ×
+                </button>
+              </div>
+              <input
+                value={renameDeckName}
+                onChange={(e) => setRenameDeckName(e.target.value)}
+                className="mt-4 w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white outline-none transition focus:border-amber-400"
+                placeholder="Novo nome do deck"
+              />
+              {renameDeckError && (
+                <div className="mt-3 rounded-xl border border-red-400/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+                  {renameDeckError}
+                </div>
+              )}
+              <div className="mt-4 flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsRenameDeckOpen(false);
+                    setRenameDeckError(null);
+                  }}
+                  className="rounded-2xl border border-white/20 bg-white/5 px-4 py-2 text-sm text-white transition hover:border-white"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleRenameDeck}
+                  className="rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 px-4 py-2 text-sm font-semibold text-black transition hover:brightness-110"
+                >
+                  Renomear
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {isTutorialModalOpen &&
+          (() => {
+            const tutorialGameKey = layoutCategory === "monster" ? "MH" : "RE3";
+            const tutorialPages =
+              layoutCategory === "monster"
+                ? mhTutorialLayout
+                : re3TutorialLayout;
+            const pages = tutorialPagesState ?? tutorialPages;
+            const basePath = TUTORIAL_BASE_PATHS[tutorialGameKey];
+            const currentPage: TutorialPage | undefined =
+              pages[tutorialPageIndex];
+            const totalPages = pages.length;
+
+            const updateTutorialTitle = (
+              titleIndex: number,
+              updates: Partial<TutorialBlock>,
+            ) => {
+              setTutorialPagesState((prev) => {
+                if (!prev) return prev;
+                const next = prev.slice();
+                const page = next[tutorialPageIndex];
+                const titles = page.titles.slice();
+                titles[titleIndex] = { ...titles[titleIndex], ...updates };
+                next[tutorialPageIndex] = { ...page, titles };
+                return next;
+              });
+            };
+            const updateTutorialDescription = (
+              descIndex: number,
+              updates: Partial<TutorialBlock>,
+            ) => {
+              setTutorialPagesState((prev) => {
+                if (!prev) return prev;
+                const next = prev.slice();
+                const page = next[tutorialPageIndex];
+                const descriptions = page.descriptions.slice();
+                descriptions[descIndex] = {
+                  ...descriptions[descIndex],
+                  ...updates,
+                };
+                next[tutorialPageIndex] = { ...page, descriptions };
+                return next;
+              });
+            };
+
+            const blockStyle = (
+              block: TutorialBlock,
+              isEdit: boolean,
+              isTitle?: boolean,
+            ) => {
+              const base: React.CSSProperties = {
+                top: block.top,
+                left: block.left,
+                width: block.width ?? "auto",
+                fontSize: block.fontSize,
+                lineHeight: block.lineHeight ?? undefined,
+                transform:
+                  block.alignment === "center" ? "translateX(-50%)" : undefined,
+                textAlign: block.alignment,
+              };
+              if (tutorialGameKey === "MH") {
+                base.color = "#555543";
+                base.fontFamily = TUTORIAL_MH_FONT_FAMILY;
+              } else {
+                base.fontFamily = TUTORIAL_RE3_FONT_FAMILY;
+                base.color = block.color ?? TUTORIAL_RE3_COLOR;
+                if (isTitle) base.fontWeight = "bold";
+              }
+            if (isTitle) {
+              base.textTransform = "uppercase";
+              base.WebkitTextStroke = "0.1px #000";
+              base.textShadow =
+                "1px 1px 0 rgba(0,0,0,0.5), -1px -1px 0 rgba(255,255,255,0.12), 0 1px 2px rgba(0,0,0,0.35)";
+            }
+              if (isEdit) {
+                base.boxShadow = block.boxShadow
+                  ? "0 0 12px rgba(0,0,0,0.8)"
+                  : undefined;
+                base.padding = "4px 8px";
+                base.minHeight = "24px";
+                base.minWidth = "40px";
+                if (!block.boxShadow)
+                  base.border = "2px dashed rgba(255,255,255,0.6)";
+              } else if (block.boxShadow) {
+                base.boxShadow = "0 0 12px rgba(0,0,0,0.8)";
+                base.padding = "4px 8px";
+              }
+              return base;
+            };
+
+            const renderBlock = (
+              block: TutorialBlock,
+              kind: "title" | "desc",
+              index: number,
+            ) => {
+              const showInView = block.text.trim();
+              if (!isTutorialEditMode && !showInView) return null;
+              const style = blockStyle(
+                block,
+                isTutorialEditMode,
+                kind === "title",
+              );
+              const placeholder =
+                kind === "title"
+                  ? `Título ${index + 1}`
+                  : `Descrição ${index + 1}`;
+              if (isTutorialEditMode) {
+                return (
+                  <div
+                    key={`${tutorialPageIndex}-${kind}-${index}`}
+                    className={`absolute outline-none ${!block.text.trim() ? "tutorial-block-edit-empty opacity-80" : ""}`}
+                    style={style}
+                    contentEditable
+                    suppressContentEditableWarning
+                    onInput={(e) =>
+                      kind === "title"
+                        ? updateTutorialTitle(index, {
+                            text: e.currentTarget.innerText,
+                          })
+                        : updateTutorialDescription(index, {
+                            text: e.currentTarget.innerText,
+                          })
+                    }
+                    onBlur={(e) => {
+                      const t = e.currentTarget.innerText.trim();
+                      const text =
+                        t === placeholder ? "" : e.currentTarget.innerText;
+                      if (kind === "title")
+                        updateTutorialTitle(index, { text });
+                      else updateTutorialDescription(index, { text });
+                    }}
+                    data-placeholder={placeholder}
+                  >
+                    {block.text}
+                  </div>
+                );
+              }
+              return (
+                <div
+                  key={`${kind}-${index}`}
+                  className="absolute"
+                  style={style}
+                >
+                  {renderTextWithBoldAndIcons(block.text, 24, inlineIconMap)}
+                </div>
+              );
+            };
+
+            return (
+              <div
+                className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 p-6"
+                aria-modal="true"
+                aria-labelledby="tutorial-modal-title"
+              >
+                <div className="flex w-full max-w-4xl flex-col rounded-3xl border border-white/20 bg-slate-900/95 shadow-2xl">
+                  <div className="flex items-center justify-between gap-4 p-4">
+                    <h2
+                      id="tutorial-modal-title"
+                      className="text-xl font-semibold text-white"
+                    >
+                      Tutorial{" "}
+                      {layoutCategory === "monster"
+                        ? "Monster Hunter"
+                        : "Resident Evil"}
+                    </h2>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setIsTutorialEditMode((e) => !e)}
+                        className="rounded-xl border border-white/20 bg-white/5 px-3 py-1.5 text-sm text-white transition hover:border-white"
+                      >
+                        {isTutorialEditMode ? "Visualizar" : "Editar"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const gameKey =
+                            layoutCategory === "monster" ? "MH" : "RE3";
+                          const pages = tutorialPagesState;
+                          if (pages && pages.length > 0) {
+                            const fallback = {
+                              RE3: re3TutorialLayout,
+                              MH: mhTutorialLayout,
+                            };
+                            const saved =
+                              await getTutorialPagesFromDb(fallback);
+                            saved[gameKey] = JSON.parse(JSON.stringify(pages));
+                            await saveTutorialPagesToDb(saved);
+                          }
+                          setIsTutorialModalOpen(false);
+                          setTutorialPageIndex(0);
+                          setIsTutorialEditMode(false);
+                        }}
+                        className="h-8 w-8 rounded-full border border-white/20 text-white transition hover:border-white"
+                        aria-label="Fechar tutorial"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  </div>
+                  <div className="relative min-h-[400px] overflow-hidden rounded-b-3xl p-4">
+                    {currentPage ? (
+                      <>
+                        <div className="relative mx-auto aspect-[3/4] max-h-[70vh] w-full max-w-2xl overflow-hidden rounded-xl bg-slate-800">
+                          {currentPage.backgroundImageDataUrl ? (
+                            <img
+                              src={currentPage.backgroundImageDataUrl}
+                              alt=""
+                              className="h-full w-full object-contain object-top"
+                            />
+                          ) : currentPage.imagePath ? (
+                            <img
+                              src={`${basePath}/${currentPage.imagePath}`}
+                              alt=""
+                              className="h-full w-full object-contain object-top"
+                            />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center bg-slate-700/80 text-slate-500 text-sm">
+                              Sem imagem de fundo
+                            </div>
+                          )}
+                          {currentPage.titles.map((block, i) =>
+                            renderBlock(block, "title", i),
+                          )}
+                          {currentPage.descriptions.map((block, i) =>
+                            renderBlock(block, "desc", i),
+                          )}
+                          {currentPage.pageNumber?.show && (
+                            <div
+                              className="absolute"
+                              style={{
+                                top: currentPage.pageNumber.top,
+                                left: currentPage.pageNumber.left,
+                                fontSize:
+                                  currentPage.pageNumber.fontSize ?? "1rem",
+                                fontWeight: "bold",
+                                transform:
+                                  (currentPage.pageNumber.alignment ??
+                                    "center") === "center"
+                                    ? "translateX(-50%)"
+                                    : undefined,
+                                textAlign:
+                                  currentPage.pageNumber.alignment ?? "center",
+                                color:
+                                  tutorialGameKey === "MH"
+                                    ? "#555543"
+                                    : TUTORIAL_RE3_COLOR,
+                                fontFamily:
+                                  tutorialGameKey === "MH"
+                                    ? TUTORIAL_MH_FONT_FAMILY
+                                    : TUTORIAL_RE3_FONT_FAMILY,
+                              }}
+                            >
+                              {tutorialPageIndex + 1}
+                            </div>
+                          )}
+                        </div>
+                        {isTutorialEditMode && currentPage && (
+                          <div className="mt-4 rounded-xl border border-white/20 bg-slate-800/80 p-4">
+                            <p className="mb-3 text-sm font-medium text-slate-300">
+                              Posição dos blocos (top, left)
+                            </p>
+                            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                              {currentPage.titles.map((b, i) => (
+                                <div
+                                  key={`t-${i}`}
+                                  className="flex flex-col gap-1"
+                                >
+                                  <span className="text-xs text-slate-400">
+                                    Título {i + 1}
+                                  </span>
+                                  <div className="flex gap-1">
+                                    <input
+                                      type="text"
+                                      value={b.top}
+                                      onChange={(e) =>
+                                        updateTutorialTitle(i, {
+                                          top: e.target.value,
+                                        })
+                                      }
+                                      className="w-16 rounded border border-white/20 bg-black/40 px-2 py-1 text-xs text-white"
+                                      placeholder="top"
+                                    />
+                                    <input
+                                      type="text"
+                                      value={b.left}
+                                      onChange={(e) =>
+                                        updateTutorialTitle(i, {
+                                          left: e.target.value,
+                                        })
+                                      }
+                                      className="w-16 rounded border border-white/20 bg-black/40 px-2 py-1 text-xs text-white"
+                                      placeholder="left"
+                                    />
+                                  </div>
+                                </div>
+                              ))}
+                              {currentPage.descriptions.map((b, i) => (
+                                <div
+                                  key={`d-${i}`}
+                                  className="flex flex-col gap-1"
+                                >
+                                  <span className="text-xs text-slate-400">
+                                    Descrição {i + 1}
+                                  </span>
+                                  <div className="flex gap-1">
+                                    <input
+                                      type="text"
+                                      value={b.top}
+                                      onChange={(e) =>
+                                        updateTutorialDescription(i, {
+                                          top: e.target.value,
+                                        })
+                                      }
+                                      className="w-16 rounded border border-white/20 bg-black/40 px-2 py-1 text-xs text-white"
+                                      placeholder="top"
+                                    />
+                                    <input
+                                      type="text"
+                                      value={b.left}
+                                      onChange={(e) =>
+                                        updateTutorialDescription(i, {
+                                          left: e.target.value,
+                                        })
+                                      }
+                                      className="w-16 rounded border border-white/20 bg-black/40 px-2 py-1 text-xs text-white"
+                                      placeholder="left"
+                                    />
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        <div className="mt-4 flex items-center justify-between">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setTutorialPageIndex((i) => Math.max(0, i - 1))
+                            }
+                            disabled={tutorialPageIndex === 0}
+                            className="rounded-xl border border-white/20 bg-white/5 px-4 py-2 text-sm text-white disabled:opacity-50"
+                          >
+                            Anterior
+                          </button>
+                          <span className="text-sm text-slate-400">
+                            {tutorialPageIndex + 1} / {totalPages}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setTutorialPageIndex((i) =>
+                                Math.min(totalPages - 1, i + 1),
+                              )
+                            }
+                            disabled={tutorialPageIndex >= totalPages - 1}
+                            className="rounded-xl border border-white/20 bg-white/5 px-4 py-2 text-sm text-white disabled:opacity-50"
+                          >
+                            Próxima
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <p className="py-8 text-center text-slate-400">
+                        Nenhuma página no tutorial.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
+        {isJsonTextModalOpen && (
+          <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 p-6">
+            <div className="w-full max-w-4xl rounded-3xl border border-white/20 bg-slate-900/95 p-6 shadow-2xl">
+              <div className="flex items-center justify-between gap-4">
+                <h3 className="text-xl font-semibold text-white">
+                  Importar JSON (Texto)
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsJsonTextModalOpen(false);
+                    setJsonTextError(null);
+                  }}
+                  className="h-8 w-8 rounded-full border border-white/20 text-white transition hover:border-white"
+                  aria-label="Fechar"
+                >
+                  ×
+                </button>
+              </div>
+              <p className="mt-2 text-sm text-slate-300">
+                Cole um array de objetos para o layout atual. Use apenas o
+                número do ícone (ex: 01, 02).
+              </p>
+              <p className="mt-1 text-xs uppercase tracking-[0.3em] text-slate-400">
+                Layout atual: {getLayoutConfig(form.layout).label}
+              </p>
+              <textarea
+                value={jsonText}
+                onChange={(e) => setJsonText(e.target.value)}
+                rows={14}
+                className="mt-4 w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white outline-none transition focus:border-amber-400"
+                spellCheck={false}
+              />
+              {jsonTextError && (
+                <div className="mt-3 rounded-xl border border-red-400/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+                  {jsonTextError}
+                </div>
+              )}
+              <div className="mt-4 flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsJsonTextModalOpen(false);
+                    setJsonTextError(null);
+                  }}
+                  className="rounded-2xl border border-white/20 bg-white/5 px-4 py-2 text-sm text-white transition hover:border-white"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleImportJsonText}
+                  className="rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 px-4 py-2 text-sm font-semibold text-black transition hover:brightness-110"
+                >
+                  Importar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div
           aria-hidden="true"
           style={{
@@ -5784,10 +7813,27 @@ export default function Home() {
               key={`zip-card-${card.id}`}
               card={card}
               overlayImage={overlayCache[card.id] ?? null}
+              heroSkillImage1={
+                card.layoutId === "heroes"
+                  ? (heroSkillImagesCache[card.id]?.skill1 ?? null)
+                  : null
+              }
+              heroSkillImage2={
+                card.layoutId === "heroes"
+                  ? (heroSkillImagesCache[card.id]?.skill2 ?? null)
+                  : null
+              }
+              heroSkillImage3={
+                card.layoutId === "heroes"
+                  ? (heroSkillImagesCache[card.id]?.skill3 ?? null)
+                  : null
+              }
               htmlId={`zip-card-${card.id}`}
               iconOptionsA={iconOptionsA}
               enemieIconOptions={enemieIconOptions}
-              skillIconOptions={skillIconOptions}
+              heroIconOptions={heroIconOptions}
+              inlineIconMap={inlineIconMap}
+              skillIconOptions={getSkillOptionsForLayout(card.layoutId)}
               effect2IconOptions={effect2IconOptions}
               effect3IconOptions={effect3IconOptions}
               effect4IconOptions={effect4IconOptions}
