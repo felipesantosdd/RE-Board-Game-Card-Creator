@@ -225,7 +225,7 @@ function getLayoutIconSlots(layout: LayoutOption): LayoutIconSlot[] {
   return slots;
 }
 
-const DEFAULT_ICON_FALLBACK = "/models/icons/01.png";
+const DEFAULT_ICON_FALLBACK = "/models/icons/A/01.png";
 
 /** Mapa base de ícones inline (fallback até API carregar). Formato: 00{nome} ex: 0015 para 15.png */
 const INLINE_ICON_MAP_BASE: Record<string, string> = {
@@ -791,7 +791,7 @@ const EQUIP_LAYOUTS_WITH_EFFECTS = ["equip3", "equip3-equip"];
 /** Layout equip3-equip: estrutura diferente (efeitos no topo, título+ícone no final) */
 const isEquip3EquipLayout = (layoutId: string) => layoutId === "equip3-equip";
 /** Ícone fixo na descriptionSkillsBox do equip3-equip */
-const EQUIP3_EQUIP_FIXED_ICON = "/models/icons/Icon9/04/02.png";
+const EQUIP3_EQUIP_FIXED_ICON = "/models/icons/Effects/04/02.png";
 /** IDs dos ícones selecionáveis na descriptionSkillsBox (04, 07, 08) */
 const EQUIP3_EQUIP_SELECTABLE_SKILL_IDS = ["04", "07", "08"];
 /** Effects/03: ícones que usam posição do número igual ao 03 (top: 5px, left: 39px) */
@@ -845,8 +845,8 @@ const isEnemieLayout = (layoutId: string) =>
 const hasEnemieIconLayout = (layoutId: string) =>
   layoutId === "enemie" || layoutId === "heroes";
 /** Layout Heroes: ícones fixos Roll e Bag (heroes/fixed) */
-const HERO_ROLL_ICON = "/models/icons/Icon7/Fixed/01.png";
-const HERO_BAG_ICON = "/models/icons/Icon7/Fixed/02.png";
+const HERO_ROLL_ICON = "/models/icons/Heroes/Fixed/01.png";
+const HERO_BAG_ICON = "/models/icons/Heroes/Fixed/02.png";
 
 const mergeLayoutPositions = (
   candidate: Partial<LayoutPositions>,
@@ -1504,22 +1504,22 @@ const CardPreview = ({
         (icon.src?.includes("06.png") && !icon.src?.includes("06-A")))
     );
   };
-  const ENEMIE_01_ICON = "/models/icons/Icon5/01.png";
-  const ENEMIE_02_ICON = "/models/icons/Icon5/02.png";
-  const ENEMIE_06_ICON = "/models/icons/Icon5/06.png";
-  const HERO_01_ICON = "/models/icons/Icon7/01.png";
+  const ENEMIE_01_ICON = "/models/icons/Enemies/01.png";
+  const ENEMIE_02_ICON = "/models/icons/Enemies/02.png";
+  const ENEMIE_06_ICON = "/models/icons/Enemies/06.png";
+  const HERO_01_ICON = "/models/icons/Heroes/01.png";
   const ICON_01 =
     findEnemieIconForSkill("01")?.src ??
     (card.layoutId === "heroes" ? HERO_01_ICON : ENEMIE_01_ICON);
   const ICON_02 =
     findEnemieIconForSkill("02")?.src ??
     (card.layoutId === "heroes"
-      ? "/models/icons/Icon7/02.png"
+      ? "/models/icons/Heroes/02.png"
       : ENEMIE_02_ICON);
   const ICON_06 =
     findEnemieIconForSkill("06")?.src ??
     (card.layoutId === "heroes"
-      ? "/models/icons/Icon7/06.png"
+      ? "/models/icons/Heroes/06.png"
       : ENEMIE_06_ICON);
   const cardOuterDimensions = isEnemie
     ? ENEMIE_OUTER_DIMENSIONS
@@ -2741,7 +2741,7 @@ const CardPreview = ({
                         <img
                           src={
                             isEquip3EquipLayout(card.layoutId)
-                              ? "/models/icons/03.png"
+                              ? "/models/icons/A/03.png"
                               : card.icon ||
                                 iconOptionsA[0]?.src ||
                                 DEFAULT_ICON_FALLBACK
@@ -2783,7 +2783,7 @@ const CardPreview = ({
                             <img
                               src={
                                 isEquipWithEffectsLayout(card.layoutId)
-                                  ? "/models/icons/03.png"
+                                  ? "/models/icons/A/03.png"
                                   : (card.icon2 ?? "")
                               }
                               alt="Segundo ícone"
@@ -2846,7 +2846,7 @@ const CardPreview = ({
                         layoutPositions.effect3a,
                         layoutPositions.effect4a,
                       ].map((pos, index) => {
-                        const iconSrc = `/models/icons/Icon9/0${index + 1}.png`;
+                        const iconSrc = `/models/icons/Effects/0${index + 1}.png`;
                         return (
                           <div
                             key={`effect-a-${index + 1}`}
@@ -4016,20 +4016,18 @@ export default function Home() {
 
   useEffect(() => {
     const paths = [
-      "",
-      "Icon2",
-      "Icon3",
-      "Icon8",
-      "Icon9/01",
-      "Icon9/02",
-      "Icon9/03",
-      "Icon9/04",
-      "Icon6",
-      "Icon5",
-      "Icon5/Icons",
-      "Icon7",
+      "A",
+      "B",
+      "C",
+      "D",
+      "Effects/01",
+      "Effects/02",
+      "Effects/03",
+      "Effects/04",
+      "Tension",
+      "Enemies",
+      "Enemies/Icons",
       "Icons",
-      "textHunter",
     ] as const;
     const processIcons = (data: IconOption[], isTextHunter = false) => {
       const built: Record<string, string> = {};
@@ -4118,9 +4116,9 @@ export default function Home() {
   useEffect(() => {
     if (
       form.layout === "equip3-equip" &&
-      form.icon !== "/models/icons/03.png"
+      form.icon !== "/models/icons/A/03.png"
     ) {
-      setForm((prev) => ({ ...prev, icon: "/models/icons/03.png" }));
+      setForm((prev) => ({ ...prev, icon: "/models/icons/A/03.png" }));
     } else if (form.icon === "" && form.layout !== "equip4") {
       const layout = getLayoutConfig(form.layout);
       const iconSlot = getLayoutIconSlots(layout)[0];
@@ -5634,7 +5632,7 @@ export default function Home() {
                         image: option.image,
                         icon:
                           option.id === "equip3-equip"
-                            ? "/models/icons/03.png"
+                            ? "/models/icons/A/03.png"
                             : isEquip3 || isEnemie
                               ? ""
                               : option.id === "equip4"
@@ -5675,7 +5673,7 @@ export default function Home() {
                               layout: selected.id,
                               image: selected.image,
                               icon: isEquip3EquipClick
-                                ? "/models/icons/03.png"
+                                ? "/models/icons/A/03.png"
                                 : isEquip3Click || selected.id === "equip4"
                                   ? ""
                                   : prev.icon || defaultIcon1,
@@ -5853,22 +5851,22 @@ export default function Home() {
                         setForm((prev) => ({
                           ...prev,
                           icon2:
-                            prev.icon2 === "/models/icons/Icon2/04.png"
+                            prev.icon2 === "/models/icons/B/04.png"
                               ? ""
-                              : "/models/icons/Icon2/04.png",
+                              : "/models/icons/B/04.png",
                           icon2Id:
-                            prev.icon2 === "/models/icons/Icon2/04.png" ? "" : "04",
+                            prev.icon2 === "/models/icons/B/04.png" ? "" : "04",
                         }))
                       }
                       className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 transition ${
-                        form.icon2 === "/models/icons/Icon2/04.png"
+                        form.icon2 === "/models/icons/B/04.png"
                           ? "border-amber-400 ring-2 ring-amber-400/50"
                           : "border-white/20 hover:border-white/50"
                       }`}
                       style={{ backgroundColor: "#E3C590" }}
                     >
                       <img
-                        src="/models/icons/Icon2/04.png"
+                        src="/models/icons/B/04.png"
                         alt="Ícone 04"
                         className="h-6 w-6 object-contain"
                       />
