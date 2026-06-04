@@ -200,7 +200,7 @@ function isIconAllowed(item: IconOption, allowed: Set<string>): boolean {
   if (allowed.size === 0) return true;
   const id = normalizeIconId(item.id);
   const label = normalizeIconId(item.label);
-  return (id && allowed.has(id)) || (label && allowed.has(label));
+  return (!!id && allowed.has(id)) || (!!label && allowed.has(label));
 }
 
 function getLayoutIconSlots(layout: LayoutOption): LayoutIconSlot[] {
