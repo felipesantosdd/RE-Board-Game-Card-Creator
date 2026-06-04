@@ -2311,7 +2311,7 @@ const CardPreview = ({
                         layoutPositions.effect3a,
                         layoutPositions.effect4a,
                       ].map((pos, index) => {
-                        const iconSrc = `/models/icons/effects/0${index + 1}.png`;
+                        const iconSrc = `/models/icons/Effects/0${index + 1}.png`;
                         return (
                           <div
                             key={`effect-a-${index + 1}`}
