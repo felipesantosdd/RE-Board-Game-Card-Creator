@@ -5001,7 +5001,7 @@ export default function Home() {
             id: crypto.randomUUID(),
             title: item.title,
             description: item.description,
-            description2: item.description2 ?? "",
+            description2: (item as { description2?: string }).description2 ?? "",
             image: layout.image,
             icon: item.icon,
             icon2: item.icon2 ?? icon2Option?.src ?? null,
